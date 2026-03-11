@@ -1,0 +1,10 @@
+# Keystore (sensibel – nicht committen!)
+*.keystore
+*.jks
+android.keystore
+upload-release.jks
+
+# Build-Ausgaben
+app/build/
+build/
+.gradle/

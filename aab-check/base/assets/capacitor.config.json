@@ -1,0 +1,8 @@
+{
+	"appId": "de.stillberatung.jt",
+	"appName": "Stillberatung",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	}
+}

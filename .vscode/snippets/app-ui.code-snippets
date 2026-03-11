@@ -1,0 +1,49 @@
+{
+  "App Screen (ModulePage)": {
+    "prefix": "app-screen",
+    "body": [
+      "<ModulePage data-ui-scope=\"${1:scope}\">",
+      "  <header className=\"${1:scope}__header\">",
+      "    <h2 className=\"topics-menu-panel__title\">${2:Title}</h2>",
+      "    <p>${3:Beschreibung}</p>",
+      "  </header>",
+      "  $0",
+      "</ModulePage>"
+    ],
+    "description": "ModulePage Screen Grundgerüst (App-Style SSoT)"
+  },
+  "UI Actions (Button Stack)": {
+    "prefix": "ui-actions",
+    "body": [
+      "<div className=\"${1:scope}__actions\">",
+      "  <Button type=\"button\" variant=\"primary\" fullWidth>${2:Aktion}</Button>",
+      "  <Button type=\"button\" variant=\"secondary\" fullWidth onClick={() => ${3:goBack()}}>${4:Zurück}</Button>",
+      "</div>"
+    ],
+    "description": "Action Stack mit ui-btn full width"
+  },
+  "UI Chip Group (Radiogroup)": {
+    "prefix": "ui-chip-group",
+    "body": [
+      "<div",
+      "  className=\"${1:scope}__chips\"",
+      "  role=\"radiogroup\"",
+      "  aria-label=\"${2:Auswahl}\"",
+      ">",
+      "  {${3:options}.map((opt) => (",
+      "    <button",
+      "      key={opt.id}",
+      "      type=\"button\"",
+      "      className={\`ui-chip \${${4:selected} === opt.id ? 'ui-chip--selected' : ''}\`}",
+      "      role=\"radio\"",
+      "      aria-checked={${4:selected} === opt.id}",
+      "      onClick={() => ${5:setSelected}(opt.id)}",
+      "    >",
+      "      <span>{opt.label}</span>",
+      "    </button>",
+      "  ))}",
+      "</div>"
+    ],
+    "description": "Stacked chips (ui-chip + ui-chip--selected) mit a11y roles"
+  }
+}

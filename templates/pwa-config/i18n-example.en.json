@@ -1,0 +1,18 @@
+{
+  "app": {
+    "title": "Your PWA Title",
+    "tagline": "Short tagline for your experience"
+  },
+  "nav": {
+    "home": "Home",
+    "settings": "Settings",
+    "notifications": "Notifications"
+  },
+  "modules": {
+    "example": {
+      "title": "Example module",
+      "description": "Starter copy for your first module"
+    }
+  }
+}
+

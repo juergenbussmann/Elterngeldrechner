@@ -1,0 +1,635 @@
+{
+  "categories": [
+    {
+      "id": "latch",
+      "title": "Anlage-Techniken",
+      "summary": "Sichere, angenehme Anlege- und Stillpositionen."
+    },
+    {
+      "id": "nutrition",
+      "title": "Ernährung für Dich",
+      "summary": "Alltagsnahe Ernährungstipps für die Stillzeit."
+    },
+    {
+      "id": "pregnancy",
+      "title": "In der Schwangerschaft",
+      "summary": "Orientierung und Begleitung durch alle Trimester."
+    },
+    {
+      "id": "birth",
+      "title": "Bei der Geburt",
+      "summary": "Ruhige, selbstbestimmte Begleitung für die Geburt."
+    },
+    {
+      "id": "challenges",
+      "title": "Häufige Herausforderungen",
+      "summary": "Hilfe bei typischen Stillproblemen und Unsicherheiten."
+    },
+    {
+      "id": "start",
+      "title": "Vorbereitung & Stillstart",
+      "summary": "Guter Start in den ersten Tagen und Wochen."
+    },
+    {
+      "id": "supply_pumping",
+      "title": "Milchbildung & Abpumpen",
+      "summary": "Verstehen, fördern und entspannt abpumpen."
+    },
+    {
+      "id": "weaning",
+      "title": "Abstillen",
+      "summary": "Sanftes, bedürfnisorientiertes Abstillen – Schritt für Schritt."
+    }
+  ],
+  "items": [
+    {
+      "id": "latch-gutes-anlegen-erkennen",
+      "categoryId": "latch",
+      "title": "Gutes Anlegen erkennen",
+      "summary": "Ein Anlegen, bei dem das Kind viel Brust in den Mund bekommt, hilft dem Baby effizient zu trinken und somit die Milchproduktion anzuregen.",
+      "tags": ["Anlegen", "Lippen", "Kinn", "Mundöffnung", "Stillposition"],
+      "readingTime": "3-4 min",
+      "contentFile": "latch/gutes-anlegen-erkennen.json"
+    },
+    {
+      "id": "latch-anlegen-schritt-fuer-schritt",
+      "categoryId": "latch",
+      "title": "Anlegen Schritt für Schritt",
+      "summary": "Viele Menschen gehen davon aus, dass Stillen einfach „von selbst“ klappt – doch das stimmt nur selten.",
+      "tags": ["Anlegen", "Timing", "Position", "Mundöffnung", "Nähe"],
+      "readingTime": "4-5 min",
+      "contentFile": "latch/anlegen-schritt-fuer-schritt.json"
+    },
+    {
+      "id": "latch-stillpositionen-ueberblick",
+      "categoryId": "latch",
+      "title": "Stillpositionen im Überblick",
+      "summary": "Es gibt nicht die eine richtige Stillposition – wichtig ist, dass du und dein Baby entspannt seid.",
+      "tags": ["Wiegegriff", "Kreuzwiege", "Rückengriff", "Seitenlage", "Laid-back"],
+      "readingTime": "4-6 min",
+      "contentFile": "latch/stillpositionen-ueberblick.json"
+    },
+    {
+      "id": "latch-kaiserschnitt-positionen",
+      "categoryId": "latch",
+      "title": "Stillen nach Kaiserschnitt: Positionen",
+      "summary": "Nach einem Kaiserschnitt kann Stillen gut möglich sein – aber du brauchst oft andere Positionen, um deine Narbe zu schonen.",
+      "tags": ["Kaiserschnitt", "Seitenlage", "Rückengriff", "Kissen", "Schonung"],
+      "readingTime": "3-5 min",
+      "contentFile": "latch/kaiserschnitt-positionen.json"
+    },
+    {
+      "id": "latch-schmerzen-haeufige-ursachen",
+      "categoryId": "latch",
+      "title": "Schmerzen beim Stillen: häufige Ursachen",
+      "summary": "Schmerzen beim Stillen sind nicht „normal“ – sie sind ein Signal, dass etwas nicht optimal läuft.",
+      "tags": ["Schmerzen", "Anlegen", "Spannung", "Position", "Brustwarze"],
+      "synonyme": ["brustschmerzen", "ziehen", "stechen", "brennen", "wunde brustwarzen"],
+      "readingTime": "4-5 min",
+      "contentFile": "latch/schmerzen-haeufige-ursachen.json"
+    },
+    {
+      "id": "latch-unruhiges-baby",
+      "categoryId": "latch",
+      "title": "Unruhiges Baby beim Stillen",
+      "summary": "Wenn dein Baby beim Stillen unruhig ist, ständig abdockt oder sich überstreckt, kann das viele Gründe haben.",
+      "tags": ["Unruhe", "Stillstart", "Reizüberflutung", "Rhythmus", "Bäuerchen"],
+      "readingTime": "3-5 min",
+      "contentFile": "latch/unruhiges-baby.json"
+    },
+    {
+      "id": "latch-flache-hohle-brustwarzen",
+      "categoryId": "latch",
+      "title": "Flache oder hohle Brustwarzen",
+      "summary": "Auch mit flachen oder nach innen gerichteten Brustwarzen kann Stillen gut funktionieren.",
+      "tags": ["Brustwarzen", "Anlegen", "Form", "Hautkontakt", "Geduld"],
+      "readingTime": "3-5 min",
+      "contentFile": "latch/flache-hohle-brustwarzen.json"
+    },
+    {
+      "id": "latch-schlaefriges-neugeborenes",
+      "categoryId": "latch",
+      "title": "Schläfriges Neugeborenes",
+      "summary": "Gerade in den ersten Tagen sind viele Babys beim Stillen sehr schläfrig.",
+      "tags": ["Neugeborenes", "Schlaf", "Hautkontakt", "Kompression", "Timing"],
+      "readingTime": "4-5 min",
+      "contentFile": "latch/schlaefriges-neugeborenes.json"
+    },
+    {
+      "id": "nutrition-muss-ich-anders-essen",
+      "categoryId": "nutrition",
+      "title": "Muss ich beim Stillen anders essen?",
+      "summary": "Du musst keine spezielle Stilldiät einhalten.",
+      "tags": ["Ernährung", "Alltag", "Mythen", "Vielfalt", "Entspannung"],
+      "readingTime": "3-4 min",
+      "contentFile": "nutrition/muss-ich-anders-essen.json"
+    },
+    {
+      "id": "nutrition-trinken-wie-viel",
+      "categoryId": "nutrition",
+      "title": "Trinken beim Stillen: wie viel ist genug?",
+      "summary": "Viele Stillende hören den Satz: „Du musst ganz viel trinken, sonst hast du keine Milch.“",
+      "tags": ["Trinken", "Durst", "Wasser", "Stillen", "Alltag"],
+      "readingTime": "3-4 min",
+      "contentFile": "nutrition/trinken-wie-viel.json"
+    },
+    {
+      "id": "nutrition-heisshunger-snacks",
+      "categoryId": "nutrition",
+      "title": "Heißhunger & Energie: schnelle stillfreundliche Snacks",
+      "seoTitle": "Heißhunger – Snacks für die Stillzeit",
+      "summary": "Stillen kostet Energie – viele Stillende merken das durch mehr Hunger oder Heißhunger.",
+      "tags": ["Snacks", "Energie", "Heißhunger", "Proteine", "Alltag"],
+      "readingTime": "3-5 min",
+      "contentFile": "nutrition/heisshunger-snacks.json"
+    },
+    {
+      "id": "nutrition-koffein",
+      "categoryId": "nutrition",
+      "title": "Koffein in der Stillzeit",
+      "summary": "Koffein geht in geringen Mengen in die Muttermilch über.",
+      "tags": ["Koffein", "Kaffee", "Tee", "Timing", "Sensibel"],
+      "readingTime": "3-4 min",
+      "contentFile": "nutrition/koffein.json"
+    },
+    {
+      "id": "nutrition-alkohol",
+      "categoryId": "nutrition",
+      "title": "Alkohol & Stillen: realistische Orientierung",
+      "summary": "Alkohol gelangt in die Muttermilch, aber nicht „gesondert“ – die Konzentration entspricht ungefähr der im Blut.",
+      "tags": ["Alkohol", "Timing", "Sicherheit", "Alltag", "Planung"],
+      "readingTime": "4-5 min",
+      "contentFile": "nutrition/alkohol.json"
+    },
+    {
+      "id": "nutrition-bauch-zwickt",
+      "categoryId": "nutrition",
+      "title": "Wenn Babys Bauch zwickt: muss ich etwas weglassen?",
+      "seoTitle": "Babys Bauch – muss ich weglassen?",
+      "summary": "Vorsichtiges Vorgehen statt radikaler Streichlisten.",
+      "tags": ["Bauchweh", "Eliminationsdiät", "Beobachten", "Stillen", "Mythen"],
+      "readingTime": "4-5 min",
+      "contentFile": "nutrition/bauch-zwickt.json"
+    },
+    {
+      "id": "nutrition-vegetarisch-vegan",
+      "categoryId": "nutrition",
+      "title": "Vegetarisch/vegan stillen: wichtige Nährstoffe",
+      "seoTitle": "Vegetarisch stillen – Nährstoffe",
+      "summary": "B12, Jod, Eisen und DHA gut im Blick behalten.",
+      "tags": ["Vegan", "Vegetarisch", "B12", "Jod", "Eisen", "DHA"],
+      "readingTime": "4-6 min",
+      "contentFile": "nutrition/vegetarisch-vegan.json"
+    },
+    {
+      "id": "nutrition-nahrungsergaenzung",
+      "categoryId": "nutrition",
+      "title": "Nahrungsergänzung in der Stillzeit: was ist sinnvoll?",
+      "seoTitle": "Nahrungsergänzung – Stillzeit",
+      "summary": "In den meisten Fällen brauchst du keine speziellen Nahrungsergänzungsmittel.",
+      "tags": ["Supplemente", "Vitamine", "Nährstoffe", "Stillzeit", "Beratung"],
+      "readingTime": "4-5 min",
+      "contentFile": "nutrition/nahrungsergaenzung.json"
+    },
+    {
+      "id": "challenges-wunde-brustwarzen",
+      "categoryId": "challenges",
+      "title": "Wunde Brustwarzen: erste Hilfe",
+      "summary": "Wunde Brustwarzen gehören zu den häufigsten Stillproblemen – und sie sind fast immer ein Zeichen, dass das Anlegen nicht optimal ist.",
+      "tags": ["Brustwarzen", "Schmerzen", "Pflege", "Anlegen", "Heilung"],
+      "synonyme": ["brustwarze tut weh", "reißen", "einrisse", "schmerzende brustwarzen"],
+      "readingTime": "4-5 min",
+      "contentFile": "challenges/wunde-brustwarzen.json"
+    },
+    {
+      "id": "challenges-milchstau",
+      "categoryId": "challenges",
+      "title": "Milchstau erkennen und entlasten",
+      "summary": "Ein Milchstau kann schmerzhaft sein und sich wie ein harter, druckempfindlicher Bereich in der Brust anfühlen.",
+      "tags": ["Milchstau", "Entlastung", "Wärme", "Kälte", "Warnzeichen"],
+      "synonyme": ["harte brust", "druckempfindlich", "brustschmerzen", "verstopfter gang"],
+      "readingTime": "4-5 min",
+      "contentFile": "challenges/milchstau.json"
+    },
+    {
+      "id": "challenges-mastitis-verdacht",
+      "categoryId": "challenges",
+      "title": "Mastitis-Verdacht: wann ärztliche Hilfe?",
+      "summary": "Eine Mastitis ist eine Brustentzündung, die sich schnell entwickeln kann.",
+      "tags": ["Mastitis", "Fieber", "Entzündung", "Sicherheit", "Arzt"],
+      "synonyme": ["brustentzündung", "rote brust", "schüttelfrost", "brustschmerzen"],
+      "readingTime": "4-5 min",
+      "contentFile": "challenges/mastitis-verdacht.json"
+    },
+    {
+      "id": "challenges-zu-viel-milch",
+      "categoryId": "challenges",
+      "title": "Zu viel Milch / starker Milchspendereflex",
+      "summary": "Wenn du sehr viel Milch hast oder dein Milchspendereflex stark ist, kann dein Baby beim Stillen husten, würgen oder sich verschlucken.",
+      "tags": ["Überangebot", "Milchmenge", "Fluss", "Bauchweh", "Rhythmus"],
+      "readingTime": "4-5 min",
+      "contentFile": "challenges/ueberangebot.json"
+    },
+    {
+      "id": "challenges-zu-wenig-milch",
+      "categoryId": "challenges",
+      "title": "Zu wenig Milch? Was wirklich zählt",
+      "summary": "Viele Stillende haben Sorge, nicht genug Milch zu haben.",
+      "tags": ["Milchmenge", "Gewicht", "Windeln", "Stillmanagement", "Beruhigung"],
+      "readingTime": "4-6 min",
+      "contentFile": "challenges/zu-wenig-milch.json"
+    },
+    {
+      "id": "challenges-clusterfeeding",
+      "categoryId": "challenges",
+      "title": "Clusterfeeding: normal oder Grund zur Sorge?",
+      "summary": "Clusterfeeding bedeutet, dass dein Baby über einen Zeitraum von mehreren Stunden sehr häufig gestillt werden möchte.",
+      "tags": ["Clusterfeeding", "Abend", "Wachstum", "Rhythmus", "Beruhigung"],
+      "readingTime": "3-5 min",
+      "contentFile": "challenges/clusterfeeding.json"
+    },
+    {
+      "id": "challenges-immer-an-die-brust",
+      "categoryId": "challenges",
+      "title": "Baby will „immer“ an die Brust",
+      "summary": "Gerade in den ersten Wochen möchten viele Babys sehr häufig stillen.",
+      "tags": ["Häufiges Stillen", "Nähe", "Regulation", "Rhythmus", "Wochenbett"],
+      "readingTime": "3-5 min",
+      "contentFile": "challenges/immer-an-die-brust.json"
+    },
+    {
+      "id": "challenges-baby-beisst",
+      "categoryId": "challenges",
+      "title": "Baby beißt in die Brust",
+      "summary": "Wenn dein Baby beim Stillen beißt, ist das meist eine Phase – und du kannst etwas tun, damit es schnell wieder besser wird.",
+      "tags": ["Beißen", "Zähne", "Reaktion", "Grenzen", "Phase"],
+      "readingTime": "3-5 min",
+      "contentFile": "challenges/baby-beisst.json"
+    },
+    {
+      "id": "challenges-soor",
+      "categoryId": "challenges",
+      "title": "Soor (Pilzinfektion) an Brustwarze oder im Mund",
+      "seoTitle": "Soor – Pilzinfektion an Brustwarze",
+      "summary": "Soor ist eine Pilzinfektion, die Brustwarzen und/oder den Mund deines Babys betreffen kann.",
+      "tags": ["Soor", "Pilz", "Brustwarze", "Baby", "Behandlung"],
+      "readingTime": "4-5 min",
+      "contentFile": "challenges/soor.json"
+    },
+    {
+      "id": "challenges-stillstreik",
+      "categoryId": "challenges",
+      "title": "Stillstreik: wenn das Baby die Brust verweigert",
+      "seoTitle": "Stillstreik – Baby verweigert Brust",
+      "summary": "Ein Stillstreik bedeutet, dass ein Baby plötzlich die Brust verweigert, obwohl es vorher gut gestillt hat.",
+      "tags": ["Stillstreik", "Verweigerung", "Hautkontakt", "Geduld", "Ursachen"],
+      "readingTime": "4-6 min",
+      "contentFile": "challenges/stillstreik.json"
+    },
+    {
+      "id": "challenges-saugerverwirrung",
+      "categoryId": "challenges",
+      "title": "Saugverwirrung: sanfter Weg zurück zur Brust",
+      "summary": "Saugverwirrung kann entstehen, wenn ein Baby sowohl an der Brust als auch an künstlichen Saugern (Flasche, Schnuller) trinkt.",
+      "tags": ["Saugverwirrung", "Flasche", "Brust", "Stillfreundlich", "Übergang"],
+      "readingTime": "4-6 min",
+      "contentFile": "challenges/saugerverwirrung.json"
+    },
+    {
+      "id": "start-in-der-schwangerschaft",
+      "categoryId": "start",
+      "title": "In der Schwangerschaft vorbereiten",
+      "summary": "Du kannst dich schon in der Schwangerschaft gut auf das Stillen vorbereiten – ohne dich zu überfordern.",
+      "tags": ["Vorbereitung", "Schwangerschaft", "Wissen", "Unterstützung", "Planung"],
+      "readingTime": "3-5 min",
+      "contentFile": "start/vorbereiten-schwangerschaft.json"
+    },
+    {
+      "id": "pregnancy-koerper-veraenderungen",
+      "categoryId": "pregnancy",
+      "title": "Körper & Veränderungen",
+      "summary": "Was sich im Körper wandelt und wie du dich gut begleiten kannst.",
+      "tags": ["Körper", "Veränderungen", "Trimester", "Wohlbefinden", "Alltag"],
+      "synonyme": ["brustspannen", "brustschmerzen", "rückenschmerzen", "bauchschmerzen", "ziehen in der brust"],
+      "readingTime": "3-5 min",
+      "contentFile": "pregnancy/koerper-veraenderungen.json"
+    },
+    {
+      "id": "pregnancy-ernaehrung-naehrstoffe",
+      "categoryId": "pregnancy",
+      "title": "Ernährung & Nährstoffe",
+      "summary": "Alltagstaugliche Ernährung, die dich und dein Baby stärkt.",
+      "tags": ["Ernährung", "Nährstoffe", "Energie", "Hydration", "Alltag"],
+      "readingTime": "3-5 min",
+      "contentFile": "pregnancy/ernaehrung-naehrstoffe.json"
+    },
+    {
+      "id": "pregnancy-bewegung-aktivitaet",
+      "categoryId": "pregnancy",
+      "title": "Bewegung & Aktivität",
+      "summary": "Sanfte Bewegung, die gut tut und Sicherheit vermittelt.",
+      "tags": ["Bewegung", "Aktivität", "Kraft", "Entspannung", "Alltag"],
+      "readingTime": "3-5 min",
+      "contentFile": "pregnancy/bewegung-aktivitaet.json"
+    },
+    {
+      "id": "pregnancy-mentale-gesundheit-bindung",
+      "categoryId": "pregnancy",
+      "title": "Mentale Gesundheit & Bindung",
+      "summary": "Gefühle verstehen, Ressourcen stärken und Verbindung aufbauen.",
+      "tags": ["Mentale Gesundheit", "Bindung", "Gefühle", "Ressourcen", "Ruhe"],
+      "readingTime": "3-5 min",
+      "contentFile": "pregnancy/mentale-gesundheit-bindung.json"
+    },
+    {
+      "id": "pregnancy-vorsorge-entscheidungen",
+      "categoryId": "pregnancy",
+      "title": "Vorsorge & Entscheidungen",
+      "summary": "Gut informiert entscheiden, ohne Druck und mit Vertrauen.",
+      "tags": ["Vorsorge", "Entscheidungen", "Fragen", "Selbstbestimmung", "Planung"],
+      "readingTime": "3-5 min",
+      "contentFile": "pregnancy/vorsorge-entscheidungen.json"
+    },
+    {
+      "id": "pregnancy-vorbereitung-geburt-stillzeit",
+      "categoryId": "pregnancy",
+      "title": "Vorbereitung auf Geburt & Stillzeit",
+      "summary": "Praktische Schritte für einen ruhigen, sicheren Übergang.",
+      "tags": ["Geburt", "Stillzeit", "Vorbereitung", "Wochenbett", "Unterstützung"],
+      "readingTime": "3-5 min",
+      "contentFile": "pregnancy/vorbereitung-geburt-stillzeit.json"
+    },
+    {
+      "id": "birth-ruhe-geburtsverlauf",
+      "categoryId": "birth",
+      "title": "Ruhe & Geburtsverlauf",
+      "summary": "Warum Zeit, Ruhe und Schutz den natürlichen Verlauf unterstützen.",
+      "tags": ["Geburt", "Ruhe", "Zeit", "Geburtsverlauf", "Selbstbestimmung", "Sicherheit"],
+      "readingTime": "4-6 min",
+      "contentFile": "birth/ruhe-geburtsverlauf.json"
+    },
+    {
+      "id": "birth-nabelschnur-uebergang",
+      "categoryId": "birth",
+      "title": "Die Nabelschnur & der erste Übergang",
+      "summary": "Auspulsieren lassen, sanfter Übergang und warum nicht gezogen wird.",
+      "tags": ["Nabelschnur", "Auspulsieren", "Übergang", "Eisen", "Stammzellen", "Ruhe"],
+      "readingTime": "4-6 min",
+      "contentFile": "birth/nabelschnur-uebergang.json"
+    },
+    {
+      "id": "birth-nachgeburt-verstehen",
+      "categoryId": "birth",
+      "title": "Die Nachgeburt verstehen",
+      "summary": "Was die Nachgeburt ist und warum sie Zeit brauchen darf.",
+      "tags": ["Nachgeburt", "Plazenta", "Zeit", "Geduld", "Hautkontakt"],
+      "readingTime": "4-6 min",
+      "contentFile": "birth/nachgeburt-verstehen.json"
+    },
+    {
+      "id": "birth-interventionen-entscheidungen",
+      "categoryId": "birth",
+      "title": "Interventionen & Entscheidungen",
+      "summary": "Maßnahmen nur bei Indikation und Entscheidungen in Ruhe treffen.",
+      "tags": ["Interventionen", "Entscheidung", "Indikation", "Aufschieben", "Selbstbestimmung"],
+      "readingTime": "5-7 min",
+      "contentFile": "birth/interventionen-entscheidungen.json"
+    },
+    {
+      "id": "birth-oxytocin-bindung-stillstart",
+      "categoryId": "birth",
+      "title": "Oxytocin, frühe Bindung & Stillstart",
+      "summary": "Körpereigenes Oxytocin, Hautkontakt und ein stillfreundlicher Start.",
+      "tags": ["Oxytocin", "Bindung", "Stillstart", "Hautkontakt", "Nähe", "Indikation"],
+      "readingTime": "4-6 min",
+      "contentFile": "birth/oxytocin-bindung-stillstart.json"
+    },
+    {
+      "id": "birth-erste-zeit-nach-geburt",
+      "categoryId": "birth",
+      "title": "Die erste Zeit nach der Geburt",
+      "summary": "Ankommen, den eigenen Körper spüren und Nähe schützen.",
+      "tags": ["Nach der Geburt", "Ruhe", "Nähe", "Körper", "Selbstbestimmung", "Fragen"],
+      "readingTime": "4-6 min",
+      "contentFile": "birth/erste-zeit-nach-geburt.json"
+    },
+    {
+      "id": "start-die-ersten-stunden",
+      "categoryId": "start",
+      "title": "Die ersten Stunden nach der Geburt",
+      "summary": "Die ersten Stunden nach der Geburt sind oft entscheidend für einen guten Stillstart.",
+      "tags": ["Erste Stunden", "Hautkontakt", "Stillstart", "Ruhe", "Anlegen"],
+      "readingTime": "4-5 min",
+      "contentFile": "start/die-ersten-stunden.json"
+    },
+    {
+      "id": "start-die-ersten-tage",
+      "categoryId": "start",
+      "title": "Die ersten Tage: häufige Fragen",
+      "summary": "In den ersten Tagen ist vieles neu – für dich und dein Baby.",
+      "tags": ["Erste Tage", "Fragen", "Stillen", "Neugeborenes", "Alltag"],
+      "readingTime": "4-5 min",
+      "contentFile": "start/die-ersten-tage.json"
+    },
+    {
+      "id": "start-erster-stillstart",
+      "categoryId": "start",
+      "title": "Der erste Stillstart: Hautkontakt & erstes Anlegen",
+      "seoTitle": "Erster Stillstart – Hautkontakt & Anlegen",
+      "summary": "Warum die ersten Stunden zählen und wie du sanft startest.",
+      "tags": ["Stillstart", "Hautkontakt", "Bindung", "Anlegen", "Erste Stunden"],
+      "readingTime": "4-5 min",
+      "contentFile": "start/erster-stillstart.json"
+    },
+    {
+      "id": "start-kolostrum",
+      "categoryId": "start",
+      "title": "Kolostrum: warum es so wertvoll ist",
+      "summary": "Kolostrum ist die erste Milch, die dein Körper nach der Geburt produziert.",
+      "tags": ["Kolostrum", "Erste Milch", "Neugeborenes", "Schutz", "Menge"],
+      "readingTime": "3-4 min",
+      "contentFile": "start/kolostrum.json"
+    },
+    {
+      "id": "start-milcheinschuss",
+      "categoryId": "start",
+      "title": "Milcheinschuss",
+      "summary": "Der Milcheinschuss bezeichnet den Übergang von der ersten Vormilch (Kolostrum) zur reifen Muttermilch.",
+      "tags": ["Milcheinschuss", "Kolostrum", "Brust", "Spannung", "Übergang"],
+      "synonyme": ["brustspannen", "gespannt", "brust voll", "schmerzhaft", "brustschmerzen"],
+      "readingTime": "4-5 min",
+      "contentFile": "start/milcheinschuss.json"
+    },
+    {
+      "id": "start-milch-kommt-spaeter",
+      "categoryId": "start",
+      "title": "Wenn die Milch „später kommt“: normaler Verlauf",
+      "seoTitle": "Milch kommt später – normaler Verlauf",
+      "summary": "Warum die Umstellung Zeit braucht und was in der Zwischenzeit hilft.",
+      "tags": ["Milcheinschuss", "Geduld", "Anlegen", "Häufigkeit", "Körper"],
+      "readingTime": "4-5 min",
+      "contentFile": "start/milch-kommt-spaeter.json"
+    },
+    {
+      "id": "start-haeufigkeit-stillen",
+      "categoryId": "start",
+      "title": "Wie oft soll ich stillen?",
+      "summary": "In den ersten Wochen gilt: so oft dein Baby möchte.",
+      "tags": ["Häufigkeit", "Angebot", "Nachfrage", "Signale", "Alltag"],
+      "readingTime": "3-4 min",
+      "contentFile": "start/haeufigkeit-stillen.json"
+    },
+    {
+      "id": "start-nacht-2",
+      "categoryId": "start",
+      "title": "Nacht 2: warum Babys plötzlich so unruhig sind",
+      "seoTitle": "Nacht 2 – warum Babys unruhig sind",
+      "summary": "Häufiges Stillen in der zweiten Nacht ist normal und oft hilfreich.",
+      "tags": ["Nacht 2", "Unruhe", "Clusterfeeding", "Beruhigung", "Normal"],
+      "readingTime": "3-4 min",
+      "contentFile": "start/nacht-2.json"
+    },
+    {
+      "id": "start-wachstumsschuebe",
+      "categoryId": "start",
+      "title": "Wachstumsschübe & häufigeres Stillen",
+      "summary": "In bestimmten Phasen möchte dein Baby plötzlich häufiger stillen – oft rund um Wachstumsschübe.",
+      "tags": ["Wachstumsschub", "Häufigkeit", "Rhythmus", "Clusterfeeding", "Beruhigung"],
+      "readingTime": "3-5 min",
+      "contentFile": "start/wachstumsschuebe.json"
+    },
+    {
+      "id": "start-schwierige-geburt",
+      "categoryId": "start",
+      "title": "Stillen nach schwieriger Geburt",
+      "summary": "Sanft beginnen und passende Unterstützung annehmen.",
+      "tags": ["Geburt", "Erholung", "Unterstützung", "Sanft", "Geduld"],
+      "readingTime": "4-5 min",
+      "contentFile": "start/schwierige-geburt.json"
+    },
+    {
+      "id": "start-windeln-gewicht",
+      "categoryId": "start",
+      "title": "Windeln & Gewicht: grobe Orientierung (ohne Zahlenfetisch)",
+      "seoTitle": "Windeln & Gewicht – Orientierung",
+      "summary": "Worauf es im Alltag ankommt, ohne sich in Zahlen zu verlieren.",
+      "tags": ["Windeln", "Gewicht", "Beobachtung", "Stillen", "Beruhigung"],
+      "readingTime": "4-5 min",
+      "contentFile": "start/windeln-gewicht.json"
+    },
+    {
+      "id": "start-unterstuetzung-alltag",
+      "categoryId": "start",
+      "title": "Unterstützung im Alltag: was Partner/Familie tun können",
+      "seoTitle": "Unterstützung – Partner & Familie",
+      "summary": "Praktische Aufgaben, die Stillende wirklich entlasten.",
+      "tags": ["Unterstützung", "Partner", "Familie", "Entlastung", "Alltag"],
+      "readingTime": "3-5 min",
+      "contentFile": "start/unterstuetzung-alltag.json"
+    },
+    {
+      "id": "supply-milchbildung-verstehen",
+      "categoryId": "supply_pumping",
+      "title": "Milchbildung verstehen: Angebot & Nachfrage",
+      "summary": "Wie häufiges Stillen die Milchmenge beeinflusst.",
+      "tags": ["Milchbildung", "Angebot", "Nachfrage", "Häufigkeit", "Rhythmus"],
+      "readingTime": "3-5 min",
+      "contentFile": "supply_pumping/milchbildung-verstehen.json"
+    },
+    {
+      "id": "supply-mehr-milch",
+      "categoryId": "supply_pumping",
+      "title": "Mehr Milch: häufiges Anlegen & Brustkompression",
+      "seoTitle": "Mehr Milch – Anlegen & Brustkompression",
+      "summary": "Wenn du mehr Milch bilden möchtest, ist das Wichtigste: häufiges, effektives Entleeren der Brust.",
+      "tags": ["Mehr Milch", "Anlegen", "Brustkompression", "Stimulation", "Geduld"],
+      "readingTime": "4-5 min",
+      "contentFile": "supply_pumping/mehr-milch.json"
+    },
+    {
+      "id": "supply-abpumpen",
+      "categoryId": "supply_pumping",
+      "title": "Abpumpen: wann und wie?",
+      "summary": "Abpumpen kann in verschiedenen Situationen hilfreich sein – aber es muss nicht automatisch Teil deines Stillalltags sein.",
+      "tags": ["Abpumpen", "Situation", "Rhythmus", "Alltag", "Planung"],
+      "readingTime": "4-5 min",
+      "contentFile": "supply_pumping/abpumpen-wann.json"
+    },
+    {
+      "id": "supply-handentleeren",
+      "categoryId": "supply_pumping",
+      "title": "Handentleeren",
+      "summary": "Handentleeren ist eine sehr hilfreiche Technik – besonders in den ersten Tagen oder wenn Abpumpen gerade nicht möglich ist.",
+      "tags": ["Handentleeren", "Technik", "Erste Tage", "Entlastung", "Milchfluss"],
+      "readingTime": "3-4 min",
+      "contentFile": "supply_pumping/handentleeren.json"
+    },
+    {
+      "id": "supply-pump-routine",
+      "categoryId": "supply_pumping",
+      "title": "Pump-Routine für Anfänger:innen",
+      "summary": "Einfach starten, Stress vermeiden und dranbleiben.",
+      "tags": ["Pumpe", "Routine", "Einfach", "Stressarm", "Einstieg"],
+      "readingTime": "4-5 min",
+      "contentFile": "supply_pumping/pump-routine.json"
+    },
+    {
+      "id": "supply-milch-aufbewahren",
+      "categoryId": "supply_pumping",
+      "title": "Milch aufbewahren: Grundregeln",
+      "summary": "Muttermilch lässt sich gut aufbewahren – wenn du ein paar Hygieneregeln beachtest.",
+      "tags": ["Aufbewahrung", "Hygiene", "Kühlen", "Einfrieren", "Sicherheit"],
+      "readingTime": "3-4 min",
+      "contentFile": "supply_pumping/milch-aufbewahren.json"
+    },
+    {
+      "id": "supply-arbeitsrueckkehr",
+      "categoryId": "supply_pumping",
+      "title": "Stillen & Rückkehr in den Beruf",
+      "summary": "Der Wiedereinstieg in den Beruf bedeutet nicht automatisch das Ende des Stillens.",
+      "tags": ["Beruf", "Rückkehr", "Planung", "Abpumpen", "Alltag"],
+      "readingTime": "4-5 min",
+      "contentFile": "supply_pumping/arbeitsrueckkehr.json"
+    },
+    {
+      "id": "supply-zufuettern-stillfreundlich",
+      "categoryId": "supply_pumping",
+      "title": "Zufüttern stillfreundlich gestalten",
+      "summary": "Optionen im Überblick, mit Fokus auf Bindung und Brustkontakt.",
+      "tags": ["Zufüttern", "Stillfreundlich", "Flasche", "Becher", "Ergänzung"],
+      "readingTime": "4-6 min",
+      "contentFile": "supply_pumping/zufuettern-stillfreundlich.json"
+    },
+    {
+      "id": "supply-baby-trinkt-nicht-effektiv",
+      "categoryId": "supply_pumping",
+      "title": "Wenn Baby nicht effektiv trinkt",
+      "summary": "Hinweise erkennen und frühzeitig Unterstützung einholen.",
+      "tags": ["Effektiv trinken", "Anlegen", "Stillberatung", "Gewicht", "Signale"],
+      "readingTime": "4-5 min",
+      "contentFile": "supply_pumping/baby-trinkt-nicht-effektiv.json"
+    },
+    {
+      "id": "supply-relaktation",
+      "categoryId": "supply_pumping",
+      "title": "Wiedereinstieg nach Pause / Relaktation: Überblick",
+      "seoTitle": "Relaktation – Wiedereinstieg nach Stillpause",
+      "summary": "Was möglich ist und wie du Schritt für Schritt vorgehst.",
+      "tags": ["Relaktation", "Wiedereinstieg", "Geduld", "Stimulation", "Unterstützung"],
+      "readingTime": "5-6 min",
+      "contentFile": "supply_pumping/relaktation.json"
+    },
+    {
+      "id": "weaning-abstillen",
+      "categoryId": "weaning",
+      "title": "Abstillen: sanft und bedürfnisorientiert",
+      "summary": "Wie du Stillmahlzeiten Schritt für Schritt reduzierst – mit Blick auf Bindung, Brustgesundheit und euren Alltag.",
+      "seoTitle": "Abstillen – sanft und ohne Milchstau",
+      "seoDescription": "Wie du Schritt für Schritt abstillst und dabei Milchstau vermeidest. Informativ und fachlich fundiert.",
+      "tags": ["abstillen", "weaning", "sanft", "bedürfnisorientiert", "brustgesundheit", "milchstau", "nachtstillen", "routine"],
+      "synonyme": ["stillen beenden", "stillmahlzeiten reduzieren", "nacht abstillen", "milchstau vermeiden"],
+      "readingTime": "5-7 min",
+      "contentFile": "weaning/abstillen.json"
+    }
+  ]
+}

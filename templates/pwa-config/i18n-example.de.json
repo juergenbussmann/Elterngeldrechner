@@ -1,0 +1,18 @@
+{
+  "app": {
+    "title": "Deine PWA",
+    "tagline": "Kurzer Claim für deine App"
+  },
+  "nav": {
+    "home": "Start",
+    "settings": "Einstellungen",
+    "notifications": "Benachrichtigungen"
+  },
+  "modules": {
+    "example": {
+      "title": "Beispielmodul",
+      "description": "Startertext für dein erstes Modul"
+    }
+  }
+}
+

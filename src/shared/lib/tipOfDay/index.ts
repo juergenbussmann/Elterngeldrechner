@@ -1,0 +1,1 @@
+export { useTipOfDay } from './useTipOfDay';

@@ -1,0 +1,68 @@
+/* AppointmentForm – Mobile-first: Date/Time Felder untereinander (1 Spalte) */
+
+.appointments__composer-card .appointment-form__datetime-stack,
+.appointments-screen .appointment-form__datetime-stack,
+.form-screen .appointment-form__datetime-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.appointments__composer-card .appointment-form__datetime-stack *,
+.appointments-screen .appointment-form__datetime-stack *,
+.form-screen .appointment-form__datetime-stack * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.appointments__composer-card .appointment-form__datetime-stack input,
+.appointments__composer-card .appointment-form__datetime-stack .text-input,
+.appointments__composer-card .appointment-form__datetime-stack .TextInput,
+.appointments-screen .appointment-form__datetime-stack input,
+.appointments-screen .appointment-form__datetime-stack .text-input,
+.appointments-screen .appointment-form__datetime-stack .TextInput,
+.form-screen .appointment-form__datetime-stack input,
+.form-screen .appointment-form__datetime-stack .text-input,
+.form-screen .appointment-form__datetime-stack .TextInput {
+  width: 100%;
+}
+
+/* datetime-row: Mobile untereinander statt nebeneinander */
+.appointments__composer-card .appointment-form__datetime-stack .appointments__datetime-row,
+.appointments-screen .appointment-form__datetime-stack .appointments__datetime-row,
+.form-screen .appointment-form__datetime-stack .appointments__datetime-row {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem;
+}
+
+.appointments__composer-card .appointment-form__datetime-stack .appointments__datetime-row input,
+.appointments-screen .appointment-form__datetime-stack .appointments__datetime-row input,
+.form-screen .appointment-form__datetime-stack .appointments__datetime-row input {
+  flex: none !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+@media (min-width: 768px) {
+  .appointments__composer-card .appointment-form__datetime-stack,
+  .appointments-screen .appointment-form__datetime-stack,
+  .form-screen .appointment-form__datetime-stack {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .appointments__composer-card .appointment-form__datetime-stack .appointments__datetime-row,
+  .appointments-screen .appointment-form__datetime-stack .appointments__datetime-row,
+  .form-screen .appointment-form__datetime-stack .appointments__datetime-row {
+    flex-direction: row !important;
+  }
+
+  .appointments__composer-card .appointment-form__datetime-stack .appointments__datetime-row input[type="time"],
+  .appointments-screen .appointment-form__datetime-stack .appointments__datetime-row input[type="time"],
+  .form-screen .appointment-form__datetime-stack .appointments__datetime-row input[type="time"] {
+    flex: 0 0 auto !important;
+    min-width: 6rem !important;
+    width: auto !important;
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schwangerschaft": {
+    "schmerzen": [
+      "brustschmerzen",
+      "brustspannen",
+      "bauchschmerzen",
+      "rückenschmerzen",
+      "kopfschmerzen",
+      "druckgefühl",
+      "ziehen",
+      "stechen",
+      "brennen"
+    ],
+    "brust": [
+      "brustschmerzen",
+      "brustspannen",
+      "empfindliche brust",
+      "milchdrüsen"
+    ]
+  },
+  "geburt": {
+    "schmerzen": [
+      "wehenschmerzen",
+      "dammschmerzen",
+      "nachwehen",
+      "naht",
+      "dammriss"
+    ]
+  },
+  "stillen": {
+    "schmerzen": [
+      "wunde brustwarzen",
+      "milchstau",
+      "mastitis",
+      "entzündung"
+    ]
+  }
+}

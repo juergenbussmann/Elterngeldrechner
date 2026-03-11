@@ -1,0 +1,75 @@
+/* LAST-LOADED OVERRIDES
+   Scope: nur normale Screens (screen-placeholder), Startseite bleibt unangetastet
+*/
+
+/* 1) LISTEN/ZEILEN IN CARDS: komplett transparent (killt die weißen "Zeilen-Kacheln") */
+.screen-placeholder .still-daily-checklist__card .still-daily-checklist__list,
+.screen-placeholder .still-daily-checklist__card .still-daily-checklist__list * {
+  background-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* falls die weißen Flächen aus border/pseudo kommen */
+.screen-placeholder .still-daily-checklist__card .still-daily-checklist__list *::before,
+.screen-placeholder .still-daily-checklist__card .still-daily-checklist__list *::after {
+  background-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* 2) LINKS IN CARDS (die wie Buttons aussehen) */
+.screen-placeholder .still-daily-checklist__card a.next-steps__button,
+.screen-placeholder .still-daily-checklist__card a.btn--softpill {
+  text-decoration: none;
+  color: inherit;
+}
+
+.screen-placeholder .still-daily-checklist__card a.next-steps__button:visited,
+.screen-placeholder .still-daily-checklist__card a.btn--softpill:visited {
+  color: inherit;
+}
+
+/* 3) BUTTONS IN CARDS: wie Softpill-Buttons (über Variablen, nicht "irgendwie") */
+.screen-placeholder .still-daily-checklist__card .btn,
+.screen-placeholder .still-daily-checklist__card button {
+  border-radius: var(--pill-radius) !important;
+  padding: var(--pill-padding-y) var(--pill-padding-x) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.2px !important;
+
+  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
+  border: 1px solid var(--pill-border) !important;
+  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
+
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease,
+    border-color 160ms ease !important;
+}
+
+/* Hover/Active (wie .btn--softpill) – Buttons */
+.screen-placeholder .still-daily-checklist__card .btn:hover,
+.screen-placeholder .still-daily-checklist__card button:hover {
+  background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover)) !important;
+  border-color: var(--pill-border-hover) !important;
+  box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover) !important;
+}
+
+.screen-placeholder .still-daily-checklist__card .btn:active,
+.screen-placeholder .still-daily-checklist__card button:active {
+  transform: translateY(1px) !important;
+  box-shadow: var(--pill-shadow-active), var(--pill-inset-active) !important;
+}
+
+/* 4) CARDS in normalen Screens wie Bild 2 (Notes Composer) – pill tokens, kein Glass/Blur */
+.screen-placeholder .still-daily-checklist__card,
+.screen-placeholder .ui-card,
+.screen-placeholder .card,
+.screen-placeholder [class*="__card"] {
+  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
+  border: 1px solid var(--pill-border) !important;
+  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
+  border-radius: var(--pill-radius) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

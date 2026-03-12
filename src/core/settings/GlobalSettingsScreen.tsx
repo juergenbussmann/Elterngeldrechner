@@ -41,6 +41,28 @@ export const GlobalSettingsScreen: React.FC = () => {
           >
             {t('settings.privacy')}
           </a>
+          <div
+            className="settings__feedback"
+            style={{
+              marginTop: 16,
+              padding: 12,
+              fontSize: 14,
+              color: 'var(--color-text-secondary, #666)',
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Entwickler</div>
+            <p style={{ margin: '0 0 8px 0', lineHeight: 1.4 }}>
+              Verbesserungsvorschläge und Feedback dürfen gerne an mich gesendet
+              werden.
+            </p>
+            <a
+              href="mailto:juergen@j-bussmann.de"
+              className="next-steps__button btn--softpill"
+              style={{ display: 'inline-block', marginTop: 4 }}
+            >
+              juergen@j-bussmann.de
+            </a>
+          </div>
         </div>
       </Card>
     </section>

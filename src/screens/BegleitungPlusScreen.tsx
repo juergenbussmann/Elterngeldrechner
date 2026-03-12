@@ -40,6 +40,7 @@ export default function BegleitungPlusScreen() {
 
   /* Abo-Status beim Öffnen prüfen (Gerätewechsel, Neuinstallation) */
   useEffect(() => {
+    console.error('[BILLING_TEST] paywall opened');
     if (useNativeBilling) syncEntitlementsFromStore();
   }, []);
 

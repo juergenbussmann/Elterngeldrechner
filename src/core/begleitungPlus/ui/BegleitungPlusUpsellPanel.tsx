@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useI18n } from '../../../shared/lib/i18n';
 import { useNotifications } from '../../../shared/lib/notifications';
 import { useThemeController } from '../../theme/ThemeProvider';
@@ -36,6 +36,10 @@ export const BegleitungPlusUpsellPanel: React.FC<BegleitungPlusUpsellPanelProps>
   const { showToast } = useNotifications();
   const { resolvedMode } = useThemeController();
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly');
+
+  useEffect(() => {
+    console.error('[BILLING_TEST] paywall opened');
+  }, []);
 
   const handleSubscribe = async () => {
     const result = await subscribeToPlan(selectedPlan);

@@ -23,10 +23,19 @@ let initialized = false;
 
 /**
  * Initialisiert RevenueCat. Sollte beim Start der Paywall oder App-Cold-Start aufgerufen werden.
+ * Wirft bei Fehlern – Fehler werden nicht still geschluckt.
  */
 export async function initializeBilling(): Promise<void> {
   if (!useNativeBilling || !REVENUECAT_API_KEY) return;
   if (initialized) return;
+
+  if (import.meta.env.DEV) {
+    console.debug('[billing] RevenueCat key check', {
+      hasKey: !!REVENUECAT_API_KEY,
+      keyPrefix: REVENUECAT_API_KEY?.slice(0, 8),
+      keyLength: REVENUECAT_API_KEY?.length,
+    });
+  }
 
   try {
     await Purchases.configure({
@@ -34,13 +43,26 @@ export async function initializeBilling(): Promise<void> {
       appUserID: null,
     });
     initialized = true;
-    if (import.meta.env.DEV) {
-      console.debug('[billing] RevenueCat initialisiert');
-    }
+    console.error('[BILLING_TEST] billingService active');
   } catch (err) {
     if (import.meta.env.DEV) {
       console.warn('[billing] RevenueCat configure failed:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
     }
+    throw err;
   }
 }
 
@@ -53,10 +75,27 @@ function clearEntitlement(): void {
 }
 
 /**
+ * Extrahiert active Entitlements aus CustomerInfo.
+ * Das RevenueCat Capacitor Plugin kann die native Antwort als
+ * { customerInfo: { entitlements: { active: {...} } } } wrappen –
+ * dieser Helper unterstützt beide Strukturen.
+ */
+function getActiveEntitlements(
+  raw: unknown
+): Record<string, { expirationDate: string | null }> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const o = raw as Record<string, unknown>;
+  const inner = (o.customerInfo ?? o) as Record<string, unknown>;
+  const ent = inner?.entitlements as { active?: Record<string, { expirationDate: string | null }> } | undefined;
+  return ent?.active;
+}
+
+/**
  * Prüft ob begleitung_plus aktiv ist und aktualisiert den lokalen Cache.
  */
-function syncFromCustomerInfo(customerInfo: { entitlements: { active: Record<string, { expirationDate: string | null }> } }): boolean {
-  const ent = customerInfo.entitlements?.active?.[ENTITLEMENT_BEGLEITUNG_PLUS];
+function syncFromCustomerInfo(raw: unknown): boolean {
+  const active = getActiveEntitlements(raw);
+  const ent = active?.[ENTITLEMENT_BEGLEITUNG_PLUS];
   if (ent) {
     applyEntitlementFromCustomerInfo(ent.expirationDate ?? undefined);
     if (import.meta.env.DEV) {
@@ -108,34 +147,80 @@ function findPackage(
   return null;
 }
 
+/** Rückgabe von loadOfferings – loadError erhält den ursprünglichen Fehler für den Kauf-Flow. */
+export type LoadOfferingsResult = {
+  current: PurchasesOffering | null;
+  loadError?: unknown;
+};
+
 /**
  * Lädt Offerings von RevenueCat.
  */
-export async function loadOfferings(): Promise<{ current: PurchasesOffering | null }> {
+export async function loadOfferings(): Promise<LoadOfferingsResult> {
   if (!useNativeBilling) {
     return { current: null };
   }
 
-  await initializeBilling();
+  try {
+    await initializeBilling();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[billing] loadOfferings: initializeBilling fehlgeschlagen:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
+    }
+    const anyErr = err as { underlyingErrorMessage?: string; message?: string };
+    const loadErrorVal = anyErr?.underlyingErrorMessage ?? anyErr?.message ?? err;
+    return { current: null, loadError: loadErrorVal };
+  }
 
   try {
     const offerings = await Purchases.getOfferings();
     const current = offerings.current ?? offerings.all?.[OFFERING_DEFAULT] ?? null;
-    if (current) {
-      console.warn('[billing] offering debug:', current.identifier, current.availablePackages?.map((p) => {
-        const px = p as { identifier?: string; packageType?: string; product?: { identifier?: string; storeProductId?: string } };
-        return {
-          identifier: px.identifier,
-          packageType: px.packageType,
-          productIdentifier: px.product?.identifier,
-          storeProductId: (px.product as { storeProductId?: string })?.storeProductId,
-        };
-      }));
+
+    if (import.meta.env.DEV) {
+      const hasCurrent = !!current;
+      const packageIds = current?.availablePackages?.map((p) => {
+        const px = p as { identifier?: string; packageType?: string };
+        return px.identifier ?? px.packageType ?? '?';
+      }) ?? [];
+      console.debug('[billing] getOfferings – current vorhanden:', hasCurrent, 'packages:', packageIds);
     }
-    return { current };
+
+    return { current: current ?? null };
   } catch (err) {
-    console.warn('[billing] loadOfferings failed:', err);
-    return { current: null };
+    if (import.meta.env.DEV) {
+      console.warn('[billing] loadOfferings getOfferings failed:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
+    }
+    const anyErr = err as { underlyingErrorMessage?: string; message?: string };
+    const loadErrorVal = anyErr?.underlyingErrorMessage ?? anyErr?.message ?? err;
+    return { current: null, loadError: loadErrorVal };
   }
 }
 
@@ -175,31 +260,76 @@ export async function purchaseMonthly(): Promise<PurchaseResult> {
     return { success: false, errorKey: 'billing.notAvailable' };
   }
 
-  const { current } = await loadOfferings();
+  const { current, loadError } = await loadOfferings();
   const pkg = findPackage(current, PACKAGE_IDS_MONTHLY, true);
+
   if (!pkg) {
-    const msg = 'No monthly package found';
-    console.warn('[billing] Kein monthly Package – current:', !!current, 'availableIds:', current?.availablePackages?.map((p) => (p as { identifier?: string }).identifier));
+    const priorError = loadError != null ? getPurchaseErrorDetails(loadError) : null;
+    const msg = priorError ?? 'No monthly package found';
+    if (import.meta.env.DEV) {
+      console.warn('[billing] purchaseMonthly: Package nicht gefunden – gesucht:', PACKAGE_IDS_MONTHLY, 'current:', !!current, 'availableIds:', current?.availablePackages?.map((p) => (p as { identifier?: string }).identifier), 'loadError:', !!loadError);
+    }
     return { success: false, errorKey: 'billing.purchaseFailed', errorMessage: msg };
   }
 
+  const p = pkg as { identifier?: string; product?: { identifier?: string; storeProductId?: string } };
+  console.error('[BILLING_TEST] selected package identifier', p?.identifier);
+  console.error('[BILLING_TEST] selected product identifier', p?.product?.identifier ?? (p?.product as { storeProductId?: string })?.storeProductId);
   try {
-    const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
-    if (import.meta.env.DEV) {
-      console.debug('[billing] Package monthly gekauft');
+    console.error('[BILLING_TEST] selected package raw JSON', JSON.stringify(pkg, null, 2));
+  } catch (e) {
+    console.error('[BILLING_TEST] selected package raw JSON (stringify failed)', e);
+  }
+  console.error('[BILLING_TEST] about to purchase package');
+
+  try {
+    const result = await Purchases.purchasePackage({ aPackage: pkg });
+    const rawCustomerInfo = result?.customerInfo ?? result;
+
+    console.error('[BILLING_TEST] RAW purchase result', result);
+    try {
+      console.error('[BILLING_TEST] RAW purchase result JSON', JSON.stringify(result, null, 2));
+    } catch (e) {
+      console.error('[BILLING_TEST] RAW purchase result JSON (stringify failed)', e);
     }
-    syncFromCustomerInfo(customerInfo);
-    const hasAccess = !!customerInfo.entitlements?.active?.[ENTITLEMENT_BEGLEITUNG_PLUS];
+    console.error('[BILLING_TEST] RAW customerInfo', rawCustomerInfo);
+    try {
+      console.error('[BILLING_TEST] RAW customerInfo JSON', JSON.stringify(rawCustomerInfo, null, 2));
+    } catch (e) {
+      console.error('[BILLING_TEST] RAW customerInfo JSON (stringify failed)', e);
+    }
+    console.error('[BILLING_TEST] direct entitlements.active', rawCustomerInfo?.entitlements?.active);
+    console.error('[BILLING_TEST] nested customerInfo.entitlements.active', rawCustomerInfo?.customerInfo?.entitlements?.active);
+    console.error('[BILLING_TEST] begleitung_plus direct?', !!rawCustomerInfo?.entitlements?.active?.['begleitung_plus']);
+    console.error('[BILLING_TEST] begleitung_plus nested?', !!rawCustomerInfo?.customerInfo?.entitlements?.active?.['begleitung_plus']);
+
+    syncFromCustomerInfo(rawCustomerInfo);
+    const hasAccess = !!getActiveEntitlements(rawCustomerInfo)?.[ENTITLEMENT_BEGLEITUNG_PLUS];
     if (!hasAccess) {
       const msg = 'Purchase succeeded but no begleitung_plus entitlement';
-      console.warn('[billing] purchaseMonthly: Kauf erfolgreich, aber kein begleitung_plus Entitlement');
+      console.error('[BILLING_TEST] purchaseMonthly: Kauf erfolgreich, aber kein begleitung_plus Entitlement');
       return { success: false, errorKey: 'billing.purchaseFailed', errorMessage: msg };
     }
     return { success: true };
   } catch (err: unknown) {
-    const details = getPurchaseErrorDetails(err);
+    const anyErr = err as {
+      code?: number;
+      message?: string;
+      readableErrorCode?: string;
+      underlyingErrorMessage?: string;
+      userInfo?: unknown;
+    };
+    const preferredMsg = anyErr?.underlyingErrorMessage ?? anyErr?.message;
+    const details = preferredMsg ? String(preferredMsg) : getPurchaseErrorDetails(err);
     if (isUserCancelled(err)) {
       console.warn('[billing] purchaseMonthly cancelled:', details, err);
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
       return {
         success: false,
         cancelled: true,
@@ -208,6 +338,13 @@ export async function purchaseMonthly(): Promise<PurchaseResult> {
       };
     }
     console.warn('[billing] purchaseMonthly error:', details, err);
+    console.warn('[billing] parsed error', {
+      code: anyErr?.code,
+      message: anyErr?.message,
+      readableErrorCode: anyErr?.readableErrorCode,
+      underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+      userInfo: anyErr?.userInfo,
+    });
     return {
       success: false,
       errorKey: 'billing.purchaseFailed',
@@ -224,31 +361,76 @@ export async function purchaseYearly(): Promise<PurchaseResult> {
     return { success: false, errorKey: 'billing.notAvailable' };
   }
 
-  const { current } = await loadOfferings();
+  const { current, loadError } = await loadOfferings();
   const pkg = findPackage(current, PACKAGE_IDS_ANNUAL, false);
+
   if (!pkg) {
-    const msg = 'No annual package found';
-    console.warn('[billing] Kein annual Package – current:', !!current, 'availableIds:', current?.availablePackages?.map((p) => (p as { identifier?: string }).identifier));
+    const priorError = loadError != null ? getPurchaseErrorDetails(loadError) : null;
+    const msg = priorError ?? 'No annual package found';
+    if (import.meta.env.DEV) {
+      console.warn('[billing] purchaseYearly: Package nicht gefunden – gesucht:', PACKAGE_IDS_ANNUAL, 'current:', !!current, 'availableIds:', current?.availablePackages?.map((p) => (p as { identifier?: string }).identifier), 'loadError:', !!loadError);
+    }
     return { success: false, errorKey: 'billing.purchaseFailed', errorMessage: msg };
   }
 
+  const p = pkg as { identifier?: string; product?: { identifier?: string; storeProductId?: string } };
+  console.error('[BILLING_TEST] selected package identifier', p?.identifier);
+  console.error('[BILLING_TEST] selected product identifier', p?.product?.identifier ?? (p?.product as { storeProductId?: string })?.storeProductId);
   try {
-    const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
-    if (import.meta.env.DEV) {
-      console.debug('[billing] Package annual gekauft');
+    console.error('[BILLING_TEST] selected package raw JSON', JSON.stringify(pkg, null, 2));
+  } catch (e) {
+    console.error('[BILLING_TEST] selected package raw JSON (stringify failed)', e);
+  }
+  console.error('[BILLING_TEST] about to purchase package');
+
+  try {
+    const result = await Purchases.purchasePackage({ aPackage: pkg });
+    const rawCustomerInfo = result?.customerInfo ?? result;
+
+    console.error('[BILLING_TEST] RAW purchase result', result);
+    try {
+      console.error('[BILLING_TEST] RAW purchase result JSON', JSON.stringify(result, null, 2));
+    } catch (e) {
+      console.error('[BILLING_TEST] RAW purchase result JSON (stringify failed)', e);
     }
-    syncFromCustomerInfo(customerInfo);
-    const hasAccess = !!customerInfo.entitlements?.active?.[ENTITLEMENT_BEGLEITUNG_PLUS];
+    console.error('[BILLING_TEST] RAW customerInfo', rawCustomerInfo);
+    try {
+      console.error('[BILLING_TEST] RAW customerInfo JSON', JSON.stringify(rawCustomerInfo, null, 2));
+    } catch (e) {
+      console.error('[BILLING_TEST] RAW customerInfo JSON (stringify failed)', e);
+    }
+    console.error('[BILLING_TEST] direct entitlements.active', rawCustomerInfo?.entitlements?.active);
+    console.error('[BILLING_TEST] nested customerInfo.entitlements.active', rawCustomerInfo?.customerInfo?.entitlements?.active);
+    console.error('[BILLING_TEST] begleitung_plus direct?', !!rawCustomerInfo?.entitlements?.active?.['begleitung_plus']);
+    console.error('[BILLING_TEST] begleitung_plus nested?', !!rawCustomerInfo?.customerInfo?.entitlements?.active?.['begleitung_plus']);
+
+    syncFromCustomerInfo(rawCustomerInfo);
+    const hasAccess = !!getActiveEntitlements(rawCustomerInfo)?.[ENTITLEMENT_BEGLEITUNG_PLUS];
     if (!hasAccess) {
       const msg = 'Purchase succeeded but no begleitung_plus entitlement';
-      console.warn('[billing] purchaseYearly: Kauf erfolgreich, aber kein begleitung_plus Entitlement');
+      console.error('[BILLING_TEST] purchaseYearly: Kauf erfolgreich, aber kein begleitung_plus Entitlement');
       return { success: false, errorKey: 'billing.purchaseFailed', errorMessage: msg };
     }
     return { success: true };
   } catch (err: unknown) {
-    const details = getPurchaseErrorDetails(err);
+    const anyErr = err as {
+      code?: number;
+      message?: string;
+      readableErrorCode?: string;
+      underlyingErrorMessage?: string;
+      userInfo?: unknown;
+    };
+    const preferredMsg = anyErr?.underlyingErrorMessage ?? anyErr?.message;
+    const details = preferredMsg ? String(preferredMsg) : getPurchaseErrorDetails(err);
     if (isUserCancelled(err)) {
       console.warn('[billing] purchaseYearly cancelled:', details, err);
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
       return {
         success: false,
         cancelled: true,
@@ -257,6 +439,13 @@ export async function purchaseYearly(): Promise<PurchaseResult> {
       };
     }
     console.warn('[billing] purchaseYearly error:', details, err);
+    console.warn('[billing] parsed error', {
+      code: anyErr?.code,
+      message: anyErr?.message,
+      readableErrorCode: anyErr?.readableErrorCode,
+      underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+      userInfo: anyErr?.userInfo,
+    });
     return {
       success: false,
       errorKey: 'billing.purchaseFailed',
@@ -277,7 +466,28 @@ export async function restorePurchases(): Promise<RestoreResult> {
     return { success: false, errorKey: 'billing.notAvailable' };
   }
 
-  await initializeBilling();
+  try {
+    await initializeBilling();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[billing] restorePurchases: initializeBilling failed:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
+    }
+    return { success: false, errorKey: 'billing.restoreFailed' };
+  }
 
   try {
     const { customerInfo } = await Purchases.restorePurchases();
@@ -286,6 +496,20 @@ export async function restorePurchases(): Promise<RestoreResult> {
   } catch (err) {
     if (import.meta.env.DEV) {
       console.warn('[billing] restorePurchases error:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
     }
     return { success: false, errorKey: 'billing.restoreFailed' };
   }
@@ -297,12 +521,50 @@ export async function restorePurchases(): Promise<RestoreResult> {
 export async function hasBegleitungPlusAccess(): Promise<boolean> {
   if (!useNativeBilling) return false;
 
-  await initializeBilling();
+  try {
+    await initializeBilling();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[billing] hasBegleitungPlusAccess: initializeBilling failed:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
+    }
+    return false;
+  }
 
   try {
     const { customerInfo } = await Purchases.getCustomerInfo();
-    return !!customerInfo.entitlements?.active?.[ENTITLEMENT_BEGLEITUNG_PLUS];
-  } catch {
+    return !!getActiveEntitlements(customerInfo)?.[ENTITLEMENT_BEGLEITUNG_PLUS];
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[billing] hasBegleitungPlusAccess getCustomerInfo failed:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
+    }
     return false;
   }
 }
@@ -314,7 +576,28 @@ export async function hasBegleitungPlusAccess(): Promise<boolean> {
 export async function syncEntitlementsFromStore(): Promise<void> {
   if (!useNativeBilling) return;
 
-  await initializeBilling();
+  try {
+    await initializeBilling();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[billing] syncEntitlementsFromStore: initializeBilling failed:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
+    }
+    return;
+  }
 
   try {
     const { customerInfo } = await Purchases.getCustomerInfo();
@@ -322,6 +605,20 @@ export async function syncEntitlementsFromStore(): Promise<void> {
   } catch (err) {
     if (import.meta.env.DEV) {
       console.warn('[billing] syncEntitlementsFromStore failed:', err);
+      const anyErr = err as {
+        code?: number;
+        message?: string;
+        readableErrorCode?: string;
+        underlyingErrorMessage?: string;
+        userInfo?: unknown;
+      };
+      console.warn('[billing] parsed error', {
+        code: anyErr?.code,
+        message: anyErr?.message,
+        readableErrorCode: anyErr?.readableErrorCode,
+        underlyingErrorMessage: anyErr?.underlyingErrorMessage,
+        userInfo: anyErr?.userInfo,
+      });
     }
   }
 }

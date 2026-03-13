@@ -32,9 +32,14 @@ const useObjectUrl = (blob?: Blob): string => {
 };
 
 const DocumentThumbnail: React.FC<{ item: DocumentItem }> = ({ item }) => {
-  const url = useObjectUrl(item.blob);
-  if (!url) {
-    return null;
+  const isImage = item.mimeType?.startsWith('image/') ?? false;
+  const url = useObjectUrl(isImage ? item.blob : undefined);
+  if (!url || !item.blob) {
+    return (
+      <div className="documents__thumbnail documents__thumbnail--placeholder ui-rounded" aria-hidden>
+        📄
+      </div>
+    );
   }
   return <img src={url} alt={item.title} className="documents__thumbnail ui-rounded" />;
 };

@@ -1,0 +1,395 @@
+/**
+ * Skalierbare Formular-Konfiguration für Elternzeit-Dokumente.
+ * Dynamische Felder je nach Falltyp (requestType) und Unterfall (changeType).
+ */
+
+import type { ParentLeaveRequestType, ParentLeaveChangeType } from './parentalLeaveHelpers';
+import { REQUEST_TYPE_LABELS, CHANGE_TYPE_LABELS } from './parentalLeaveHelpers';
+
+export type FormFieldType = 'text' | 'textarea' | 'date' | 'select' | 'number';
+
+export interface FormFieldOption {
+  value: string;
+  label: string;
+}
+
+export interface FormFieldConfig {
+  id: string;
+  type: FormFieldType;
+  label: string;
+  required?: boolean;
+  options?: FormFieldOption[];
+  hint?: string;
+  /** Felder nur anzeigen, wenn Bedingung erfüllt */
+  showWhen?: (values: ParentLeaveFormValues) => boolean;
+  max?: string;
+}
+
+export interface ParentLeaveFormValues {
+  requestType: ParentLeaveRequestType | '';
+  changeType?: ParentLeaveChangeType | '';
+  name: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  employer: string;
+  employerAddress: string;
+  childName: string;
+  birthDate: string;
+  expectedBirthDate: string;
+  startDate: string;
+  endDate: string;
+  leaveDuration: string;
+  createdAtPlace: string;
+  createdAtDate: string;
+  weeklyHours: string;
+  workDistribution: string;
+  optionalDesiredSchedule: string;
+  optionalRemoteNote: string;
+  previousStartDate: string;
+  previousEndDate: string;
+  newEndDate: string;
+  newRequestedEndDate: string;
+  reasonOptional: string;
+  latePeriodExplanation: string;
+  requestedLateStartDate: string;
+  requestedLateEndDate: string;
+}
+
+/** Initiale leere Werte für das Formular */
+export const INITIAL_FORM_VALUES: ParentLeaveFormValues = {
+  requestType: '',
+  changeType: '',
+  name: '',
+  address: '',
+  postalCode: '',
+  city: '',
+  employer: '',
+  employerAddress: '',
+  childName: '',
+  birthDate: '',
+  expectedBirthDate: '',
+  startDate: '',
+  endDate: '',
+  leaveDuration: '',
+  createdAtPlace: '',
+  createdAtDate: '',
+  weeklyHours: '',
+  workDistribution: '',
+  optionalDesiredSchedule: '',
+  optionalRemoteNote: '',
+  previousStartDate: '',
+  previousEndDate: '',
+  newEndDate: '',
+  newRequestedEndDate: '',
+  reasonOptional: '',
+  latePeriodExplanation: '',
+  requestedLateStartDate: '',
+  requestedLateEndDate: '',
+};
+
+/** Request-Type Auswahl (für internes Mapping) */
+export const REQUEST_TYPE_OPTIONS: FormFieldOption[] = (
+  Object.entries(REQUEST_TYPE_LABELS) as [ParentLeaveRequestType, string][]
+).map(([value, label]) => ({ value, label }));
+
+/** Request-Type für UI: Labels + Beschreibungen (kein natives Select) */
+export interface RequestTypeOption {
+  value: ParentLeaveRequestType;
+  label: string;
+  description: string;
+}
+
+export const REQUEST_TYPE_OPTIONS_UI: RequestTypeOption[] = [
+  {
+    value: 'basic_leave',
+    label: 'Elternzeit beantragen',
+    description: 'Klassischer Antrag beim Arbeitgeber',
+  },
+  {
+    value: 'leave_with_part_time',
+    label: 'Elternzeit mit Teilzeit',
+    description: 'Teilzeit während der Elternzeit beantragen',
+  },
+  {
+    value: 'change_extend_end_early',
+    label: 'Elternzeit ändern / verlängern',
+    description: 'Bestehende Elternzeit anpassen',
+  },
+  {
+    value: 'late_period',
+    label: 'Elternzeit späterer Zeitraum (3–8 Jahre)',
+    description: 'Für einen späteren Abschnitt der Elternzeit',
+  },
+];
+
+/** Change-Type Auswahl (für change_extend_end_early) */
+export const CHANGE_TYPE_OPTIONS: FormFieldOption[] = (
+  Object.entries(CHANGE_TYPE_LABELS) as [ParentLeaveChangeType, string][]
+).map(([value, label]) => ({ value, label }));
+
+/** Basis-Felder, die für alle Falltypen gelten */
+const BASE_FIELDS: FormFieldConfig[] = [
+  {
+    id: 'requestType',
+    type: 'select',
+    label: 'Art des Antrags',
+    required: true,
+    options: REQUEST_TYPE_OPTIONS,
+    hint: 'Wähle die Situation, die am besten zu deinem Anliegen passt.',
+  },
+  {
+    id: 'name',
+    type: 'text',
+    label: 'Name',
+    required: true,
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'address',
+    type: 'text',
+    label: 'Straße und Hausnummer',
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'postalCode',
+    type: 'text',
+    label: 'PLZ',
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'city',
+    type: 'text',
+    label: 'Ort',
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'employer',
+    type: 'text',
+    label: 'Arbeitgeber',
+    required: true,
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'employerAddress',
+    type: 'text',
+    label: 'Adresse Arbeitgeber',
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'childName',
+    type: 'text',
+    label: 'Name des Kindes',
+    required: true,
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'birthDate',
+    type: 'date',
+    label: 'Geburtsdatum',
+    max: new Date().toISOString().slice(0, 10),
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'expectedBirthDate',
+    type: 'date',
+    label: 'Voraussichtliches Geburtsdatum (wenn Kind noch nicht geboren)',
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'startDate',
+    type: 'date',
+    label: 'Beginn Elternzeit',
+    showWhen: (v) =>
+      v.requestType === 'basic_leave' || v.requestType === 'leave_with_part_time',
+  },
+  {
+    id: 'endDate',
+    type: 'date',
+    label: 'Ende Elternzeit',
+    showWhen: (v) =>
+      v.requestType === 'basic_leave' || v.requestType === 'leave_with_part_time',
+  },
+  {
+    id: 'createdAtPlace',
+    type: 'text',
+    label: 'Ort',
+    showWhen: (v) => v.requestType !== '',
+  },
+  {
+    id: 'createdAtDate',
+    type: 'date',
+    label: 'Datum',
+    showWhen: (v) => v.requestType !== '',
+  },
+];
+
+/** Zusatzfelder für leave_with_part_time */
+const PART_TIME_FIELDS: FormFieldConfig[] = [
+  {
+    id: 'weeklyHours',
+    type: 'text',
+    label: 'Wochenstunden',
+    required: true,
+    showWhen: (v) => v.requestType === 'leave_with_part_time',
+    hint: 'Bei Teilzeit während der Elternzeit sind Wochenstunden und gewünschte Verteilung wichtig.',
+  },
+  {
+    id: 'workDistribution',
+    type: 'textarea',
+    label: 'Verteilung der Arbeitszeit',
+    required: true,
+    showWhen: (v) => v.requestType === 'leave_with_part_time',
+  },
+  {
+    id: 'optionalDesiredSchedule',
+    type: 'textarea',
+    label: 'Gewünschter Zeitplan (optional)',
+    showWhen: (v) => v.requestType === 'leave_with_part_time',
+  },
+];
+
+/** Zusatzfelder für change_extend_end_early */
+const CHANGE_FIELDS: FormFieldConfig[] = [
+  {
+    id: 'changeType',
+    type: 'select',
+    label: 'Art der Änderung',
+    required: true,
+    options: CHANGE_TYPE_OPTIONS,
+    showWhen: (v) => v.requestType === 'change_extend_end_early',
+  },
+  {
+    id: 'previousStartDate',
+    type: 'date',
+    label: 'Bisheriger Beginn',
+    required: true,
+    showWhen: (v) => v.requestType === 'change_extend_end_early',
+  },
+  {
+    id: 'previousEndDate',
+    type: 'date',
+    label: 'Bisheriges Ende',
+    required: true,
+    showWhen: (v) => v.requestType === 'change_extend_end_early',
+  },
+  {
+    id: 'newEndDate',
+    type: 'date',
+    label: 'Neues Ende',
+    required: true,
+    showWhen: (v) =>
+      v.requestType === 'change_extend_end_early' &&
+      (v.changeType === 'change' || v.changeType === 'extend'),
+  },
+  {
+    id: 'newRequestedEndDate',
+    type: 'date',
+    label: 'Gewünschtes neues Ende',
+    required: true,
+    showWhen: (v) =>
+      v.requestType === 'change_extend_end_early' && v.changeType === 'end_early',
+  },
+  {
+    id: 'reasonOptional',
+    type: 'textarea',
+    label: 'Grund (optional)',
+    showWhen: (v) => v.requestType === 'change_extend_end_early',
+  },
+];
+
+/** Zusatzfelder für late_period */
+const LATE_PERIOD_FIELDS: FormFieldConfig[] = [
+  {
+    id: 'requestedLateStartDate',
+    type: 'date',
+    label: 'Gewünschter Beginn',
+    required: true,
+    showWhen: (v) => v.requestType === 'late_period',
+  },
+  {
+    id: 'requestedLateEndDate',
+    type: 'date',
+    label: 'Gewünschtes Ende',
+    required: true,
+    showWhen: (v) => v.requestType === 'late_period',
+  },
+  {
+    id: 'latePeriodExplanation',
+    type: 'textarea',
+    label: 'Erläuterung (optional)',
+    showWhen: (v) => v.requestType === 'late_period',
+  },
+];
+
+/** Alle Felddefinitionen */
+export const PARENTAL_LEAVE_FIELDS: FormFieldConfig[] = [
+  ...BASE_FIELDS,
+  ...PART_TIME_FIELDS,
+  ...CHANGE_FIELDS,
+  ...LATE_PERIOD_FIELDS,
+];
+
+/**
+ * Gibt die sichtbaren Felder für die aktuellen Formularwerte zurück.
+ */
+export function getVisibleFields(values: ParentLeaveFormValues): FormFieldConfig[] {
+  return PARENTAL_LEAVE_FIELDS.filter((field) => {
+    if (!field.showWhen) return true;
+    return field.showWhen(values);
+  });
+}
+
+/**
+ * Validiert das Formular je nach Falltyp.
+ */
+export function validateParentLeaveForm(values: ParentLeaveFormValues): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  if (!values.requestType) {
+    errors.requestType = 'Bitte wähle die Art des Antrags.';
+    return errors;
+  }
+
+  if (!values.name?.trim()) errors.name = 'Name ist erforderlich.';
+  if (!values.employer?.trim()) errors.employer = 'Arbeitgeber ist erforderlich.';
+  if (!values.childName?.trim()) errors.childName = 'Name des Kindes ist erforderlich.';
+
+  switch (values.requestType) {
+    case 'basic_leave':
+      if (!values.startDate) errors.startDate = 'Beginn der Elternzeit ist erforderlich.';
+      if (!values.endDate) errors.endDate = 'Ende der Elternzeit ist erforderlich.';
+      break;
+
+    case 'leave_with_part_time':
+      if (!values.startDate) errors.startDate = 'Beginn der Elternzeit ist erforderlich.';
+      if (!values.endDate) errors.endDate = 'Ende der Elternzeit ist erforderlich.';
+      if (!values.weeklyHours?.trim()) errors.weeklyHours = 'Wochenstunden sind erforderlich.';
+      if (!values.workDistribution?.trim())
+        errors.workDistribution = 'Verteilung der Arbeitszeit ist erforderlich.';
+      break;
+
+    case 'change_extend_end_early':
+      if (!values.changeType) errors.changeType = 'Bitte wähle die Art der Änderung.';
+      if (!values.previousStartDate)
+        errors.previousStartDate = 'Bisheriger Beginn ist erforderlich.';
+      if (!values.previousEndDate) errors.previousEndDate = 'Bisheriges Ende ist erforderlich.';
+      if (values.changeType === 'change' || values.changeType === 'extend') {
+        if (!values.newEndDate) errors.newEndDate = 'Neues Ende ist erforderlich.';
+      }
+      if (values.changeType === 'end_early') {
+        if (!values.newRequestedEndDate)
+          errors.newRequestedEndDate = 'Gewünschtes neues Ende ist erforderlich.';
+      }
+      break;
+
+    case 'late_period':
+      if (!values.requestedLateStartDate)
+        errors.requestedLateStartDate = 'Gewünschter Beginn ist erforderlich.';
+      if (!values.requestedLateEndDate)
+        errors.requestedLateEndDate = 'Gewünschtes Ende ist erforderlich.';
+      break;
+  }
+
+  return errors;
+}

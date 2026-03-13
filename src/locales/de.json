@@ -429,6 +429,8 @@
   "documents.defaultTitlePrefix": "Dokument vom",
   "documents.field.title": "Titel",
   "documents.empty": "Noch keine Dokumente.",
+  "documents.parentalLeave.created": "Dokument erstellt und in „Dokumente“ gespeichert.",
+  "documents.parentalLeave.goToDocuments": "Zu Dokumente",
   "contacts.title": "Kontakte",
   "contacts.open": "Öffnen",
   "contacts.add": "Neuer Kontakt",

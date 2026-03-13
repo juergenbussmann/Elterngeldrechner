@@ -17,11 +17,14 @@ import { useTheme } from '../theme/ThemeProvider';
 import { toRgba } from '../theme/colorUtils';
 import { AppShell } from '../AppShell';
 import { Start } from '../../screens/Start';
+import { OnboardingDueDateScreen } from '../../screens/OnboardingDueDateScreen';
 import { Beratung } from '../../screens/Beratung';
 import BegleitungPlusScreen from '../../screens/BegleitungPlusScreen';
 import { Demo } from '../../screens/Demo';
 import { Testseite } from '../../pages/Testseite';
 import { NextStepsSection } from '../../components/NextStepsSection';
+import { PhaseShortcut } from '../../components/PhaseShortcut';
+import { usePhase } from '../phase/usePhase';
 import { PhaseSearch } from '../../components/PhaseSearch';
 import { getPhaseTopics, enrichKnowledgeItems } from '../../utils/search';
 import {
@@ -236,7 +239,9 @@ const BIRTH_FAQ: { question: string; answer: string }[] = [
 
 const PregnancyPhaseScreen: React.FC = () => {
   const { t } = useI18n();
+  const { profile } = usePhase();
   const topicCardStyle = useTopicCardStyle();
+  const hasDate = Boolean(profile?.dueDateIso || profile?.birthDateIso);
   const phaseSeo = getPhaseSeo('pregnancy');
   const pregnancyJsonLd = buildFaqJsonLd(
     PREGNANCY_FAQ.map((f) => ({
@@ -292,6 +297,11 @@ const PregnancyPhaseScreen: React.FC = () => {
         ))}
       </section>
 
+      {hasDate && (
+        <div className="next-steps__stack">
+          <PhaseShortcut title="Elternzeit vorbereiten" route="/documents/parental-leave" />
+        </div>
+      )}
       <NextStepsSection
         variant="plain"
         title={t('phase.pregnancy.nextSteps.title')}
@@ -309,7 +319,9 @@ const PregnancyPhaseScreen: React.FC = () => {
 
 const BirthPhaseScreen: React.FC = () => {
   const { t } = useI18n();
+  const { profile } = usePhase();
   const topicCardStyle = useTopicCardStyle();
+  const hasDate = Boolean(profile?.dueDateIso || profile?.birthDateIso);
   const phaseSeo = getPhaseSeo('birth');
   const birthJsonLd = buildFaqJsonLd(
     BIRTH_FAQ.map((f) => ({
@@ -365,6 +377,11 @@ const BirthPhaseScreen: React.FC = () => {
         ))}
       </section>
 
+      {hasDate && (
+        <div className="next-steps__stack">
+          <PhaseShortcut title="Elternzeit vorbereiten" route="/documents/parental-leave" />
+        </div>
+      )}
       <NextStepsSection
         variant="plain"
         title={t('phase.birth.nextSteps.title')}
@@ -515,6 +532,7 @@ export const AppRoutes: React.FC = () => {
         element: <AppShell />,
         children: [
           { index: true, element: <Start /> },
+          { path: 'onboarding/due-date', element: <OnboardingDueDateScreen /> },
           { path: 'phase/pregnancy', element: <PregnancyPhaseScreen /> },
           { path: 'phase/birth', element: <BirthPhaseScreen /> },
           { path: 'phase/breastfeeding', element: <BreastfeedingPhaseScreen /> },

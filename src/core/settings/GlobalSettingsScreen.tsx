@@ -10,7 +10,7 @@ import '../../modules/checklists/styles/softpill-cards.css';
 
 export const GlobalSettingsScreen: React.FC = () => {
   const { t } = useI18n();
-  const { openModuleSettings } = useNavigation();
+  const { openModuleSettings, goTo } = useNavigation();
 
   const settingsEnabledModules = useMemo(() => getModuleSettings(), []);
 
@@ -33,6 +33,15 @@ export const GlobalSettingsScreen: React.FC = () => {
               {module.displayName}
             </Button>
           ))}
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            className="next-steps__button btn--softpill"
+            onClick={() => goTo('/onboarding/due-date')}
+          >
+            Geburtstermin
+          </Button>
           <a
             href="https://juergenbussmann.github.io/index.html/"
             target="_blank"

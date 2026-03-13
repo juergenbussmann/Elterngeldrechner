@@ -39,7 +39,8 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
   const { t } = useI18n();
   const theme = useTheme();
   const { spacing, colors } = theme;
-  const imageUrl = useObjectUrl(document?.blob);
+  const isImage = document?.mimeType?.startsWith('image/') ?? false;
+  const imageUrl = useObjectUrl(isImage ? document?.blob : undefined);
 
   if (!document) {
     return null;
@@ -48,12 +49,14 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('documents.viewerTitle')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
-        {imageUrl ? (
+        {imageUrl && isImage ? (
           <img
             src={imageUrl}
             alt={document.title}
             style={{ width: '100%', borderRadius: theme.radii.md, border: `1px solid ${colors.border}` }}
           />
+        ) : document.mimeType === 'text/plain' && document.blob ? (
+          <TextDocumentPreview blob={document.blob} />
         ) : null}
         <div>
           <strong>{document.title}</strong>
@@ -66,5 +69,44 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
         </div>
       </div>
     </Modal>
+  );
+};
+
+const TextDocumentPreview: React.FC<{ blob: Blob }> = ({ blob }) => {
+  const [text, setText] = React.useState<string>('');
+  const [error, setError] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    blob
+      .text()
+      .then((content) => {
+        if (!cancelled) setText(content);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [blob]);
+
+  if (error) return <p style={{ color: 'var(--color-text-secondary)' }}>Inhalt konnte nicht geladen werden.</p>;
+  return (
+    <pre
+      style={{
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        fontSize: '0.9rem',
+        padding: 12,
+        backgroundColor: 'var(--color-background)',
+        borderRadius: 8,
+        border: '1px solid var(--color-border)',
+        maxHeight: 300,
+        overflow: 'auto',
+      }}
+    >
+      {text || '…'}
+    </pre>
   );
 };

@@ -11,10 +11,58 @@ export type ParentLeaveRequestType =
 
 export type ParentLeaveChangeType = 'change' | 'extend' | 'end_early';
 
+/** Minimales Interface für Dauerberechnung (vermeidet Zirkelimport) */
+export interface ParentLeaveValuesForDuration {
+  requestType: ParentLeaveRequestType | '';
+  changeType?: ParentLeaveChangeType | '';
+  startDate: string;
+  endDate: string;
+  previousStartDate: string;
+  previousEndDate: string;
+  newEndDate: string;
+  newRequestedEndDate: string;
+  requestedLateStartDate: string;
+  requestedLateEndDate: string;
+}
+
+/**
+ * Prüft, ob ein Datum in der Zukunft liegt.
+ */
+export function isFutureDate(dateIso: string): boolean {
+  if (!dateIso?.trim()) return false;
+  const d = new Date(dateIso);
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return d > today;
+}
+
+/**
+ * Addiert Jahre zu einem Datum (ISO YYYY-MM-DD).
+ */
+export function addYearsSafe(dateIso: string, years: number): string | null {
+  if (!dateIso?.trim() || typeof years !== 'number') return null;
+  const d = new Date(dateIso);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setFullYear(d.getFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Prüft, ob dateA vor dateB liegt.
+ */
+export function isBefore(dateA: string, dateB: string): boolean {
+  if (!dateA?.trim() || !dateB?.trim()) return false;
+  const a = new Date(dateA);
+  const b = new Date(dateB);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return false;
+  return a < b;
+}
+
 /**
  * Berechnet aus Start- und Enddatum eine menschenlesbare Dauer.
- * Vereinfachte Logik: Differenz in Tagen, grob in Monate umgerechnet.
- * 30 Tage ≈ 1 Monat für konsistente Darstellung.
+ * Format: "1 Jahr", "2 Jahre", "1 Jahr, 2 Monate", "6 Monate" etc.
  */
 export function formatLeaveDuration(startDate: string, endDate: string): string {
   if (!startDate || !endDate) return '';
@@ -31,28 +79,25 @@ export function formatLeaveDuration(startDate: string, endDate: string): string 
   if (diffDays < 0) return '';
   if (diffDays === 0) return '0 Tage';
 
-  // Grobe Umrechnung: 30 Tage ≈ 1 Monat
-  const months = Math.floor(diffDays / 30);
-  const remainingDays = diffDays % 30;
+  // Grobe Umrechnung: ~30,44 Tage pro Monat
+  const totalMonths = Math.floor(diffDays / 30.44);
+  const remainingMonths = totalMonths % 12;
+  const totalYears = Math.floor(totalMonths / 12);
 
-  if (months === 0) {
+  if (totalMonths === 0) {
     return diffDays === 1 ? '1 Tag' : `${diffDays} Tage`;
   }
 
-  if (remainingDays === 0) {
-    return months === 1 ? '1 Monat' : `${months} Monate`;
-  }
-
   const parts: string[] = [];
-  if (months === 1) {
-    parts.push('1 Monat');
-  } else if (months > 1) {
-    parts.push(`${months} Monate`);
+  if (totalYears === 1) {
+    parts.push('1 Jahr');
+  } else if (totalYears > 1) {
+    parts.push(`${totalYears} Jahre`);
   }
-  if (remainingDays > 0) {
-    parts.push(remainingDays === 1 ? '1 Tag' : `${remainingDays} Tage`);
+  if (remainingMonths > 0) {
+    parts.push(remainingMonths === 1 ? '1 Monat' : `${remainingMonths} Monate`);
   }
-  return parts.join(' und ');
+  return parts.join(', ');
 }
 
 /**
@@ -111,3 +156,52 @@ export const CHANGE_TYPE_LABELS: Record<ParentLeaveChangeType, string> = {
   extend: 'Verlängerung',
   end_early: 'Vorzeitige Beendigung',
 };
+
+/**
+ * Berechnet die Dauer der Elternzeit je nach Antragstyp.
+ */
+export function getDurationDisplay(values: ParentLeaveValuesForDuration): string | null {
+  const { requestType, changeType } = values;
+
+  if (requestType === 'basic_leave' || requestType === 'leave_with_part_time') {
+    const s = values.startDate;
+    const e = values.endDate;
+    if (!s || !e) return null;
+    const result = formatLeaveDuration(s, e);
+    return result || null;
+  }
+
+  if (requestType === 'change_extend_end_early' && changeType === 'extend') {
+    const s = values.previousStartDate;
+    const e = values.newEndDate;
+    if (!s || !e) return null;
+    const result = formatLeaveDuration(s, e);
+    return result || null;
+  }
+
+  if (requestType === 'change_extend_end_early' && (changeType === 'change' || changeType === 'end_early')) {
+    const s = values.previousStartDate;
+    const e = changeType === 'end_early' ? values.newRequestedEndDate : values.newEndDate;
+    if (!s || !e) return null;
+    const result = formatLeaveDuration(s, e);
+    return result || null;
+  }
+
+  if (requestType === 'change_extend_end_early') {
+    const s = values.previousStartDate;
+    const e = values.previousEndDate;
+    if (!s || !e) return null;
+    const result = formatLeaveDuration(s, e);
+    return result || null;
+  }
+
+  if (requestType === 'late_period') {
+    const s = values.requestedLateStartDate;
+    const e = values.requestedLateEndDate;
+    if (!s || !e) return null;
+    const result = formatLeaveDuration(s, e);
+    return result || null;
+  }
+
+  return null;
+}

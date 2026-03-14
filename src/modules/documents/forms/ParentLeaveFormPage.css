@@ -26,6 +26,12 @@
   color: var(--color-text-primary);
 }
 
+.documents-form__success-next {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #64748b);
+}
+
 .documents-form__fields {
   display: flex;
   flex-direction: column;
@@ -96,10 +102,92 @@
   color: var(--color-text-primary);
 }
 
+/* Schnellauswahl 1/2/3 Jahre */
+.documents-form__quick-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.documents-form__quick-select-label {
+  font-size: 0.85rem;
+}
+
+.documents-form__quick-select-hint {
+  font-size: 0.8rem;
+}
+
+.documents-form__quick-select-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.documents-form__quick-select-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+}
+
 .documents-form__submit-error {
   margin: 0;
   font-size: 0.85rem;
   color: var(--color-error, #dc2626);
+}
+
+/* Formular-Warnboxen (Fristen, Kündigungsschutz) */
+.form-warning {
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #8a4b00;
+  background: #fff4e5;
+  border: 1px solid #ffd8a8;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  word-break: break-word;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.form-warning__icon {
+  font-size: 14px;
+  line-height: 1;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.form-warning__text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Container für mehrere Warnungen */
+.documents-form__timing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  min-width: 0;
+}
+
+/* Automatische Fristanzeige (Späteste Anmeldung / Kündigungsschutz ab) */
+.documents-form__deadline {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #64748b);
+  word-break: break-word;
+  min-width: 0;
+}
+
+.documents-form__deadline-line {
+  margin: 0 0 0.25rem 0;
+}
+
+.documents-form__deadline-line:last-child {
+  margin-bottom: 0;
 }
 
 /* Request-Type Auswahl – mobil optimiert, kein natives Select */

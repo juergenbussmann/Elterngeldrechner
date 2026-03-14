@@ -4,7 +4,7 @@
  */
 
 import type { ParentLeaveRequestType, ParentLeaveChangeType } from './parentalLeaveHelpers';
-import { REQUEST_TYPE_LABELS, CHANGE_TYPE_LABELS } from './parentalLeaveHelpers';
+import { REQUEST_TYPE_LABELS, CHANGE_TYPE_LABELS, isFutureDate, isBefore } from './parentalLeaveHelpers';
 
 export type FormFieldType = 'text' | 'textarea' | 'date' | 'select' | 'number';
 
@@ -22,7 +22,12 @@ export interface FormFieldConfig {
   hint?: string;
   /** Felder nur anzeigen, wenn Bedingung erfüllt */
   showWhen?: (values: ParentLeaveFormValues) => boolean;
+  /** Statisches min/max für Date-Inputs */
+  min?: string;
   max?: string;
+  /** Dynamisches min/max (überschreibt statische Werte) */
+  getMin?: (values: ParentLeaveFormValues) => string | undefined;
+  getMax?: (values: ParentLeaveFormValues) => string | undefined;
 }
 
 export interface ParentLeaveFormValues {
@@ -207,19 +212,21 @@ const BASE_FIELDS: FormFieldConfig[] = [
     id: 'endDate',
     type: 'date',
     label: 'Ende Elternzeit',
+    getMin: (v) => v.startDate || undefined,
     showWhen: (v) =>
       v.requestType === 'basic_leave' || v.requestType === 'leave_with_part_time',
   },
   {
     id: 'createdAtPlace',
     type: 'text',
-    label: 'Ort',
+    label: 'Ort der Ausstellung des Dokumentes',
     showWhen: (v) => v.requestType !== '',
   },
   {
     id: 'createdAtDate',
     type: 'date',
-    label: 'Datum',
+    label: 'Datum des Dokumentes',
+    getMax: () => new Date().toISOString().slice(0, 10),
     showWhen: (v) => v.requestType !== '',
   },
 ];
@@ -271,6 +278,7 @@ const CHANGE_FIELDS: FormFieldConfig[] = [
     type: 'date',
     label: 'Bisheriges Ende',
     required: true,
+    getMin: (v) => v.previousStartDate || undefined,
     showWhen: (v) => v.requestType === 'change_extend_end_early',
   },
   {
@@ -278,6 +286,11 @@ const CHANGE_FIELDS: FormFieldConfig[] = [
     type: 'date',
     label: 'Neues Ende',
     required: true,
+    getMin: (v) => {
+      if (v.changeType === 'extend') return v.previousEndDate || undefined;
+      if (v.changeType === 'change') return v.previousStartDate || undefined;
+      return undefined;
+    },
     showWhen: (v) =>
       v.requestType === 'change_extend_end_early' &&
       (v.changeType === 'change' || v.changeType === 'extend'),
@@ -287,6 +300,7 @@ const CHANGE_FIELDS: FormFieldConfig[] = [
     type: 'date',
     label: 'Gewünschtes neues Ende',
     required: true,
+    getMin: (v) => v.previousStartDate || undefined,
     showWhen: (v) =>
       v.requestType === 'change_extend_end_early' && v.changeType === 'end_early',
   },
@@ -312,6 +326,7 @@ const LATE_PERIOD_FIELDS: FormFieldConfig[] = [
     type: 'date',
     label: 'Gewünschtes Ende',
     required: true,
+    getMin: (v) => v.requestedLateStartDate || undefined,
     showWhen: (v) => v.requestType === 'late_period',
   },
   {
@@ -355,15 +370,25 @@ export function validateParentLeaveForm(values: ParentLeaveFormValues): Record<s
   if (!values.employer?.trim()) errors.employer = 'Arbeitgeber ist erforderlich.';
   if (!values.childName?.trim()) errors.childName = 'Name des Kindes ist erforderlich.';
 
+  if (values.createdAtDate && isFutureDate(values.createdAtDate)) {
+    errors.createdAtDate = 'Das Dokumentdatum darf nicht in der Zukunft liegen.';
+  }
+
   switch (values.requestType) {
     case 'basic_leave':
       if (!values.startDate) errors.startDate = 'Beginn der Elternzeit ist erforderlich.';
       if (!values.endDate) errors.endDate = 'Ende der Elternzeit ist erforderlich.';
+      if (values.startDate && values.endDate && isBefore(values.endDate, values.startDate)) {
+        errors.endDate = 'Das Enddatum darf nicht vor dem Startdatum liegen.';
+      }
       break;
 
     case 'leave_with_part_time':
       if (!values.startDate) errors.startDate = 'Beginn der Elternzeit ist erforderlich.';
       if (!values.endDate) errors.endDate = 'Ende der Elternzeit ist erforderlich.';
+      if (values.startDate && values.endDate && isBefore(values.endDate, values.startDate)) {
+        errors.endDate = 'Das Enddatum darf nicht vor dem Startdatum liegen.';
+      }
       if (!values.weeklyHours?.trim()) errors.weeklyHours = 'Wochenstunden sind erforderlich.';
       if (!values.workDistribution?.trim())
         errors.workDistribution = 'Verteilung der Arbeitszeit ist erforderlich.';
@@ -374,12 +399,24 @@ export function validateParentLeaveForm(values: ParentLeaveFormValues): Record<s
       if (!values.previousStartDate)
         errors.previousStartDate = 'Bisheriger Beginn ist erforderlich.';
       if (!values.previousEndDate) errors.previousEndDate = 'Bisheriges Ende ist erforderlich.';
+      if (values.previousStartDate && values.previousEndDate && isBefore(values.previousEndDate, values.previousStartDate)) {
+        errors.previousEndDate = 'Das bisherige Ende darf nicht vor dem bisherigen Beginn liegen.';
+      }
       if (values.changeType === 'change' || values.changeType === 'extend') {
         if (!values.newEndDate) errors.newEndDate = 'Neues Ende ist erforderlich.';
+        if (values.changeType === 'extend' && values.previousEndDate && values.newEndDate && isBefore(values.newEndDate, values.previousEndDate)) {
+          errors.newEndDate = 'Das neue Enddatum darf nicht vor dem bisherigen Ende liegen.';
+        }
+        if (values.changeType === 'change' && values.previousStartDate && values.newEndDate && isBefore(values.newEndDate, values.previousStartDate)) {
+          errors.newEndDate = 'Das neue Enddatum darf nicht vor dem bisherigen Beginn liegen.';
+        }
       }
       if (values.changeType === 'end_early') {
         if (!values.newRequestedEndDate)
           errors.newRequestedEndDate = 'Gewünschtes neues Ende ist erforderlich.';
+        if (values.previousStartDate && values.newRequestedEndDate && isBefore(values.newRequestedEndDate, values.previousStartDate)) {
+          errors.newRequestedEndDate = 'Das gewünschte Ende darf nicht vor dem bisherigen Start liegen.';
+        }
       }
       break;
 
@@ -388,6 +425,9 @@ export function validateParentLeaveForm(values: ParentLeaveFormValues): Record<s
         errors.requestedLateStartDate = 'Gewünschter Beginn ist erforderlich.';
       if (!values.requestedLateEndDate)
         errors.requestedLateEndDate = 'Gewünschtes Ende ist erforderlich.';
+      if (values.requestedLateStartDate && values.requestedLateEndDate && isBefore(values.requestedLateEndDate, values.requestedLateStartDate)) {
+        errors.requestedLateEndDate = 'Das gewünschte Ende darf nicht vor dem gewünschten Beginn liegen.';
+      }
       break;
   }
 

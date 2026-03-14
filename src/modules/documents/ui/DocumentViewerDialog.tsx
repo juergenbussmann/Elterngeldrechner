@@ -40,7 +40,9 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
   const theme = useTheme();
   const { spacing, colors } = theme;
   const isImage = document?.mimeType?.startsWith('image/') ?? false;
+  const isPdf = document?.mimeType === 'application/pdf';
   const imageUrl = useObjectUrl(isImage ? document?.blob : undefined);
+  const pdfUrl = useObjectUrl(isPdf ? document?.blob : undefined);
 
   if (!document) {
     return null;
@@ -54,6 +56,17 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
             src={imageUrl}
             alt={document.title}
             style={{ width: '100%', borderRadius: theme.radii.md, border: `1px solid ${colors.border}` }}
+          />
+        ) : pdfUrl && isPdf ? (
+          <iframe
+            src={pdfUrl}
+            title={document.title}
+            style={{
+              width: '100%',
+              minHeight: 400,
+              border: `1px solid ${colors.border}`,
+              borderRadius: theme.radii.md,
+            }}
           />
         ) : document.mimeType === 'text/plain' && document.blob ? (
           <TextDocumentPreview blob={document.blob} />

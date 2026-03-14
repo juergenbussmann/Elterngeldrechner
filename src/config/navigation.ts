@@ -226,12 +226,51 @@ export const screenConfigs: ScreenConfig[] = [
   {
     id: 'documents',
     route: '/documents',
+    titleKey: 'documents.family.title',
+    actions: [
+      {
+        id: 'goBack',
+        labelKey: 'common.back',
+        icon: 'back',
+      },
+    ],
+  },
+  {
+    id: 'documentsList',
+    route: '/documents/list',
     titleKey: 'documents.title',
     actions: [
       {
         id: 'goBack',
         labelKey: 'common.back',
         icon: 'back',
+        navigationTarget: '/documents',
+      },
+    ],
+  },
+  {
+    id: 'documentsParentalLeave',
+    route: '/documents/parental-leave',
+    titleKey: 'documents.parentalLeave.title',
+    actions: [
+      {
+        id: 'goBack',
+        labelKey: 'common.back',
+        icon: 'back',
+        navigationTarget: '/documents',
+      },
+    ],
+  },
+  {
+    id: 'documentsElterngeld',
+    route: '/documents/elterngeld',
+    titleKey: 'documents.elterngeld.title',
+    actions: [
+      {
+        id: 'goBack',
+        labelKey: 'common.back',
+        icon: 'back',
+        navigationTarget: '/documents',
       },
     ],
   },

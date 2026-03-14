@@ -13,6 +13,7 @@ export { TextInput } from './TextInput';
 export { TextArea } from './TextArea';
 export { List, ListItem } from './List';
 export { Modal } from './Modal';
+export { SelectionModal, SelectionField, type SelectionOption } from './SelectionModal';
 
 export { ModulePage, ModuleSection, ModuleStack } from './ModuleLayout';
 export type { ModulePageProps, ModuleSectionProps, ModuleStackProps } from './ModuleLayout';

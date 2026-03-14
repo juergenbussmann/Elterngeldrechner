@@ -3,6 +3,7 @@ import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
 import { Card } from '../../../shared/ui/Card';
 import { TextInput } from '../../../shared/ui/TextInput';
+import { SelectionField } from '../../../shared/ui/SelectionModal';
 import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
 import { useI18n } from '../../../shared/lib/i18n';
 import { useNotifications } from '../../../shared/lib/notifications';
@@ -14,30 +15,65 @@ import {
   type ParentLeaveFormValues,
   type FormFieldConfig,
 } from './formsConfig';
-import { formatLeaveDuration } from './parentalLeaveHelpers';
-import { buildParentLeaveDocument } from './buildParentLeaveDocument';
+import { getDurationDisplay, addYearsSafe } from './parentalLeaveHelpers';
+import {
+  getParentalLeaveTimingInfo,
+  getParentalLeaveDeadlineInfo,
+} from './parentalLeaveTiming';
+import { getParentLeaveLetterContent } from './buildParentLeaveDocument';
+import { buildParentLeavePdf } from './buildParentLeavePdf';
 import { addDocument } from '../application/service';
 import './ParentLeaveFormPage.css';
 import '../../checklists/styles/softpill-buttons-in-cards.css';
 import '../../checklists/styles/softpill-cards.css';
 
-/** Zeigt die Dauer an, je nach Falltyp */
-function getDurationDisplay(values: ParentLeaveFormValues): string {
-  if (values.requestType === 'change_extend_end_early') {
-    return formatLeaveDuration(values.previousStartDate, values.previousEndDate);
-  }
-  if (values.requestType === 'late_period') {
-    return formatLeaveDuration(values.requestedLateStartDate, values.requestedLateEndDate);
-  }
-  return formatLeaveDuration(values.startDate, values.endDate);
-}
+const QuickSelectYears: React.FC<{
+  startDate: string;
+  onSelectEndDate: (date: string) => void;
+}> = ({ startDate, onSelectEndDate }) => {
+  const hasStart = !!startDate?.trim();
+  const handleClick = useCallback(
+    (years: number) => {
+      const end = addYearsSafe(startDate, years);
+      if (end) onSelectEndDate(end);
+    },
+    [startDate, onSelectEndDate]
+  );
+  return (
+    <div className="documents-form__quick-select">
+      <span className="documents-form__label documents-form__quick-select-label">
+        Schnellauswahl Dauer
+      </span>
+      {!hasStart && (
+        <span className="documents-form__hint documents-form__quick-select-hint">
+          Bitte zuerst ein Startdatum wählen.
+        </span>
+      )}
+      <div className="documents-form__quick-select-buttons">
+        {([1, 2, 3] as const).map((y) => (
+          <button
+            key={y}
+            type="button"
+            className="btn btn--softpill btn--secondary documents-form__quick-select-btn"
+            disabled={!hasStart}
+            onClick={() => handleClick(y)}
+          >
+            {y} {y === 1 ? 'Jahr' : 'Jahre'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const FormField: React.FC<{
   field: FormFieldConfig;
   value: string;
   onChange: (id: string, value: string) => void;
   error?: string;
-}> = ({ field, value, onChange, error }) => {
+  min?: string;
+  max?: string;
+}> = ({ field, value, onChange, error, min, max }) => {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       onChange(field.id, e.target.value);
@@ -57,22 +93,20 @@ const FormField: React.FC<{
   );
 
   if (field.type === 'select') {
+    const options = (field.options ?? []).map((o) => ({ value: o.value, label: o.label }));
     return (
       <div className="documents-form__field-wrapper">
-        {labelBlock}
-        <select
-          className="ui-control documents-form__select"
+        <SelectionField
+          label={field.label}
+          placeholder="– Bitte wählen –"
           value={value}
-          onChange={handleChange}
-          aria-invalid={!!error}
-        >
-          <option value="">– Bitte wählen –</option>
-          {field.options?.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          options={options}
+          onChange={(v) => onChange(field.id, v)}
+          required={field.required}
+          error={error}
+          hint={field.hint}
+          variant="documents-form"
+        />
       </div>
     );
   }
@@ -100,7 +134,8 @@ const FormField: React.FC<{
           type="date"
           value={value}
           onChange={handleChange}
-          max={field.max}
+          min={min}
+          max={max}
           aria-invalid={!!error}
         />
       </div>
@@ -133,7 +168,14 @@ export const ParentLeaveFormPage: React.FC = () => {
     () => getVisibleFields(values).filter((f) => f.id !== 'requestType'),
     [values]
   );
-  const durationDisplay = useMemo(() => getDurationDisplay(values), [values]);
+  const durationDisplay = useMemo(
+    () => getDurationDisplay(values as Parameters<typeof getDurationDisplay>[0]),
+    [values]
+  );
+  const showDuration = useMemo(() => !!durationDisplay, [durationDisplay]);
+
+  const timingInfo = useMemo(() => getParentalLeaveTimingInfo(values), [values]);
+  const deadlineInfo = useMemo(() => getParentalLeaveDeadlineInfo(values), [values]);
 
   const handleFieldChange = useCallback((id: string, value: string) => {
     setValues((prev) => ({ ...prev, [id]: value }));
@@ -156,37 +198,31 @@ export const ParentLeaveFormPage: React.FC = () => {
 
     try {
       if (import.meta.env.DEV) {
-        console.group('[parental-leave] create document');
+        console.group('[parental-leave] create PDF');
         console.log('requestType', values.requestType);
-        console.log('values', values);
       }
 
-      const doc = buildParentLeaveDocument(values);
-      const bodyStr = doc?.body ?? '';
-      const blob = new Blob([bodyStr], { type: 'text/plain;charset=utf-8' });
+      const letterContent = getParentLeaveLetterContent(values);
+      const blob = buildParentLeavePdf(letterContent);
 
       if (import.meta.env.DEV) {
-        console.log('document built', { title: doc.title, bodyLength: bodyStr.length });
-      }
-
-      await addDocument({
-        title: doc.title || 'Elternzeit-Antrag',
-        createdAt: doc.createdAtIso,
-        mimeType: 'text/plain',
-        blob,
-      });
-
-      if (import.meta.env.DEV) {
-        console.log('document saved');
+        console.log('PDF built', { title: letterContent.title });
         console.groupEnd();
       }
 
-      showToast('documents.parentalLeave.created', { kind: 'success', durationMs: 5000 });
+      await addDocument({
+        title: letterContent.title || 'Elternzeit-Antrag',
+        createdAt: letterContent.createdAtIso,
+        mimeType: 'application/pdf',
+        blob,
+      });
+
+      showToast('documents.parentalLeave.pdfCreated', { kind: 'success', durationMs: 5000 });
       setShowSuccess(true);
     } catch (err) {
-      console.error('[parental-leave] document creation failed', err);
+      console.error('[parental-leave] PDF creation failed', err);
       setErrors({
-        submit: 'Das Dokument konnte nicht erstellt werden. Bitte prüfe deine Angaben.',
+        submit: 'Das PDF konnte nicht erstellt werden. Bitte prüfe deine Angaben.',
       });
     } finally {
       setIsSubmitting(false);
@@ -199,7 +235,7 @@ export const ParentLeaveFormPage: React.FC = () => {
         <section className="next-steps next-steps--plain documents-form__section">
           <SectionHeader as="h1" title="Elternzeit-Antrag" />
           <Card className="still-daily-checklist__card documents-form__card documents-form__success-card">
-            <p className="documents-form__success-text">{t('documents.parentalLeave.created')}</p>
+            <p className="documents-form__success-text">{t('documents.parentalLeave.pdfCreated')}</p>
             <Button
               type="button"
               variant="primary"
@@ -209,25 +245,21 @@ export const ParentLeaveFormPage: React.FC = () => {
             >
               {t('documents.parentalLeave.goToDocuments')}
             </Button>
+            <p className="documents-form__success-next">Als Nächstes wichtig: Elterngeld vorbereiten</p>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              className="next-steps__button btn--softpill"
+              onClick={() => goTo('/documents/elterngeld')}
+            >
+              Elterngeld starten
+            </Button>
           </Card>
         </section>
       </div>
     );
   }
-
-  const showDuration = useMemo(() => {
-    if (values.requestType === 'change_extend_end_early') {
-      return values.previousStartDate && values.previousEndDate;
-    }
-    if (values.requestType === 'late_period') {
-      return values.requestedLateStartDate && values.requestedLateEndDate;
-    }
-    return (
-      (values.requestType === 'basic_leave' || values.requestType === 'leave_with_part_time') &&
-      values.startDate &&
-      values.endDate
-    );
-  }, [values]);
 
   return (
     <div className="screen-placeholder documents-form-screen">
@@ -266,15 +298,77 @@ export const ParentLeaveFormPage: React.FC = () => {
               )}
             </div>
 
-            {visibleFields.map((field) => (
-              <FormField
-                key={field.id}
-                field={field}
-                value={values[field.id as keyof ParentLeaveFormValues] ?? ''}
-                onChange={handleFieldChange}
-                error={errors[field.id]}
-              />
-            ))}
+            {visibleFields.map((field) => {
+              const minVal = field.getMin?.(values) ?? field.min;
+              const maxVal = field.getMax?.(values) ?? field.max;
+              return (
+                <React.Fragment key={field.id}>
+                  <FormField
+                    field={field}
+                    value={values[field.id as keyof ParentLeaveFormValues] ?? ''}
+                    onChange={handleFieldChange}
+                    error={errors[field.id]}
+                    min={minVal}
+                    max={maxVal}
+                  />
+                  {field.id === 'startDate' &&
+                    (values.requestType === 'basic_leave' ||
+                      values.requestType === 'leave_with_part_time') && (
+                      <QuickSelectYears
+                        startDate={values.startDate}
+                        onSelectEndDate={(date) => handleFieldChange('endDate', date)}
+                      />
+                    )}
+                  {(field.id === 'endDate' &&
+                    (values.requestType === 'basic_leave' ||
+                      values.requestType === 'leave_with_part_time')) ||
+                  (field.id === 'requestedLateEndDate' && values.requestType === 'late_period')
+                    ? (deadlineInfo.noticeDeadlineLabel ||
+                        deadlineInfo.dismissalProtectionLabel ||
+                        timingInfo.noticeWarning ||
+                        timingInfo.dismissalProtectionHint) && (
+                        <div className="documents-form__timing">
+                          {(deadlineInfo.noticeDeadlineLabel ||
+                            deadlineInfo.dismissalProtectionLabel) && (
+                            <div className="documents-form__deadline">
+                              {deadlineInfo.noticeDeadlineLabel && (
+                                <p className="documents-form__deadline-line">
+                                  {deadlineInfo.noticeDeadlineLabel}
+                                </p>
+                              )}
+                              {deadlineInfo.dismissalProtectionLabel && (
+                                <p className="documents-form__deadline-line">
+                                  {deadlineInfo.dismissalProtectionLabel}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {timingInfo.noticeWarning && (
+                            <div className="form-warning">
+                              <span className="form-warning__icon" aria-hidden="true">
+                                ⚠️
+                              </span>
+                              <span className="form-warning__text">
+                                {timingInfo.noticeWarning}
+                              </span>
+                            </div>
+                          )}
+                          {timingInfo.dismissalProtectionHint && (
+                            <div className="form-warning">
+                              <span className="form-warning__icon" aria-hidden="true">
+                                ⚠️
+                              </span>
+                              <span className="form-warning__text">
+                                {timingInfo.dismissalProtectionHint}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    : null}
+                </React.Fragment>
+              );
+            })}
 
             {showDuration && durationDisplay && (
               <div className="documents-form__duration">
@@ -296,7 +390,7 @@ export const ParentLeaveFormPage: React.FC = () => {
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            Dokument erstellen
+            Antrag als PDF erstellen
           </Button>
         </Card>
       </section>

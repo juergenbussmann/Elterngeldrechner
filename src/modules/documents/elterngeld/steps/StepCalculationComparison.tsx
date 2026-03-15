@@ -57,7 +57,10 @@ export const StepCalculationComparison: React.FC<Props> = ({
   const totalB = resultB.householdTotal;
   const diff = totalB - totalA;
 
-  const allMonths = Array.from({ length: 14 }, (_, i) => i + 1);
+  const maxMonthA = resultA.parents.flatMap((p) => p.monthlyResults.map((r) => r.month)).reduce((a, b) => Math.max(a, b), 0);
+  const maxMonthB = resultB.parents.flatMap((p) => p.monthlyResults.map((r) => r.month)).reduce((a, b) => Math.max(a, b), 0);
+  const maxMonth = Math.max(14, maxMonthA, maxMonthB);
+  const allMonths = Array.from({ length: maxMonth }, (_, i) => i + 1);
   const monthsWithActivity = allMonths.filter((month) => {
     const hasA = resultA.parents.some((p) => getAmountForMonth(p, month) > 0);
     const hasB = resultB.parents.some((p) => getAmountForMonth(p, month) > 0);

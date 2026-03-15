@@ -15,20 +15,31 @@ function parseIncome(value: string): number {
   return Number.isNaN(n) ? 0 : Math.max(0, n);
 }
 
+/** Parst Monatsanzahl. Erlaubt 0–36, keine harte Kürzung. */
 function parseMonthCount(value: string): number {
   const n = parseInt(String(value || ''), 10);
-  return Number.isNaN(n) ? 0 : Math.max(0, Math.min(14, n));
+  return Number.isNaN(n) ? 0 : Math.max(0, Math.min(36, n));
 }
 
-/** Erstellt leere Monate für einen Elternteil. */
+/** Max. sinnvoll initial belegbare Monate je Modell (Basis max 14, Plus/PartnerBonus bis 24). */
+const MAX_BELEGUNG_BASIS = 14;
+const MAX_BELEGUNG_PLUS = 24;
+const MIN_HORIZONT = 14;
+const MAX_HORIZONT = 36;
+
+/** Erstellt Monate für einen Elternteil. Planungshorizont = eingegebene Monate, überschüssige auf 'none'. */
 function createMonths(
   count: number,
   mode: MonthMode,
   benefitModel: string
 ): ParentMonthInput[] {
+  const maxBelegung = benefitModel === 'plus' || benefitModel === 'partnerBonus' ? MAX_BELEGUNG_PLUS : MAX_BELEGUNG_BASIS;
+  const horizon = Math.max(MIN_HORIZONT, Math.min(count, MAX_HORIZONT));
+  const belegteMonate = Math.min(count, maxBelegung);
+
   const months: ParentMonthInput[] = [];
-  for (let m = 1; m <= 14; m++) {
-    const useMode = m <= count ? mode : 'none';
+  for (let m = 1; m <= horizon; m++) {
+    const useMode = m <= belegteMonate ? mode : 'none';
     months.push({
       month: m,
       mode: useMode,
@@ -51,6 +62,26 @@ function getDefaultMode(model: string): MonthMode {
 /** Erste N Lebensmonate der Mutter als Mutterschutz/Mutterschaftsleistungen (MVP) */
 const MATERNITY_MONTHS_COUNT = 2;
 
+/** Ergänzt Monate auf den gemeinsamen Planungshorizont (beide Eltern gleiche Monatsanzahl). */
+function ensureSharedHorizon(
+  months: ParentMonthInput[],
+  targetHorizon: number
+): ParentMonthInput[] {
+  const byMonth = new Map(months.map((m) => [m.month, m]));
+  const result: ParentMonthInput[] = [];
+  for (let m = 1; m <= targetHorizon; m++) {
+    const existing = byMonth.get(m);
+    result.push(
+      existing ?? {
+        month: m,
+        mode: 'none' as MonthMode,
+        incomeDuringNet: 0,
+      }
+    );
+  }
+  return result;
+}
+
 export function applicationToCalculationPlan(app: ElterngeldApplication): ElterngeldCalculationPlan {
   const hasActualBirthDate = !!app.child.birthDate?.trim();
   const childBirthDate =
@@ -58,17 +89,27 @@ export function applicationToCalculationPlan(app: ElterngeldApplication): Eltern
   const model = app.benefitPlan.model;
   const defaultMode = getDefaultMode(model);
 
-  let parentAMonths = createMonths(
-    parseMonthCount(app.benefitPlan.parentAMonths),
-    defaultMode,
-    model
-  );
+  const countA = parseMonthCount(app.benefitPlan.parentAMonths);
+  const countB =
+    app.applicantMode === 'both_parents' && app.parentB
+      ? parseMonthCount(app.benefitPlan.parentBMonths)
+      : 0;
+
+  let parentAMonths = createMonths(countA, defaultMode, model);
 
   if (hasActualBirthDate) {
     parentAMonths = parentAMonths.map((m) =>
       m.month <= MATERNITY_MONTHS_COUNT ? { ...m, hasMaternityBenefit: true } : m
     );
   }
+
+  const sharedHorizon = Math.max(
+    parentAMonths.length,
+    countB > 0 ? Math.max(MIN_HORIZONT, Math.min(countB, MAX_HORIZONT)) : 0,
+    MIN_HORIZONT
+  );
+
+  parentAMonths = ensureSharedHorizon(parentAMonths, sharedHorizon);
 
   const parentA: CalculationParentInput = {
     id: 'parentA',
@@ -85,16 +126,14 @@ export function applicationToCalculationPlan(app: ElterngeldApplication): Eltern
 
   if (hasSecondParent && app.parentB) {
     const partnerMode = app.benefitPlan.partnershipBonus ? 'partnerBonus' : defaultMode;
+    let parentBMonths = createMonths(countB, partnerMode, model);
+    parentBMonths = ensureSharedHorizon(parentBMonths, sharedHorizon);
     parents.push({
       id: 'parentB',
       label: 'Partner',
       incomeBeforeNet: parseIncome(app.parentB.incomeBeforeBirth),
       employmentType: app.parentB.employmentType,
-      months: createMonths(
-        parseMonthCount(app.benefitPlan.parentBMonths),
-        partnerMode,
-        model
-      ),
+      months: parentBMonths,
     });
   } else {
     parents.push({

@@ -3,6 +3,11 @@ import { Card } from '../../../../shared/ui/Card';
 import { TextInput } from '../../../../shared/ui/TextInput';
 import type { ElterngeldApplication, BenefitModel } from '../types/elterngeldTypes';
 
+function parseMonthCountForHint(value: string): number {
+  const n = parseInt(String(value || '').trim(), 10);
+  return Number.isNaN(n) ? 0 : Math.max(0, n);
+}
+
 const MODEL_OPTIONS: { value: BenefitModel; label: string; description: string }[] = [
   {
     value: 'basis',
@@ -77,6 +82,14 @@ export const StepPlan: React.FC<Props> = ({ values, onChange }) => {
             onChange={(e) => update('parentAMonths', e.target.value)}
             placeholder="z. B. 12"
           />
+          {parseMonthCountForHint(values.benefitPlan.parentAMonths) > 14 && (
+            <p className="elterngeld-step__hint elterngeld-step__hint--below elterngeld-calculation__long-horizon-hint">
+              Sie haben {parseMonthCountForHint(values.benefitPlan.parentAMonths)} Monate für die Elterngeld-Planung angegeben.
+              Elterngeld kann in der Regel nur für einen begrenzten Teil dieser Zeit gezahlt werden.
+              Bei Basiselterngeld sind meist maximal 14 Monate möglich, bei ElterngeldPlus entsprechend länger.
+              Ein Teil der angegebenen Monate wird daher ohne Elterngeld sein.
+            </p>
+          )}
         </label>
         {values.applicantMode === 'both_parents' && (
           <>
@@ -88,6 +101,14 @@ export const StepPlan: React.FC<Props> = ({ values, onChange }) => {
                 onChange={(e) => update('parentBMonths', e.target.value)}
                 placeholder="z. B. 2"
               />
+              {parseMonthCountForHint(values.benefitPlan.parentBMonths) > 14 && (
+                <p className="elterngeld-step__hint elterngeld-step__hint--below elterngeld-calculation__long-horizon-hint">
+                  Für den Partner wurden {parseMonthCountForHint(values.benefitPlan.parentBMonths)} Monate für die Elterngeld-Planung angegeben.
+                  Elterngeld kann in der Regel nur für einen begrenzten Teil dieser Zeit gezahlt werden.
+                  Bei Basiselterngeld sind meist maximal 14 Monate möglich, bei ElterngeldPlus entsprechend länger.
+                  Ein Teil der angegebenen Monate wird daher ohne Elterngeld sein.
+                </p>
+              )}
             </label>
             <label className="elterngeld-step__label elterngeld-step__label--row">
               <input

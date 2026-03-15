@@ -68,6 +68,20 @@ function hasPartnerBonus(result: CalculationResult): boolean {
   );
 }
 
+function countPartnerBonusMonths(result: CalculationResult): number {
+  const months = new Set<number>();
+  for (const p of result.parents) {
+    for (const r of p.monthlyResults) {
+      if (r.mode === 'partnerBonus') months.add(r.month);
+    }
+  }
+  return months.size;
+}
+
+function formatMonthsLabel(n: number, singular: string, plural: string): string {
+  return n === 1 ? singular : plural;
+}
+
 function getExplanationText(
   goal: OptimizationGoal,
   improved: boolean
@@ -84,29 +98,7 @@ function getExplanationText(
         return '';
     }
   }
-  switch (goal) {
-    case 'maxMoney':
-      return 'Für die Maximierung der Gesamtauszahlung wurde keine bessere Strategie gefunden.';
-    case 'longerDuration':
-      return 'Für eine längere Bezugsdauer wurde keine bessere Strategie gefunden.';
-    case 'partnerBonus':
-      return 'Für den Partnerschaftsbonus wurde aus Ihrer aktuellen Planung keine günstigere automatische Variante abgeleitet.';
-    default:
-      return '';
-  }
-}
-
-function getNoImprovementReason(goal: OptimizationGoal): string {
-  switch (goal) {
-    case 'maxMoney':
-      return 'Eine Verschiebung von Bezugsmonaten zwischen den Eltern hätte keine höhere Gesamtauszahlung ergeben.';
-    case 'longerDuration':
-      return 'Aus den vorhandenen Basis-Monaten konnte keine längere Bezugsdauer durch Umwandlung in ElterngeldPlus entstehen.';
-    case 'partnerBonus':
-      return 'Es konnten keine ausreichend geeigneten überlappenden ElterngeldPlus-Monate gebildet werden.';
-    default:
-      return 'Es wurde keine bessere Variante gefunden. Ihr aktueller Plan bleibt unverändert.';
-  }
+  return '';
 }
 
 type OptimizationComparisonBlockProps = {
@@ -134,7 +126,7 @@ function OptimizationComparisonBlock({
 }: OptimizationComparisonBlockProps) {
   const { goal, status, currentResult, suggestions } = optimizationResultSet;
   const selectedSuggestion = suggestions[selectedSuggestionIndex] ?? suggestions[0];
-  const hasMultipleSuggestions = suggestions.length > 1;
+  const hasSuggestions = suggestions.length > 0;
 
   const currentTotal = currentResult.householdTotal;
   const currentDuration = countBezugMonths(currentResult);
@@ -153,17 +145,59 @@ function OptimizationComparisonBlock({
     ? goal === 'longerDuration'
       ? `Verbesserung: +${deltaMonths} Monate`
       : `Verbesserung: ${formatCurrencySigned(deltaTotal)}`
-    : 'Keine Verbesserung für das gewählte Ziel gefunden.';
+    : 'Wir haben verschiedene Alternativen geprüft, konnten aber keine Variante finden, die für das gewählte Ziel besser ist.';
 
-  const blockTitle = improved ? 'Optimierungsvorschlag' : 'Optimierungsanalyse';
+  const blockTitle = improved ? 'Optimierungsvorschlag' : 'Der aktuelle Plan ist bereits sehr gut.';
+  const explanationText = getExplanationText(goal, improved);
 
-  const getSuggestionDeltaLabel = (s: OptimizationSuggestion): string => {
-    if (s.status === 'improved') {
-      if (goal === 'longerDuration') return `+${s.deltaValue} Monate`;
-      if (goal === 'partnerBonus' && s.bonusUsed) return 'Partnerschaftsbonus nutzbar';
-      return formatCurrencySigned(s.deltaValue);
+  const getSuggestionDeltaLines = (s: OptimizationSuggestion): string[] => {
+    const deltaTotal = s.optimizedTotal - currentTotal;
+    const deltaDuration = s.optimizedDurationMonths - currentDuration;
+    const deltaBonus = countPartnerBonusMonths(s.result) - countPartnerBonusMonths(currentResult);
+
+    const formatTotalLine = (): string => {
+      if (deltaTotal > 0) return `${formatCurrencySigned(deltaTotal)} mehr Gesamtauszahlung`;
+      if (deltaTotal < 0) return `${formatCurrencySigned(deltaTotal)} weniger Gesamtauszahlung`;
+      return '±0 € gleiche Gesamtsumme';
+    };
+    const formatDurationLine = (): string => {
+      if (deltaDuration > 0) {
+        const unit = formatMonthsLabel(deltaDuration, 'Monat', 'Monate');
+        return `+${deltaDuration} ${unit} längere Bezugsdauer`;
+      }
+      if (deltaDuration < 0) {
+        const unit = formatMonthsLabel(-deltaDuration, 'Monat', 'Monate');
+        return `${deltaDuration} ${unit} kürzere Bezugsdauer`;
+      }
+      return '+0 Monate Bezugsdauer';
+    };
+    const formatBonusLine = (): string => {
+      if (deltaBonus > 0) {
+        const unit = formatMonthsLabel(deltaBonus, 'Partnerbonus-Monat', 'Partnerbonus-Monate');
+        return `+${deltaBonus} ${unit}`;
+      }
+      if (deltaBonus < 0) {
+        const unit = formatMonthsLabel(-deltaBonus, 'Partnerbonus-Monat', 'Partnerbonus-Monate');
+        return `${deltaBonus} ${unit}`;
+      }
+      return '0 gleiche Bonusmonate';
+    };
+
+    const lines: string[] = [];
+    if (goal === 'maxMoney') {
+      lines.push(formatTotalLine());
+      lines.push(formatDurationLine());
+      if (deltaBonus !== 0) lines.push(formatBonusLine());
+    } else if (goal === 'longerDuration') {
+      lines.push(formatDurationLine());
+      lines.push(formatTotalLine());
+      if (deltaBonus !== 0) lines.push(formatBonusLine());
+    } else if (goal === 'partnerBonus') {
+      lines.push(formatBonusLine());
+      lines.push(formatTotalLine());
+      if (deltaDuration !== 0) lines.push(formatDurationLine());
     }
-    return 'Keine Verbesserung';
+    return lines;
   };
 
   return (
@@ -173,24 +207,58 @@ function OptimizationComparisonBlock({
         Optimierungsziel: {GOAL_LABELS[goal]}
       </p>
 
-      {hasMultipleSuggestions && (
+      {suggestions.length > 0 && improved && (
+        <>
+          <p className="elterngeld-calculation__optimization-improvements-intro">
+            Mögliche Verbesserungen
+          </p>
+          <p className="elterngeld-calculation__optimization-improvements-text">
+            Wir haben bis zu drei Varianten gefunden, die für das gewählte Ziel besser sein können.
+          </p>
+        </>
+      )}
+
+      {suggestions.length > 0 && !improved && (
+        <p className="elterngeld-calculation__optimization-no-improvement-intro">
+          Keine der geprüften Varianten verbessert das gewählte Ziel. Sie können die Unterschiede dennoch vergleichen.
+        </p>
+      )}
+
+      {hasSuggestions && (
         <div className="elterngeld-calculation__suggestion-list" role="list">
-          {suggestions.map((s, idx) => (
-            <button
-              key={idx}
-              type="button"
-              role="listitem"
-              className={`elterngeld-calculation__suggestion-card ${idx === selectedSuggestionIndex ? 'elterngeld-calculation__suggestion-card--selected' : ''}`}
-              onClick={() => onSelectSuggestion(idx)}
-            >
-              <span className="elterngeld-calculation__suggestion-title">{s.title}</span>
-              <span className="elterngeld-calculation__suggestion-delta">{getSuggestionDeltaLabel(s)}</span>
-              <span className="elterngeld-calculation__suggestion-meta">
-                {formatCurrency(s.optimizedTotal)} · {s.optimizedDurationMonths} Monate
-              </span>
-            </button>
-          ))}
+          {suggestions.map((s, idx) => {
+            const deltaLines = getSuggestionDeltaLines(s);
+            return (
+              <button
+                key={idx}
+                type="button"
+                role="listitem"
+                className={`elterngeld-calculation__suggestion-card ${idx === selectedSuggestionIndex ? 'elterngeld-calculation__suggestion-card--selected' : ''}`}
+                onClick={() => onSelectSuggestion(idx)}
+              >
+                <span className="elterngeld-calculation__suggestion-title">{s.title}</span>
+                {deltaLines.length > 0 && (
+                  <span className="elterngeld-calculation__suggestion-delta">
+                    {deltaLines.map((line, i) => (
+                      <span key={i} className="elterngeld-calculation__suggestion-delta-line">
+                        {line}
+                      </span>
+                    ))}
+                  </span>
+                )}
+                <span className="elterngeld-calculation__suggestion-meta">
+                  {formatCurrency(s.optimizedTotal)} · {s.optimizedDurationMonths} Monate
+                </span>
+              </button>
+            );
+          })}
         </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <p className="elterngeld-calculation__suggestion-hint">
+          Hinweis: Die Vorschläge sind alternative Varianten für dasselbe Optimierungsziel. Welche Variante am besten passt, hängt von Ihrer persönlichen Planung ab.
+        </p>
       )}
 
       <div className="elterngeld-calculation__optimization-compare-grid">
@@ -238,13 +306,13 @@ function OptimizationComparisonBlock({
 
       {!improved && (
         <p className="elterngeld-calculation__optimization-no-improvement-hint">
-          {getNoImprovementReason(goal)}
+          Der aktuelle Plan bleibt daher die beste gefundene Lösung.
         </p>
       )}
 
-      <p className="elterngeld-calculation__optimization-explanation">
-        {getExplanationText(goal, improved)}
-      </p>
+      {explanationText && (
+        <p className="elterngeld-calculation__optimization-explanation">{explanationText}</p>
+      )}
 
       <div className="elterngeld-calculation__optimization-timelines">
         <div className="elterngeld-calculation__optimization-timeline-section">

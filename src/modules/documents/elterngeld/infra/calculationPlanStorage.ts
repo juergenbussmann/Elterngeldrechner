@@ -31,8 +31,8 @@ const STORAGE_KEY = 'elterngeld.calculationPlan.v1';
 const VARIANT_B_STORAGE_KEY = 'elterngeld.calculationPlan.variantB.v1';
 
 const VALID_MODES: MonthMode[] = ['none', 'basis', 'plus', 'partnerBonus'];
-/** Erwartete Monatsanzahl (Lebensmonate 1–14). Fehlende Monate werden mit mode 'none' ergänzt. */
-const EXPECTED_MONTH_COUNT = 14;
+const MIN_MONTH_COUNT = 14;
+const MAX_MONTH_COUNT = 36;
 
 function isValidMode(v: unknown): v is MonthMode {
   return typeof v === 'string' && VALID_MODES.includes(v as MonthMode);
@@ -70,8 +70,10 @@ function normalizeParent(raw: unknown): CalculationParentInput | null {
     .filter((m): m is ParentMonthInput => m !== null)
     .sort((a, b) => a.month - b.month);
   const byMonth = new Map(normalized.map((m) => [m.month, m]));
+  const maxStoredMonth = normalized.length > 0 ? Math.max(...normalized.map((m) => m.month)) : 0;
+  const horizon = Math.max(MIN_MONTH_COUNT, Math.min(maxStoredMonth, MAX_MONTH_COUNT));
   const months: ParentMonthInput[] = [];
-  for (let m = 1; m <= EXPECTED_MONTH_COUNT; m++) {
+  for (let m = 1; m <= horizon; m++) {
     const existing = byMonth.get(m);
     months.push(
       existing ?? {
@@ -105,9 +107,23 @@ export function normalizeStoredPlan(raw: unknown): ElterngeldCalculationPlan | n
 
   if (parents.length === 0) return null;
 
+  const sharedHorizon = Math.max(...parents.map((p) => p.months.length), MIN_MONTH_COUNT);
+  const parentsWithSharedHorizon = parents.map((p) => {
+    if (p.months.length >= sharedHorizon) return p;
+    const byMonth = new Map(p.months.map((m) => [m.month, m]));
+    const months: ParentMonthInput[] = [];
+    for (let m = 1; m <= sharedHorizon; m++) {
+      const existing = byMonth.get(m);
+      months.push(
+        existing ?? { month: m, mode: 'none' as MonthMode, incomeDuringNet: 0 }
+      );
+    }
+    return { ...p, months };
+  });
+
   return {
     childBirthDate,
-    parents,
+    parents: parentsWithSharedHorizon,
     hasSiblingBonus: Boolean(o.hasSiblingBonus),
     additionalChildren: typeof o.additionalChildren === 'number' ? Math.max(0, o.additionalChildren) : 0,
   };

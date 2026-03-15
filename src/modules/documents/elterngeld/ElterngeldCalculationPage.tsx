@@ -146,6 +146,12 @@ export const ElterngeldCalculationPage: React.FC = () => {
     }
   }, [planB]);
 
+  useEffect(() => {
+    if (view === 'result') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [view]);
+
   const handleBack = useCallback(() => {
     setView('input');
   }, []);
@@ -490,6 +496,16 @@ export const ElterngeldCalculationPage: React.FC = () => {
               isSubmitting={isSubmitting}
             />
             <div className="next-steps__stack elterngeld-nav">
+              {optimizationGoal && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="next-steps__button btn--softpill"
+                  onClick={() => setShowOptimizationGoalDialog(true)}
+                >
+                  Anderes Optimierungsziel wählen
+                </Button>
+              )}
               {planB && (
                 <Button
                   type="button"

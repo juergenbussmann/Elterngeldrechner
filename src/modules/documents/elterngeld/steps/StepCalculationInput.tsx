@@ -28,14 +28,29 @@ function parseNum(value: string | undefined): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
-/** Prüft, ob die Übernahme-Aktion für diesen Elternteil/Monat angezeigt werden soll. */
-function shouldShowCopyToFollowing(
+/**
+ * TECHNISCHE REGEL – Zielmonate für die Copy-Funktion:
+ * - Niemals dauerhaft speichern (kein copiedTargetMonths, sameModeMonths im State).
+ * - Immer neu aus dem aktuellen Monatszustand berechnen.
+ * - Berechnung bei: Render, Button-Anzeige, Klick, nach jeder Modus-/Monatsänderung.
+ */
+function getTargetMonthsForCopy(
+  parent: CalculationParentInput,
+  currentMonth: number
+): ParentMonthInput[] {
+  const current = parent.months.find((m) => m.month === currentMonth);
+  if (!current || current.mode === 'none') return [];
+  return parent.months.filter(
+    (m) => m.mode === current.mode && m.month > currentMonth
+  );
+}
+
+/** Button anzeigen, wenn mindestens ein fachlich passender Zielmonat existiert. */
+function shouldShowCopyToFollowingMonths(
   parent: CalculationParentInput,
   currentMonth: number
 ): boolean {
-  const current = parent.months.find((m) => m.month === currentMonth);
-  if (!current || current.mode === 'none') return false;
-  return parent.months.some((x) => x.month > currentMonth && x.mode !== 'none');
+  return getTargetMonthsForCopy(parent, currentMonth).length >= 1;
 }
 
 type Props = {
@@ -72,14 +87,26 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
   ) => {
     const parent = plan.parents[parentIndex];
     const sourceM = parent.months.find((x) => x.month === sourceMonth);
-    if (!sourceM) return;
+    if (!sourceM || sourceM.mode === 'none') return;
+    const sourceMode = sourceM.mode;
     const months = parent.months.map((m) => {
-      if (m.month <= sourceMonth || m.mode === 'none') return m;
+      if (m.month <= sourceMonth || m.mode !== sourceMode) return m;
       const patch: Partial<ParentMonthInput> = {};
       if (fields.incomeDuringNet) patch.incomeDuringNet = sourceM.incomeDuringNet;
       if (fields.hoursPerWeek) patch.hoursPerWeek = sourceM.hoursPerWeek;
       return { ...m, ...patch };
     });
+    updateParent(parentIndex, { months });
+  };
+
+  const applyModeToFollowingMonths = (parentIndex: number, sourceMonth: number) => {
+    const parent = plan.parents[parentIndex];
+    const sourceM = parent.months.find((x) => x.month === sourceMonth);
+    if (!sourceM) return;
+    const sourceMode = sourceM.mode;
+    const months = parent.months.map((m) =>
+      m.month > sourceMonth ? { ...m, mode: sourceMode } : m
+    );
     updateParent(parentIndex, { months });
   };
 
@@ -89,7 +116,11 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
 
   const parentA = plan.parents[0];
   const parentB = plan.parents[1];
-  const allMonths = Array.from({ length: 14 }, (_, i) => i + 1);
+  const maxMonth =
+    plan.parents.length > 0
+      ? Math.max(14, ...plan.parents.flatMap((p) => p.months.map((m) => m.month)))
+      : 14;
+  const allMonths = Array.from({ length: maxMonth }, (_, i) => i + 1);
 
   const activeMonths = allMonths.filter((month) => {
     const mA = parentA.months.find((m) => m.month === month);
@@ -130,7 +161,7 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
 
     const parent = plan.parents[parentIndex];
     const hasBezug = m.mode !== 'none';
-    const showCopyAction = shouldShowCopyToFollowing(parent, month);
+    const showCopyAction = shouldShowCopyToFollowingMonths(parent, month);
 
     const hasMaternity = parentIndex === 0 && m.hasMaternityBenefit;
 
@@ -161,6 +192,15 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
               }
             />
           </div>
+          {parent.months.some((x) => x.month > month) && (
+            <button
+              type="button"
+              className="elterngeld-copy-action"
+              onClick={() => applyModeToFollowingMonths(parentIndex, month)}
+            >
+              Bezugsart auf folgende Monate übertragen
+            </button>
+          )}
           {!isCompact && (
             <>
               {hasBezug ? (
@@ -209,20 +249,32 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
               )}
             </>
           )}
-          {showCopyAction && (
-            <button
-              type="button"
-              className="elterngeld-copy-action"
-              onClick={() =>
-                applyToFollowingMonths(parentIndex, month, {
-                  incomeDuringNet: true,
-                  hoursPerWeek: true,
-                })
-              }
-            >
-              Werte für folgende Bezugsmonate übernehmen
-            </button>
-          )}
+          {showCopyAction && (() => {
+            const targetMonths = getTargetMonthsForCopy(parent, month);
+            if (targetMonths.length === 0) return null;
+            const count = targetMonths.length;
+            const hintText =
+              count === 1
+                ? 'Werte werden auf 1 folgenden Monat übertragen.'
+                : `Werte werden auf ${count} folgende Monate übertragen.`;
+            return (
+              <>
+                <button
+                  type="button"
+                  className="elterngeld-copy-action"
+                  onClick={() =>
+                    applyToFollowingMonths(parentIndex, month, {
+                      incomeDuringNet: true,
+                      hoursPerWeek: true,
+                    })
+                  }
+                >
+                  Werte für folgende Bezugsmonate übernehmen
+                </button>
+                <p className="elterngeld-calculation__copy-hint">{hintText}</p>
+              </>
+            );
+          })()}
         </div>
       </div>
     );
@@ -333,7 +385,7 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
       </Card>
 
       <Card className="still-daily-checklist__card">
-        <h3 className="elterngeld-step__title">Monatsplan (Lebensmonate 1–14)</h3>
+        <h3 className="elterngeld-step__title">Monatsplan (Lebensmonate 1–{maxMonth})</h3>
         <p className="elterngeld-step__hint elterngeld-step__hint--section">
           Pro Lebensmonat des Kindes sehen Sie hier die Angaben für Sie und Ihren Partner nebeneinander.
         </p>

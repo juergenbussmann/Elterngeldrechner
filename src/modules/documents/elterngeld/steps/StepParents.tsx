@@ -110,16 +110,16 @@ export const StepParents: React.FC<Props> = ({ values, onChange }) => {
           </p>
         </div>
 
-        <h4 className="elterngeld-step__section-title">Elternteil A</h4>
+        <h4 className="elterngeld-step__section-title">Sie</h4>
         <label className="elterngeld-step__label">
-          <span>Elternteil A – Vorname</span>
+          <span>Vorname</span>
           <TextInput
             value={values.parentA.firstName}
             onChange={(e) => updateParentA('firstName', e.target.value)}
           />
         </label>
         <label className="elterngeld-step__label">
-          <span>Elternteil A – Nachname</span>
+          <span>Nachname</span>
           <TextInput
             value={values.parentA.lastName}
             onChange={(e) => updateParentA('lastName', e.target.value)}
@@ -152,16 +152,16 @@ export const StepParents: React.FC<Props> = ({ values, onChange }) => {
 
         {showParentB && (
           <>
-            <h4 className="elterngeld-step__section-title">Elternteil B</h4>
+            <h4 className="elterngeld-step__section-title">Partner</h4>
             <label className="elterngeld-step__label">
-              <span>Elternteil B – Vorname</span>
+              <span>Vorname</span>
               <TextInput
                 value={parentB.firstName}
                 onChange={(e) => updateParentB('firstName', e.target.value)}
               />
             </label>
             <label className="elterngeld-step__label">
-              <span>Elternteil B – Nachname</span>
+              <span>Nachname</span>
               <TextInput
                 value={parentB.lastName}
                 onChange={(e) => updateParentB('lastName', e.target.value)}

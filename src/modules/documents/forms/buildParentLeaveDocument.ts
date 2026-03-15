@@ -74,7 +74,7 @@ function buildChildBlock(values: ParentLeaveFormValues): string[] {
     lines.push(`Bezug: Kind ${childName}`);
     const bd = formatDate(values.birthDate);
     if (bd) lines.push(`Geburtsdatum: ${bd}`);
-    if (!values.birthDate) {
+    if (!values.birthDate?.trim()) {
       const ebd = formatDate(values.expectedBirthDate);
       if (ebd) lines.push(`Voraussichtliches Geburtsdatum: ${ebd}`);
     }

@@ -76,12 +76,19 @@ export interface ParentalLeaveTimingInfo {
 export interface ParentalLeaveDeadlineInfo {
   noticeDeadlineLabel?: string | null;
   dismissalProtectionLabel?: string | null;
+  /** Hinweis wenn Fristen bereits überschritten sind */
+  pastDeadlineHint?: string | null;
 }
+
+/** Hinweis wenn Fristen bereits überschritten sind */
+const PAST_DEADLINE_HINT =
+  'Ein Antrag kann weiterhin gestellt werden, muss aber ggf. individuell mit dem Arbeitgeber abgestimmt werden.';
 
 /**
  * Berechnet konkrete Fristdaten aus dem relevanten Beginn.
  * Regulär: 7 Wochen Anmeldung, 8 Wochen Kündigungsschutz.
  * late_period: 13 Wochen Anmeldung, 14 Wochen Kündigungsschutz.
+ * Passt die Anzeige an, wenn Fristen bereits in der Vergangenheit liegen.
  */
 export function getParentalLeaveDeadlineInfo(
   values: ParentLeaveFormValues,
@@ -93,9 +100,7 @@ export function getParentalLeaveDeadlineInfo(
   const start = parseIsoDate(startIso);
   if (!start) return {};
 
-  const ref = today ?? new Date();
-  if (!isFutureOrToday(startIso, ref)) return {};
-
+  const ref = startOfDay(today ?? new Date());
   const startDay = startOfDay(start);
   const isLatePeriod = values.requestType === 'late_period';
 
@@ -105,9 +110,23 @@ export function getParentalLeaveDeadlineInfo(
   const noticeDate = addDays(startDay, -noticeDays);
   const dismissalDate = addDays(startDay, -dismissalDays);
 
+  const noticeInPast = differenceInDays(ref, noticeDate) > 0;
+  const dismissalInPast = differenceInDays(ref, dismissalDate) > 0;
+
+  const noticeDeadlineLabel = noticeInPast
+    ? `Reguläre Anmeldefrist: ${formatDateGerman(noticeDate)} (bereits überschritten)`
+    : `Späteste Anmeldung: ${formatDateGerman(noticeDate)}`;
+
+  const dismissalProtectionLabel = dismissalInPast
+    ? `Kündigungsschutz hätte begonnen: ${formatDateGerman(dismissalDate)}`
+    : `Kündigungsschutz ab: ${formatDateGerman(dismissalDate)}`;
+
+  const pastDeadlineHint = noticeInPast || dismissalInPast ? PAST_DEADLINE_HINT : undefined;
+
   return {
-    noticeDeadlineLabel: `Späteste Anmeldung: ${formatDateGerman(noticeDate)}`,
-    dismissalProtectionLabel: `Kündigungsschutz ab: ${formatDateGerman(dismissalDate)}`,
+    noticeDeadlineLabel,
+    dismissalProtectionLabel,
+    pastDeadlineHint,
   };
 }
 

@@ -2,6 +2,12 @@ import React from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { TextInput } from '../../../../shared/ui/TextInput';
 import { SelectionField } from '../../../../shared/ui/SelectionModal';
+import {
+  isBirthDateDisabled,
+  isExpectedBirthDateDisabled,
+  applyBirthDateChange,
+  applyExpectedBirthDateChange,
+} from '../../../../shared/lib/birthDateFields';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
 import { GERMAN_STATES } from '../stateConfig';
 
@@ -25,6 +31,31 @@ export const StepBasicData: React.FC<Props> = ({ values, onChange }) => {
     }
   };
 
+  const birthDisabled = isBirthDateDisabled(
+    values.child.birthDate,
+    values.child.expectedBirthDate
+  );
+  const expectedDisabled = isExpectedBirthDateDisabled(
+    values.child.birthDate,
+    values.child.expectedBirthDate
+  );
+
+  const handleBirthDateChange = (v: string) => {
+    const next = applyBirthDateChange(v, values.child.expectedBirthDate);
+    onChange({
+      ...values,
+      child: { ...values.child, birthDate: next.birthDate, expectedBirthDate: next.expectedBirthDate },
+    });
+  };
+
+  const handleExpectedBirthDateChange = (v: string) => {
+    const next = applyExpectedBirthDateChange(values.child.birthDate, v);
+    onChange({
+      ...values,
+      child: { ...values.child, birthDate: next.birthDate, expectedBirthDate: next.expectedBirthDate },
+    });
+  };
+
   return (
     <Card className="still-daily-checklist__card">
       <h3 className="elterngeld-step__title">Grunddaten</h3>
@@ -36,21 +67,35 @@ export const StepBasicData: React.FC<Props> = ({ values, onChange }) => {
           options={STATE_OPTIONS}
           onChange={(v) => update('state', v)}
         />
-        <label className="elterngeld-step__label">
-          <span>Geburtsdatum des Kindes</span>
+        <label className={`elterngeld-step__label${birthDisabled ? ' elterngeld-step__label--disabled' : ''}`}>
+          <span>Geburt des Kindes</span>
           <TextInput
             type="date"
             value={values.child.birthDate}
-            onChange={(e) => update('child.birthDate', e.target.value)}
+            onChange={(e) => handleBirthDateChange(e.target.value)}
+            disabled={birthDisabled}
+            aria-disabled={birthDisabled}
           />
+          {birthDisabled && (
+            <span className="elterngeld-step__hint">
+              Sobald ein voraussichtlicher Geburtstermin eingetragen ist, wird dieses Feld deaktiviert.
+            </span>
+          )}
         </label>
-        <label className="elterngeld-step__label">
-          <span>Voraussichtlicher Geburtstermin (falls noch nicht geboren)</span>
+        <label className={`elterngeld-step__label${expectedDisabled ? ' elterngeld-step__label--disabled' : ''}`}>
+          <span>Voraussichtlicher Geburtstermin</span>
           <TextInput
             type="date"
             value={values.child.expectedBirthDate}
-            onChange={(e) => update('child.expectedBirthDate', e.target.value)}
+            onChange={(e) => handleExpectedBirthDateChange(e.target.value)}
+            disabled={expectedDisabled}
+            aria-disabled={expectedDisabled}
           />
+          {expectedDisabled && (
+            <span className="elterngeld-step__hint">
+              Sobald ein Geburtsdatum eingetragen ist, wird dieses Feld deaktiviert.
+            </span>
+          )}
         </label>
         <label className="elterngeld-step__label elterngeld-step__label--row">
           <input

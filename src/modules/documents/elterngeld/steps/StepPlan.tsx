@@ -70,7 +70,7 @@ export const StepPlan: React.FC<Props> = ({ values, onChange }) => {
           </p>
         </div>
         <label className="elterngeld-step__label">
-          <span>Elternteil A – geplante Monate</span>
+          <span>Sie – geplante Monate</span>
           <TextInput
             type="text"
             value={values.benefitPlan.parentAMonths}
@@ -81,7 +81,7 @@ export const StepPlan: React.FC<Props> = ({ values, onChange }) => {
         {values.applicantMode === 'both_parents' && (
           <>
             <label className="elterngeld-step__label">
-              <span>Elternteil B – geplante Monate</span>
+              <span>Partner – geplante Monate</span>
               <TextInput
                 type="text"
                 value={values.benefitPlan.parentBMonths}

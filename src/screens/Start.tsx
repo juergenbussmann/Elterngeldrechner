@@ -6,12 +6,14 @@ import { logLayoutMetrics } from '../debug/layoutDebug';
 import { useHeroContrastGuard } from '../shared/hooks/useHeroContrastGuard';
 import { useHeroCompactGuard } from '../shared/hooks/useHeroCompactGuard';
 import { usePhase } from '../core/phase/usePhase';
+import { getChildDateContext } from '../shared/lib/childDateContext';
 import { getParentalLeaveReminderState } from '../core/reminders/parentalLeaveReminder';
 
 export function Start() {
   const { goTo } = useNavigation();
   const { profile } = usePhase();
 
+  const child = getChildDateContext(profile);
   const parentalLeaveReminder = getParentalLeaveReminderState(profile);
   const heroRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -105,9 +107,20 @@ export function Start() {
         />
       </nav>
 
-      {(parentalLeaveReminder.shouldShowCTA || parentalLeaveReminder.shouldShowMissingDateLink) && (
+      {(child.effectiveDate === null || parentalLeaveReminder.shouldShowCTA || parentalLeaveReminder.shouldShowMissingDateLink) && (
         <div className="start__cta">
-          {parentalLeaveReminder.shouldShowCTA ? (
+          {child.effectiveDate === null ? (
+            <>
+              <p className="start__cta-hint">Bitte geben Sie einen Geburtstermin oder ein Geburtsdatum an.</p>
+              <button
+                type="button"
+                className="start__cta-link"
+                onClick={() => goTo('/onboarding/due-date')}
+              >
+                Geburtstermin hinterlegen
+              </button>
+            </>
+          ) : parentalLeaveReminder.shouldShowCTA ? (
             <>
               <p className="start__cta-hint">{parentalLeaveReminder.hintText ?? 'Bald könnte wichtig werden'}</p>
               <button

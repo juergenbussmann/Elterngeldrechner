@@ -1,10 +1,12 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
 import { Card } from '../../../shared/ui/Card';
 import { TextInput } from '../../../shared/ui/TextInput';
 import { SelectionField } from '../../../shared/ui/SelectionModal';
+import { usePhase } from '../../../core/phase/usePhase';
 import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
+import { getInitialBirthDateValues, isBirthDateDisabled, isExpectedBirthDateDisabled, applyBirthDateChange, applyExpectedBirthDateChange } from '../../../shared/lib/birthDateFields';
 import { useI18n } from '../../../shared/lib/i18n';
 import { useNotifications } from '../../../shared/lib/notifications';
 import {
@@ -73,7 +75,8 @@ const FormField: React.FC<{
   error?: string;
   min?: string;
   max?: string;
-}> = ({ field, value, onChange, error, min, max }) => {
+  disabled?: boolean;
+}> = ({ field, value, onChange, error, min, max, disabled }) => {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       onChange(field.id, e.target.value);
@@ -128,7 +131,7 @@ const FormField: React.FC<{
 
   if (field.type === 'date') {
     return (
-      <div className="documents-form__field-wrapper">
+      <div className={`documents-form__field-wrapper${disabled ? ' documents-form__field-wrapper--disabled' : ''}`}>
         {labelBlock}
         <TextInput
           type="date"
@@ -136,7 +139,9 @@ const FormField: React.FC<{
           onChange={handleChange}
           min={min}
           max={max}
+          disabled={disabled}
           aria-invalid={!!error}
+          aria-disabled={disabled}
         />
       </div>
     );
@@ -156,13 +161,49 @@ const FormField: React.FC<{
 };
 
 export const ParentLeaveFormPage: React.FC = () => {
+  const { profile, actions } = usePhase();
   const { goTo } = useNavigation();
   const { t } = useI18n();
   const { showToast } = useNotifications();
-  const [values, setValues] = useState<ParentLeaveFormValues>(INITIAL_FORM_VALUES);
+  const [values, setValues] = useState<ParentLeaveFormValues>(() => {
+    const initial = INITIAL_FORM_VALUES;
+    const childDates = getInitialBirthDateValues(profile, {
+      birthDate: initial.birthDate,
+      expectedBirthDate: initial.expectedBirthDate,
+    });
+    return { ...initial, ...childDates };
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+
+  // Profil → Formular: Wenn Profil sich ändert (z.B. in Einstellungen), Datumsfelder nachziehen
+  useEffect(() => {
+    const expected = getInitialBirthDateValues(profile, undefined);
+    const current = valuesRef.current;
+    const currentBirth = current.birthDate?.trim() || '';
+    const currentExpected = current.expectedBirthDate?.trim() || '';
+    const needsUpdate =
+      (expected.birthDate !== currentBirth) || (expected.expectedBirthDate !== currentExpected);
+    if (needsUpdate) {
+      setValues((prev) => ({ ...prev, birthDate: expected.birthDate, expectedBirthDate: expected.expectedBirthDate }));
+    }
+  }, [profile]);
+
+  // Formular → Profil: Bei Änderung von birthDate/expectedBirthDate sofort ins Profil syncen (wie ElterngeldWizardPage)
+  useEffect(() => {
+    const bd = values.birthDate?.trim();
+    const ebd = values.expectedBirthDate?.trim();
+    if (bd) {
+      actions.setBirthDate(bd);
+    } else if (ebd) {
+      actions.setDueDate(ebd);
+    } else {
+      actions.clear();
+    }
+  }, [values.birthDate, values.expectedBirthDate, actions]);
 
   const visibleFields = useMemo(
     () => getVisibleFields(values).filter((f) => f.id !== 'requestType'),
@@ -178,10 +219,22 @@ export const ParentLeaveFormPage: React.FC = () => {
   const deadlineInfo = useMemo(() => getParentalLeaveDeadlineInfo(values), [values]);
 
   const handleFieldChange = useCallback((id: string, value: string) => {
-    setValues((prev) => ({ ...prev, [id]: value }));
+    setValues((prev) => {
+      let next = { ...prev, [id]: value };
+      if (id === 'birthDate') {
+        const applied = applyBirthDateChange(value, prev.expectedBirthDate);
+        next = { ...next, birthDate: applied.birthDate, expectedBirthDate: applied.expectedBirthDate };
+      } else if (id === 'expectedBirthDate') {
+        const applied = applyExpectedBirthDateChange(prev.birthDate, value);
+        next = { ...next, birthDate: applied.birthDate, expectedBirthDate: applied.expectedBirthDate };
+      }
+      return next;
+    });
     setErrors((prev) => {
       const next = { ...prev };
       delete next[id];
+      if (id === 'birthDate') delete next.expectedBirthDate;
+      if (id === 'expectedBirthDate') delete next.birthDate;
       return next;
     });
   }, []);
@@ -301,6 +354,11 @@ export const ParentLeaveFormPage: React.FC = () => {
             {visibleFields.map((field) => {
               const minVal = field.getMin?.(values) ?? field.min;
               const maxVal = field.getMax?.(values) ?? field.max;
+              const isBirthDateField = field.id === 'birthDate';
+              const isExpectedField = field.id === 'expectedBirthDate';
+              const disabled =
+                (isBirthDateField && isBirthDateDisabled(values.birthDate, values.expectedBirthDate)) ||
+                (isExpectedField && isExpectedBirthDateDisabled(values.birthDate, values.expectedBirthDate));
               return (
                 <React.Fragment key={field.id}>
                   <FormField
@@ -310,6 +368,7 @@ export const ParentLeaveFormPage: React.FC = () => {
                     error={errors[field.id]}
                     min={minVal}
                     max={maxVal}
+                    disabled={disabled}
                   />
                   {field.id === 'startDate' &&
                     (values.requestType === 'basic_leave' ||
@@ -339,6 +398,11 @@ export const ParentLeaveFormPage: React.FC = () => {
                               {deadlineInfo.dismissalProtectionLabel && (
                                 <p className="documents-form__deadline-line">
                                   {deadlineInfo.dismissalProtectionLabel}
+                                </p>
+                              )}
+                              {deadlineInfo.pastDeadlineHint && (
+                                <p className="documents-form__deadline-line documents-form__deadline-hint">
+                                  {deadlineInfo.pastDeadlineHint}
                                 </p>
                               )}
                             </div>

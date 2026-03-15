@@ -7,10 +7,20 @@ import { ChecklistsBirthPage } from './pages/ChecklistsBirthPage';
 import { ChecklistsBreastfeedingPage } from './pages/ChecklistsBreastfeedingPage';
 import { ChecklistNewPage } from './pages/ChecklistNewPage';
 import { ChecklistDetailPage } from './pages/ChecklistDetailPage';
+import { PhaseTrackerSettingsSection } from '../../core/phase/ui/PhaseTrackerSettingsSection';
 
 export const ChecklistsModule: PwaFactoryModule = {
   id: 'std.checklists',
   displayName: 'checklists',
+  getSettings: () => ({
+    sections: [
+      {
+        id: 'phase-tracker',
+        title: 'Wochen-Begleitung',
+        element: <PhaseTrackerSettingsSection />,
+      },
+    ],
+  }),
   getRoutes: () => [
     {
       path: '/checklists',

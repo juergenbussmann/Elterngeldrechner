@@ -4,6 +4,7 @@ import { DocumentsPage } from './ui/DocumentsPage';
 import { DocumentsFamilyOverviewPage } from './ui/DocumentsFamilyOverviewPage';
 import { ParentLeaveFormPage } from './forms/ParentLeaveFormPage';
 import { ElterngeldWizardPage } from './elterngeld/ElterngeldWizardPage';
+import { ElterngeldCalculationPage } from './elterngeld/ElterngeldCalculationPage';
 
 export const DocumentsModule: PwaFactoryModule = {
   id: 'std.documents',
@@ -24,6 +25,10 @@ export const DocumentsModule: PwaFactoryModule = {
     {
       path: '/documents/elterngeld',
       element: <ElterngeldWizardPage />,
+    },
+    {
+      path: '/documents/elterngeld-calculation',
+      element: <ElterngeldCalculationPage />,
     },
   ],
 };

@@ -28,9 +28,15 @@ type Props = {
   values: ElterngeldApplication;
   onCreatePdf: () => void;
   isSubmitting: boolean;
+  onNavigateToCalculation?: () => void;
 };
 
-export const StepSummary: React.FC<Props> = ({ values, onCreatePdf, isSubmitting }) => {
+export const StepSummary: React.FC<Props> = ({
+  values,
+  onCreatePdf,
+  isSubmitting,
+  onNavigateToCalculation,
+}) => {
   const deadlineInfo = getElterngeldDeadlineInfo(values);
   const stateName =
     GERMAN_STATES.find((s) => s.stateCode === values.state)?.displayName || values.state || '–';
@@ -46,18 +52,18 @@ export const StepSummary: React.FC<Props> = ({ values, onCreatePdf, isSubmitting
         <p><strong>Geburtsdatum:</strong> {formatDate(values.child.birthDate)}</p>
         <p><strong>ET (falls noch nicht geboren):</strong> {formatDate(values.child.expectedBirthDate)}</p>
         <p><strong>Wer beantragt:</strong> {APPLICANT_MODE_LABELS[applicantMode] ?? applicantMode}</p>
-        <p><strong>Elternteil A:</strong> {values.parentA.firstName} {values.parentA.lastName}</p>
-        <p><strong>Beschäftigung A:</strong> {EMPLOYMENT_LABELS[values.parentA.employmentType] ?? values.parentA.employmentType}</p>
+        <p><strong>Sie:</strong> {values.parentA.firstName} {values.parentA.lastName}</p>
+        <p><strong>Ihre Beschäftigung:</strong> {EMPLOYMENT_LABELS[values.parentA.employmentType] ?? values.parentA.employmentType}</p>
         {showParentB && parentB && (
           <>
-            <p><strong>Elternteil B:</strong> {parentB.firstName} {parentB.lastName}</p>
-            <p><strong>Beschäftigung B:</strong> {EMPLOYMENT_LABELS[parentB.employmentType] ?? parentB.employmentType}</p>
+            <p><strong>Partner:</strong> {parentB.firstName} {parentB.lastName}</p>
+            <p><strong>Beschäftigung Partner:</strong> {EMPLOYMENT_LABELS[parentB.employmentType] ?? parentB.employmentType}</p>
           </>
         )}
         <p><strong>Modell:</strong> {values.benefitPlan.model}</p>
-        <p><strong>Monate A:</strong> {values.benefitPlan.parentAMonths || '–'}</p>
+        <p><strong>Ihre Monate:</strong> {values.benefitPlan.parentAMonths || '–'}</p>
         {showParentB && (
-          <p><strong>Monate B:</strong> {values.benefitPlan.parentBMonths || '–'}</p>
+          <p><strong>Monate Partner:</strong> {values.benefitPlan.parentBMonths || '–'}</p>
         )}
         {showParentB && (
           <p><strong>Partnerschaftsbonus:</strong> {values.benefitPlan.partnershipBonus ? 'Ja' : 'Nein'}</p>
@@ -71,16 +77,29 @@ export const StepSummary: React.FC<Props> = ({ values, onCreatePdf, isSubmitting
           {deadlineInfo.noticeText}
         </p>
       )}
-      <Button
-        type="button"
-        variant="primary"
-        fullWidth
-        className="next-steps__button btn--softpill"
-        onClick={onCreatePdf}
-        disabled={isSubmitting}
-      >
-        PDF erstellen
-      </Button>
+      <div className="elterngeld-step__summary-actions">
+        <Button
+          type="button"
+          variant="primary"
+          fullWidth
+          className="next-steps__button btn--softpill"
+          onClick={onCreatePdf}
+          disabled={isSubmitting}
+        >
+          PDF erstellen
+        </Button>
+        {onNavigateToCalculation && (
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            className="next-steps__button btn--softpill"
+            onClick={onNavigateToCalculation}
+          >
+            Zur Elterngeldberechnung
+          </Button>
+        )}
+      </div>
     </Card>
   );
 };

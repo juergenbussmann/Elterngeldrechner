@@ -22,10 +22,10 @@ function getDynamicDocuments(values: ElterngeldApplication): string[] {
   }
   if (values.applicantMode === 'both_parents' && values.parentB) {
     if (values.parentB.employmentType === 'employed' || values.parentB.employmentType === 'mixed') {
-      docs.push('Arbeitgeberbescheinigung (Elternteil B)');
+      docs.push('Arbeitgeberbescheinigung (Partner)');
     }
     if (values.parentB.employmentType === 'self_employed' || values.parentB.employmentType === 'mixed') {
-      docs.push('Nachweise bei Selbstständigkeit (Elternteil B)');
+      docs.push('Nachweise bei Selbstständigkeit (Partner)');
     }
   }
   return docs;

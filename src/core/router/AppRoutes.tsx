@@ -25,6 +25,7 @@ import { Testseite } from '../../pages/Testseite';
 import { NextStepsSection } from '../../components/NextStepsSection';
 import { PhaseShortcut } from '../../components/PhaseShortcut';
 import { usePhase } from '../phase/usePhase';
+import { getChildDateContext } from '../../shared/lib/childDateContext';
 import { PhaseSearch } from '../../components/PhaseSearch';
 import { getPhaseTopics, enrichKnowledgeItems } from '../../utils/search';
 import {
@@ -241,7 +242,8 @@ const PregnancyPhaseScreen: React.FC = () => {
   const { t } = useI18n();
   const { profile } = usePhase();
   const topicCardStyle = useTopicCardStyle();
-  const hasDate = Boolean(profile?.dueDateIso || profile?.birthDateIso);
+  const child = getChildDateContext(profile);
+  const hasDate = child.effectiveDate !== null;
   const phaseSeo = getPhaseSeo('pregnancy');
   const pregnancyJsonLd = buildFaqJsonLd(
     PREGNANCY_FAQ.map((f) => ({
@@ -300,6 +302,7 @@ const PregnancyPhaseScreen: React.FC = () => {
       {hasDate && (
         <div className="next-steps__stack">
           <PhaseShortcut title="Elternzeit vorbereiten" route="/documents/parental-leave" />
+          <PhaseShortcut title="Elterngeld berechnen" route="/documents/elterngeld-calculation" />
         </div>
       )}
       <NextStepsSection
@@ -321,7 +324,8 @@ const BirthPhaseScreen: React.FC = () => {
   const { t } = useI18n();
   const { profile } = usePhase();
   const topicCardStyle = useTopicCardStyle();
-  const hasDate = Boolean(profile?.dueDateIso || profile?.birthDateIso);
+  const child = getChildDateContext(profile);
+  const hasDate = child.effectiveDate !== null;
   const phaseSeo = getPhaseSeo('birth');
   const birthJsonLd = buildFaqJsonLd(
     BIRTH_FAQ.map((f) => ({
@@ -380,6 +384,7 @@ const BirthPhaseScreen: React.FC = () => {
       {hasDate && (
         <div className="next-steps__stack">
           <PhaseShortcut title="Elternzeit vorbereiten" route="/documents/parental-leave" />
+          <PhaseShortcut title="Elterngeld berechnen" route="/documents/elterngeld-calculation" />
         </div>
       )}
       <NextStepsSection

@@ -60,7 +60,7 @@ export function buildElterngeldSummaryPdf(values: ElterngeldApplication): Blob {
   doc.setFont('helvetica', 'normal');
   y = addWrappedText(
     doc,
-    `Elternteil A: ${values.parentA.firstName} ${values.parentA.lastName}`,
+    `Sie: ${values.parentA.firstName} ${values.parentA.lastName}`,
     MARGIN,
     y,
     TEXT_WIDTH,
@@ -77,8 +77,8 @@ export function buildElterngeldSummaryPdf(values: ElterngeldApplication): Blob {
   y += LINE_HEIGHT;
   doc.setFont('helvetica', 'normal');
   y = addWrappedText(doc, `Modell: ${values.benefitPlan.model}`, MARGIN, y, TEXT_WIDTH, 10);
-  y = addWrappedText(doc, `Monate Elternteil A: ${values.benefitPlan.parentAMonths || '–'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
-  y = addWrappedText(doc, `Monate Elternteil B: ${values.benefitPlan.parentBMonths || '–'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
+  y = addWrappedText(doc, `Ihre Monate: ${values.benefitPlan.parentAMonths || '–'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
+  y = addWrappedText(doc, `Monate Partner: ${values.benefitPlan.parentBMonths || '–'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
   y = addWrappedText(doc, `Partnerschaftsbonus: ${values.benefitPlan.partnershipBonus ? 'Ja' : 'Nein'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
   y += 5;
 

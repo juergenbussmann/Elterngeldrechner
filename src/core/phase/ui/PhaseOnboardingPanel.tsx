@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useI18n } from '../../../shared/lib/i18n';
 import { Button } from '../../../shared/ui/Button';
 import { TextInput } from '../../../shared/ui/TextInput';
@@ -6,6 +6,7 @@ import { Card } from '../../../shared/ui/Card';
 import { usePhase } from '../usePhase';
 import { incrementProgressActionCount } from '../../begleitungPlus/upgradeTriggersStore';
 import type { PhaseMode } from '../types';
+import { getChildDateContext } from '../../../shared/lib/childDateContext';
 import './PhaseOnboardingPanel.css';
 
 export interface PhaseOnboardingPanelProps {
@@ -19,10 +20,25 @@ function toIsoDateOnly(val: string): string {
 
 export const PhaseOnboardingPanel: React.FC<PhaseOnboardingPanelProps> = ({ onClose }) => {
   const { t } = useI18n();
-  const { actions } = usePhase();
-  const [mode, setMode] = useState<PhaseMode>('pregnancy');
-  const [dueDate, setDueDate] = useState('');
-  const [birthDate, setBirthDate] = useState('');
+  const { profile, actions } = usePhase();
+  const child = getChildDateContext(profile);
+
+  const [mode, setMode] = useState<PhaseMode>(() =>
+    child.birthDate ? 'postpartum' : 'pregnancy'
+  );
+  const [dueDate, setDueDate] = useState(() =>
+    child.expectedBirthDate ?? ''
+  );
+  const [birthDate, setBirthDate] = useState(() =>
+    child.birthDate ?? ''
+  );
+
+  useEffect(() => {
+    const c = getChildDateContext(profile);
+    setMode(c.birthDate ? 'postpartum' : 'pregnancy');
+    setDueDate(c.expectedBirthDate ?? '');
+    setBirthDate(c.birthDate ?? '');
+  }, [profile]);
 
   const canSave = useMemo(() => {
     if (mode === 'pregnancy') return !!dueDate.trim();
@@ -122,6 +138,22 @@ export const PhaseOnboardingPanel: React.FC<PhaseOnboardingPanelProps> = ({ onCl
         >
           {t('settings.save')}
         </Button>
+        {profile && (
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            className="btn--softpill"
+            onClick={() => {
+              actions.clear();
+              setMode('pregnancy');
+              setDueDate('');
+              setBirthDate('');
+            }}
+          >
+            {t('phaseTracker.settings.reset')}
+          </Button>
+        )}
         <Button
           type="button"
           variant="secondary"

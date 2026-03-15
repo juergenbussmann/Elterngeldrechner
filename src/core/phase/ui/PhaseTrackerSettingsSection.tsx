@@ -5,6 +5,7 @@ import { TextInput } from '../../../shared/ui/TextInput';
 import { useI18n } from '../../../shared/lib/i18n';
 import { usePhase } from '../usePhase';
 import { incrementProgressActionCount } from '../../begleitungPlus/upgradeTriggersStore';
+import { getChildDateContext } from '../../../shared/lib/childDateContext';
 import type { PhaseMode } from '../types';
 import '../../../modules/checklists/styles/softpill-buttons-in-cards.css';
 import '../../../modules/checklists/styles/softpill-cards.css';
@@ -17,18 +18,23 @@ function toIsoDateOnly(val: string): string {
 export const PhaseTrackerSettingsSection: React.FC = () => {
   const { t } = useI18n();
   const { profile, actions } = usePhase();
-  const [mode, setMode] = useState<PhaseMode>(profile?.mode ?? 'pregnancy');
-  const [dueDate, setDueDate] = useState(
-    profile?.mode === 'pregnancy' && profile?.dueDateIso ? profile.dueDateIso : ''
+  const child = getChildDateContext(profile);
+
+  const [mode, setMode] = useState<PhaseMode>(() =>
+    child.birthDate ? 'postpartum' : 'pregnancy'
   );
-  const [birthDate, setBirthDate] = useState(
-    profile?.mode === 'postpartum' && profile?.birthDateIso ? profile.birthDateIso : ''
+  const [dueDate, setDueDate] = useState(() =>
+    child.expectedBirthDate ?? ''
+  );
+  const [birthDate, setBirthDate] = useState(() =>
+    child.birthDate ?? ''
   );
 
   useEffect(() => {
-    setMode(profile?.mode ?? 'pregnancy');
-    setDueDate(profile?.mode === 'pregnancy' && profile?.dueDateIso ? profile.dueDateIso : '');
-    setBirthDate(profile?.mode === 'postpartum' && profile?.birthDateIso ? profile.birthDateIso : '');
+    const c = getChildDateContext(profile);
+    setMode(c.birthDate ? 'postpartum' : 'pregnancy');
+    setDueDate(c.expectedBirthDate ?? '');
+    setBirthDate(c.birthDate ?? '');
   }, [profile]);
 
   const canSave = useMemo(() => {

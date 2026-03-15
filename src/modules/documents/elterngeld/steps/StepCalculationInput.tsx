@@ -3,7 +3,7 @@
  * Gemeinsame Monatsmatrix: pro Lebensmonat des Kindes werden Sie und Partner nebeneinander dargestellt.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { TextInput } from '../../../../shared/ui/TextInput';
 import { SelectionField } from '../../../../shared/ui/SelectionModal';
@@ -26,6 +26,16 @@ function parseNum(value: string | undefined): number {
   const s = String(value ?? '').replace(',', '.');
   const n = parseFloat(s);
   return Number.isNaN(n) ? 0 : n;
+}
+
+/** Prüft, ob die Übernahme-Aktion für diesen Elternteil/Monat angezeigt werden soll. */
+function shouldShowCopyToFollowing(
+  parent: CalculationParentInput,
+  currentMonth: number
+): boolean {
+  const current = parent.months.find((m) => m.month === currentMonth);
+  if (!current || current.mode === 'none') return false;
+  return parent.months.some((x) => x.month > currentMonth && x.mode !== 'none');
 }
 
 type Props = {
@@ -101,6 +111,14 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
   const getMonthIndex = (parentIndex: number, month: number) =>
     plan.parents[parentIndex].months.findIndex((m) => m.month === month);
 
+  const scrollToMonth = useCallback((month: number) => {
+    const el = document.getElementById(`elterngeld-month-${month}`);
+    if (!el) return;
+    const details = el.closest('details');
+    if (details && !details.open) details.open = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   const renderParentBlock = (
     parentIndex: number,
     month: number,
@@ -112,9 +130,7 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
 
     const parent = plan.parents[parentIndex];
     const hasBezug = m.mode !== 'none';
-    const hasFollowingActive = parent.months.some(
-      (x) => x.month > month && x.mode !== 'none'
-    );
+    const showCopyAction = shouldShowCopyToFollowing(parent, month);
 
     const hasMaternity = parentIndex === 0 && m.hasMaternityBenefit;
 
@@ -185,20 +201,6 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
                       }
                     />
                   </label>
-                  {hasFollowingActive && (
-                    <button
-                      type="button"
-                      className="elterngeld-copy-action"
-                      onClick={() =>
-                        applyToFollowingMonths(parentIndex, month, {
-                          incomeDuringNet: true,
-                          hoursPerWeek: true,
-                        })
-                      }
-                    >
-                      Werte für folgende Bezugsmonate übernehmen
-                    </button>
-                  )}
                 </>
               ) : (
                 <p className="elterngeld-matrix__no-bezug-hint">
@@ -206,6 +208,20 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
                 </p>
               )}
             </>
+          )}
+          {showCopyAction && (
+            <button
+              type="button"
+              className="elterngeld-copy-action"
+              onClick={() =>
+                applyToFollowingMonths(parentIndex, month, {
+                  incomeDuringNet: true,
+                  hoursPerWeek: true,
+                })
+              }
+            >
+              Werte für folgende Bezugsmonate übernehmen
+            </button>
           )}
         </div>
       </div>
@@ -215,6 +231,7 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
   const renderMonthRow = (month: number, isActive: boolean) => (
     <div
       key={month}
+      id={`elterngeld-month-${month}`}
       className={`elterngeld-matrix__month-row ${isActive ? 'elterngeld-matrix__month-row--active' : 'elterngeld-matrix__month-row--no-bezug'}`}
     >
       <h5 className="elterngeld-matrix__month-heading">Lebensmonat {month}</h5>
@@ -228,6 +245,7 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
   const renderMonthRowCompact = (month: number, isActive: boolean) => (
     <div
       key={month}
+      id={`elterngeld-month-${month}`}
       className={`elterngeld-matrix__month-row elterngeld-matrix__month-row--compact ${isActive ? 'elterngeld-matrix__month-row--active' : 'elterngeld-matrix__month-row--no-bezug'}`}
     >
       <h5 className="elterngeld-matrix__month-heading">Lebensmonat {month}</h5>
@@ -331,6 +349,7 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
                   (m.mode === 'plus' || m.mode === 'partnerBonus') && (m.hoursPerWeek ?? 0) > 32,
               }))}
               label=""
+              onMonthClick={scrollToMonth}
             />
           </div>
           {parentB && (
@@ -344,6 +363,7 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange }) => {
                     (m.mode === 'plus' || m.mode === 'partnerBonus') && (m.hoursPerWeek ?? 0) > 32,
                 }))}
                 label=""
+                onMonthClick={scrollToMonth}
               />
             </div>
           )}

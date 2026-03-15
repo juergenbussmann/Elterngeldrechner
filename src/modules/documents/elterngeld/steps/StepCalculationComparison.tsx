@@ -43,9 +43,16 @@ function getModeForMonth(parent: ParentCalculationResult, month: number): string
 type Props = {
   resultA: CalculationResult;
   resultB: CalculationResult;
+  labelA?: string;
+  labelB?: string;
 };
 
-export const StepCalculationComparison: React.FC<Props> = ({ resultA, resultB }) => {
+export const StepCalculationComparison: React.FC<Props> = ({
+  resultA,
+  resultB,
+  labelA = 'Aktueller Plan',
+  labelB = 'Vergleichsvariante',
+}) => {
   const totalA = resultA.householdTotal;
   const totalB = resultB.householdTotal;
   const diff = totalB - totalA;
@@ -63,11 +70,11 @@ export const StepCalculationComparison: React.FC<Props> = ({ resultA, resultB })
         <h3 className="elterngeld-step__title">Vergleich</h3>
         <div className="elterngeld-comparison__totals">
           <div className="elterngeld-comparison__total-block">
-            <span className="elterngeld-comparison__total-label">Aktueller Plan</span>
+            <span className="elterngeld-comparison__total-label">{labelA}</span>
             <span className="elterngeld-comparison__total-value">{formatCurrency(totalA)}</span>
           </div>
           <div className="elterngeld-comparison__total-block">
-            <span className="elterngeld-comparison__total-label">Alternative Variante</span>
+            <span className="elterngeld-comparison__total-label">{labelB}</span>
             <span className="elterngeld-comparison__total-value">{formatCurrency(totalB)}</span>
           </div>
           <div
@@ -97,14 +104,10 @@ export const StepCalculationComparison: React.FC<Props> = ({ resultA, resultB })
                 </th>
                 <th className="elterngeld-comparison__col-person">Person</th>
                 <th className="elterngeld-calculation__th-right elterngeld-comparison__col-amount elterngeld-comparison__th-wrap elterngeld-comparison__th-no-hyphen">
-                  Akt.
-                  <br />
-                  Plan
+                  {labelA}
                 </th>
                 <th className="elterngeld-calculation__th-right elterngeld-comparison__col-amount elterngeld-comparison__th-wrap">
-                  Alter-
-                  <br />
-                  native
+                  {labelB}
                 </th>
                 <th className="elterngeld-calculation__th-right elterngeld-comparison__col-amount">Diff.</th>
               </tr>

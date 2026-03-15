@@ -296,7 +296,7 @@ a[href^='tel:'] {
 .app-shell {
   position: relative;
   min-height: 100vh;
-  padding-top: 56px; /* header-hoogte */
+  padding-top: calc(56px + env(safe-area-inset-top, 0px)); /* header + Safe Area oben */
   padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom, 0px)); /* footer-hoogte inkl. Safe-Area */
   background-color: transparent; /* Hintergrund wird durch BackgroundLayers bereitgestellt */
   z-index: 1;
@@ -313,18 +313,20 @@ a[href^='tel:'] {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* HEADER – 3-Zonen-Layout, Titel exakt zentriert */
+/* HEADER – 3-Zonen-Layout, Titel exakt zentriert, Safe-Area-tauglich */
 .app-shell__header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 10;
-  height: 56px;
+  height: calc(56px + env(safe-area-inset-top, 0px));
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: env(safe-area-inset-top, 0px) 16px 0 16px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--surface-border);
   background-color: var(--surface);
   backdrop-filter: blur(10px);

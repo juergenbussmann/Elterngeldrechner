@@ -33,11 +33,20 @@ const useObjectUrl = (blob?: Blob): string => {
 
 const DocumentThumbnail: React.FC<{ item: DocumentItem }> = ({ item }) => {
   const isImage = item.mimeType?.startsWith('image/') ?? false;
+  const isPdf = item.mimeType === 'application/pdf';
   const url = useObjectUrl(isImage ? item.blob : undefined);
   if (!url || !item.blob) {
     return (
-      <div className="documents__thumbnail documents__thumbnail--placeholder ui-rounded" aria-hidden>
-        📄
+      <div
+        className="documents__thumbnail documents__thumbnail--placeholder ui-rounded"
+        aria-hidden
+        title={isPdf ? 'PDF' : undefined}
+      >
+        {isPdf ? (
+          <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>PDF</span>
+        ) : (
+          '📄'
+        )}
       </div>
     );
   }

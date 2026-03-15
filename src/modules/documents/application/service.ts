@@ -17,7 +17,13 @@ export const addDocument = async (document: Omit<DocumentItem, 'id'>): Promise<D
     ...document,
     id: generateId(),
   };
+  if (import.meta.env.DEV) {
+    console.time('[documents] addDocument (save to IndexedDB)');
+  }
   await saveDocument(next);
+  if (import.meta.env.DEV) {
+    console.timeEnd('[documents] addDocument (save to IndexedDB)');
+  }
   return next;
 };
 

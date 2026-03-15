@@ -97,6 +97,12 @@ export const StepPlan: React.FC<Props> = ({ values, onChange }) => {
               />
               <span>Partnerschaftsbonus</span>
             </label>
+            <p className="elterngeld-step__hint elterngeld-step__hint--below">
+              Der Partnerschaftsbonus kann zusätzliche ElterngeldPlus-Monate ermöglichen, wenn beide
+              Elternteile gleichzeitig in Teilzeit arbeiten und die Voraussetzungen erfüllt sind.
+              Dadurch kann sich der Bezugszeitraum verändern. Ob sich das finanziell lohnt, hängt von
+              Einkommen, Arbeitszeit und der Verteilung der Monate ab.
+            </p>
           </>
         )}
       </div>

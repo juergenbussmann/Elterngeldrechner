@@ -50,7 +50,7 @@
   flex-shrink: 0;
   border: 2px solid var(--color-border, #e4e4e7);
   background: var(--color-surface, #fff);
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #505050);
 }
 
 .elterngeld-flow-stepper__item--completed .elterngeld-flow-stepper__marker {
@@ -69,7 +69,7 @@
 .elterngeld-flow-stepper__item--upcoming .elterngeld-flow-stepper__marker {
   border-color: var(--color-border, #e4e4e7);
   background: var(--color-surface, #fff);
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #505050);
 }
 
 .elterngeld-flow-stepper__check {
@@ -81,7 +81,7 @@
   margin-left: 0.35rem;
   font-size: 0.8rem;
   font-weight: 500;
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #505050);
 }
 
 .elterngeld-flow-stepper__label-short {
@@ -94,7 +94,7 @@
 }
 
 .elterngeld-flow-stepper__item--completed .elterngeld-flow-stepper__label {
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #505050);
 }
 
 @media (max-width: 480px) {

@@ -96,7 +96,7 @@ export const StepSummary: React.FC<Props> = ({
             className="next-steps__button btn--softpill"
             onClick={onNavigateToCalculation}
           >
-            Zur Elterngeldberechnung
+            Weiter zur Elterngeld-Berechnung
           </Button>
         )}
       </div>

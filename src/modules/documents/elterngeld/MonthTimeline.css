@@ -4,7 +4,7 @@
 
 .month-timeline__label {
   font-size: 0.8rem;
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #505050);
   margin: 0 0 0.4rem 0;
 }
 
@@ -24,7 +24,7 @@
 
 .month-timeline__legend {
   font-size: 0.7rem;
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #505050);
   margin: 0.35rem 0 0 0;
 }
 
@@ -43,9 +43,30 @@
   position: relative;
 }
 
+.month-timeline__tile--clickable {
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.month-timeline__tile--clickable:hover {
+  filter: brightness(0.97);
+}
+
+.month-timeline__tile--clickable:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
+}
+
+.month-timeline__tile--active {
+  box-shadow: 0 0 0 2px var(--color-primary, #2563eb);
+}
+
 .month-timeline__tile--none {
   background: rgba(248, 250, 252, 0.9);
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #505050);
   border-style: dashed;
 }
 

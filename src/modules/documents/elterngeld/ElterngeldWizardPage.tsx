@@ -15,6 +15,7 @@ import {
   clearPreparation,
   isPreparationEmpty,
 } from './infra/elterngeldPreparationStorage';
+import { Card } from '../../../shared/ui/Card';
 import { StepBasicData } from './steps/StepBasicData';
 import { StepParents } from './steps/StepParents';
 import { StepPlan } from './steps/StepPlan';
@@ -135,7 +136,9 @@ export const ElterngeldWizardPage: React.FC = () => {
   const handleCreatePdf = useCallback(async () => {
     setIsSubmitting(true);
     try {
+      if (import.meta.env.DEV) console.time('[documents] PDF build (ElterngeldSummary)');
       const blob = buildElterngeldSummaryPdf(values);
+      if (import.meta.env.DEV) console.timeEnd('[documents] PDF build (ElterngeldSummary)');
       await addDocument({
         title: 'Elterngeld-Vorbereitung',
         createdAt: new Date().toISOString(),
@@ -157,7 +160,7 @@ export const ElterngeldWizardPage: React.FC = () => {
       <div className="screen-placeholder elterngeld-screen">
         <section className="next-steps next-steps--plain elterngeld__section">
           <SectionHeader as="h1" title="Elterngeld vorbereiten" />
-          <div className="elterngeld-success-card still-daily-checklist__card">
+          <Card className="still-daily-checklist__card">
             <p className="elterngeld-success-text">PDF erstellt und in „Dokumente“ gespeichert.</p>
             <Button
               type="button"
@@ -168,7 +171,7 @@ export const ElterngeldWizardPage: React.FC = () => {
             >
               Zu Dokumente
             </Button>
-          </div>
+          </Card>
         </section>
       </div>
     );
@@ -212,10 +215,11 @@ export const ElterngeldWizardPage: React.FC = () => {
           />
         )}
         {step.id !== 'summary' && (
-          <div className="elterngeld-nav">
+          <div className="next-steps__stack elterngeld-actions">
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
+              className="next-steps__button btn--softpill"
               onClick={handleBack}
               disabled={stepIndex === 0}
             >
@@ -224,19 +228,19 @@ export const ElterngeldWizardPage: React.FC = () => {
             <Button
               type="button"
               variant="primary"
-              className="btn--softpill"
+              className="next-steps__button btn--softpill"
               onClick={handleNext}
             >
               Weiter
             </Button>
           </div>
         )}
-        <div className="elterngeld-nav elterngeld-nav--secondary">
+        <div className="next-steps__stack elterngeld-actions elterngeld-actions--tertiary">
           <Button
             type="button"
             variant="ghost"
+            className="next-steps__button"
             onClick={handleReset}
-            className="elterngeld-reset-btn"
           >
             Neu beginnen
           </Button>

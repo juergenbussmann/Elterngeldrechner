@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
 import { useI18n } from '../../../shared/lib/i18n';
 import { useTheme } from '../../../core/theme/ThemeProvider';
 import type { DocumentItem } from '../domain/types';
+import { openBlobInNewTab, downloadBlob, shareBlob } from '../lib/pdfActions';
 
 type DocumentViewerDialogProps = {
   isOpen: boolean;
@@ -30,6 +31,26 @@ const useObjectUrl = (blob?: Blob): string => {
   return url;
 };
 
+const useIsMobile = (): boolean => {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
+  );
+
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  return isMobile;
+};
+
+const getPdfFilename = (title: string): string => {
+  const base = title.replace(/[^\w\säöüÄÖÜß-]/gi, '').trim() || 'document';
+  return base.endsWith('.pdf') ? base : `${base}.pdf`;
+};
+
 export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
   isOpen,
   document,
@@ -39,14 +60,41 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
   const { t } = useI18n();
   const theme = useTheme();
   const { spacing, colors } = theme;
+  const isMobile = useIsMobile();
+
   const isImage = document?.mimeType?.startsWith('image/') ?? false;
   const isPdf = document?.mimeType === 'application/pdf';
+
   const imageUrl = useObjectUrl(isImage ? document?.blob : undefined);
   const pdfUrl = useObjectUrl(isPdf ? document?.blob : undefined);
+
+  const handlePdfOpen = useCallback(() => {
+    if (document?.blob && isPdf) {
+      openBlobInNewTab(document.blob);
+    }
+  }, [document?.blob, isPdf]);
+
+  const handlePdfDownload = useCallback(() => {
+    if (document?.blob && isPdf) {
+      downloadBlob(document.blob, getPdfFilename(document.title));
+    }
+  }, [document?.blob, document?.title, isPdf]);
+
+  const handlePdfShare = useCallback(async () => {
+    if (document?.blob && isPdf) {
+      const ok = await shareBlob(document.blob, document.title, getPdfFilename(document.title));
+      if (!ok) {
+        handlePdfDownload();
+      }
+    }
+  }, [document?.blob, document?.title, isPdf, handlePdfDownload]);
 
   if (!document) {
     return null;
   }
+
+  const showPdfIframe = isPdf && !isMobile && pdfUrl;
+  const showPdfActions = isPdf && document.blob;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('documents.viewerTitle')}>
@@ -57,7 +105,7 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
             alt={document.title}
             style={{ width: '100%', borderRadius: theme.radii.md, border: `1px solid ${colors.border}` }}
           />
-        ) : pdfUrl && isPdf ? (
+        ) : showPdfIframe ? (
           <iframe
             src={pdfUrl}
             title={document.title}
@@ -68,9 +116,38 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
               borderRadius: theme.radii.md,
             }}
           />
+        ) : null}
+
+        {showPdfActions ? (
+          <div
+            style={{
+              padding: spacing.lg,
+              backgroundColor: 'var(--color-background)',
+              border: `1px solid ${colors.border}`,
+              borderRadius: theme.radii.md,
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+              {t('documents.pdfType')}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }}>
+              <Button type="button" variant="primary" onClick={handlePdfOpen}>
+                {t('documents.pdfOpen')}
+              </Button>
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <Button type="button" variant="secondary" onClick={handlePdfShare}>
+                  {t('documents.pdfShare')}
+                </Button>
+              )}
+              <Button type="button" variant="secondary" onClick={handlePdfDownload}>
+                {t('documents.pdfDownload')}
+              </Button>
+            </div>
+          </div>
         ) : document.mimeType === 'text/plain' && document.blob ? (
           <TextDocumentPreview blob={document.blob} />
         ) : null}
+
         <div>
           <strong>{document.title}</strong>
           {document.notes ? <p style={{ marginTop: spacing.xs }}>{document.notes}</p> : null}

@@ -251,16 +251,12 @@ export const ParentLeaveFormPage: React.FC = () => {
 
     try {
       if (import.meta.env.DEV) {
-        console.group('[parental-leave] create PDF');
-        console.log('requestType', values.requestType);
+        console.time('[documents] PDF build (ParentLeave)');
       }
-
       const letterContent = getParentLeaveLetterContent(values);
       const blob = buildParentLeavePdf(letterContent);
-
       if (import.meta.env.DEV) {
-        console.log('PDF built', { title: letterContent.title });
-        console.groupEnd();
+        console.timeEnd('[documents] PDF build (ParentLeave)');
       }
 
       await addDocument({

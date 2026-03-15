@@ -60,6 +60,7 @@ export const OptimizationGoalDialog: React.FC<Props> = ({
   const [selected, setSelected] = useState<OptimizationGoal>('maxMoney');
 
   const handleConfirm = () => {
+    if (UNSUPPORTED_GOALS.includes(selected)) return;
     onConfirm(selected);
     onClose();
   };
@@ -82,26 +83,22 @@ export const OptimizationGoalDialog: React.FC<Props> = ({
             return (
               <label
                 key={opt.value}
-                className={`settings-radio elterngeld-optimization-goal__option${isUnsupported ? ' elterngeld-optimization-goal__option--unsupported' : ''}`}
+                className={`settings-radio elterngeld-optimization-goal__option${isUnsupported ? ' elterngeld-optimization-goal__option--disabled' : ''}`}
               >
                 <input
                   type="radio"
                   name="optimizationGoal"
                   value={opt.value}
                   checked={selected === opt.value}
-                  onChange={() => setSelected(opt.value)}
+                  onChange={() => !isUnsupported && setSelected(opt.value)}
+                  disabled={isUnsupported}
                 />
                 <span className="elterngeld-optimization-goal__option-content">
                   <span className="elterngeld-optimization-goal__option-label">
                     {opt.label}
-                    {isUnsupported && (
-                      <span className="elterngeld-optimization-goal__badge" title="Noch nicht implementiert">
-                        in Vorbereitung
-                      </span>
-                    )}
                   </span>
                   <span className="elterngeld-optimization-goal__option-desc">
-                    {opt.description}
+                    {isUnsupported ? 'Derzeit noch nicht verfügbar.' : opt.description}
                   </span>
                 </span>
               </label>

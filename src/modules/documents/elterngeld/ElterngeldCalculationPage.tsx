@@ -485,6 +485,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
               optimizationStatus={optimizationStatus}
               onAdoptOptimization={handleAdoptOptimization}
               onDiscardOptimization={handleDiscardOptimization}
+              onShowCompareOriginal={planB ? handleShowComparison : undefined}
               onCreatePdf={handleCreatePdf}
               isSubmitting={isSubmitting}
             />

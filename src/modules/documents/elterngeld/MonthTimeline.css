@@ -43,6 +43,23 @@
   position: relative;
 }
 
+/* Zusammenhängende Monate gleicher Bezugsart als Block erkennbar */
+.month-timeline__tile--block-single {
+  border-radius: 8px;
+}
+
+.month-timeline__tile--block-start {
+  border-radius: 8px 2px 2px 8px;
+}
+
+.month-timeline__tile--block-middle {
+  border-radius: 2px;
+}
+
+.month-timeline__tile--block-end {
+  border-radius: 2px 8px 8px 2px;
+}
+
 .month-timeline__tile--clickable {
   cursor: pointer;
   font: inherit;

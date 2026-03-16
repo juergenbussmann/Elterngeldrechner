@@ -468,6 +468,7 @@ type Props = {
   onShowCompareOriginal?: () => void;
   onCreatePdf?: () => void;
   isSubmitting?: boolean;
+  onOpenOptimizationGoal?: () => void;
 };
 
 export const StepCalculationResult: React.FC<Props> = ({
@@ -481,6 +482,7 @@ export const StepCalculationResult: React.FC<Props> = ({
   onShowCompareOriginal,
   onCreatePdf,
   isSubmitting = false,
+  onOpenOptimizationGoal,
 }) => {
   const { parents, householdTotal, validation, meta } = result;
 
@@ -670,6 +672,22 @@ export const StepCalculationResult: React.FC<Props> = ({
           {formatCurrency(householdTotal)}
         </p>
       </Card>
+
+      {!optimizationGoal && onOpenOptimizationGoal && (
+        <div className="elterngeld-calculation__optimization-hint-block">
+          <p className="elterngeld-calculation__optimization-hint-text">
+            Sie können jetzt auch prüfen, ob eine andere Aufteilung vorteilhafter wäre.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill"
+            onClick={onOpenOptimizationGoal}
+          >
+            Optimierungsziel wählen
+          </Button>
+        </div>
+      )}
 
       {onCreatePdf && (
         <Button

@@ -71,7 +71,21 @@ export const MonthTimeline: React.FC<MonthTimelineProps> = ({
         role="list"
         aria-label={label ?? 'Lebensmonate des Kindes'}
       >
-        {displayMonths.map(({ month, mode, hasWarning }) => {
+        {displayMonths.map((item, idx) => {
+          const { month, mode, hasWarning } = item;
+          const prevMode = idx > 0 ? displayMonths[idx - 1].mode : null;
+          const nextMode = idx < displayMonths.length - 1 ? displayMonths[idx + 1].mode : null;
+          const sameAsPrev = prevMode === mode;
+          const sameAsNext = nextMode === mode;
+          const blockClass =
+            !sameAsPrev && !sameAsNext
+              ? 'month-timeline__tile--block-single'
+              : sameAsPrev && sameAsNext
+                ? 'month-timeline__tile--block-middle'
+                : sameAsPrev
+                  ? 'month-timeline__tile--block-end'
+                  : 'month-timeline__tile--block-start';
+
           const title = `Lebensmonat ${month}: ${MODE_TITLE[mode]}${hasWarning ? ' (Hinweis: prüfen)' : ''}`;
           const ariaLabel = onMonthClick
             ? `${title}. Zum Monatseintrag scrollen.`
@@ -81,6 +95,7 @@ export const MonthTimeline: React.FC<MonthTimelineProps> = ({
             role: 'listitem' as const,
             className: `month-timeline__tile
               month-timeline__tile--${mode}
+              ${blockClass}
               ${hasWarning ? ' month-timeline__tile--warning' : ''}
               ${onMonthClick ? ' month-timeline__tile--clickable' : ''}
               ${isActive ? ' month-timeline__tile--active' : ''}`,

@@ -58,7 +58,7 @@ export const StepBasicData: React.FC<Props> = ({ values, onChange }) => {
 
   return (
     <Card className="still-daily-checklist__card">
-      <h3 className="elterngeld-step__title">Grunddaten</h3>
+      <h3 className="elterngeld-step__title">Geburt & Kind</h3>
       <div className="elterngeld-step__fields">
         <SelectionField
           label="Bundesland"
@@ -68,7 +68,7 @@ export const StepBasicData: React.FC<Props> = ({ values, onChange }) => {
           onChange={(v) => update('state', v)}
         />
         <label className={`elterngeld-step__label${birthDisabled ? ' elterngeld-step__label--disabled' : ''}`}>
-          <span>Geburt des Kindes</span>
+          <span>Wann wird dein Kind geboren?</span>
           <TextInput
             type="date"
             value={values.child.birthDate}
@@ -103,7 +103,7 @@ export const StepBasicData: React.FC<Props> = ({ values, onChange }) => {
             checked={values.child.multipleBirth}
             onChange={(e) => update('child.multipleBirth', e.target.checked)}
           />
-          <span>Mehrlingsgeburt</span>
+          <span>Handelt es sich um Zwillinge oder Mehrlinge?</span>
         </label>
       </div>
     </Card>

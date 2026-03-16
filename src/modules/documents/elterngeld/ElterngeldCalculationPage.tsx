@@ -4,7 +4,7 @@
  * Unterstützt Variantenvergleich (Aktueller Plan vs. Alternative Variante).
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
@@ -13,6 +13,7 @@ import { getChildDateContext } from '../../../shared/lib/childDateContext';
 import { useNotifications } from '../../../shared/lib/notifications';
 import { addDocument } from '../application/service';
 import type { ElterngeldCalculationPlan, CalculationResult } from './calculation';
+import type { NavigateToInputTarget } from './steps/StepCalculationResult';
 import { createDefaultPlan, calculatePlan, duplicatePlan } from './calculation';
 import {
   loadCalculationPlan,
@@ -34,9 +35,11 @@ import {
   type OptimizationGoal,
 } from './steps/OptimizationGoalDialog';
 import { ElterngeldFlowStepper } from './ElterngeldFlowStepper';
+import { ElterngeldSelectButton } from './ui/ElterngeldSelectButton';
+import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
 import './ElterngeldWizardPage.css';
 import './ElterngeldFlowStepper.css';
-import './MonthTimeline.css';
+import './ui/elterngeld-ui.css';
 import '../../checklists/styles/softpill-buttons-in-cards.css';
 import '../../checklists/styles/softpill-cards.css';
 
@@ -98,13 +101,24 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [variantBIsOutdated, setVariantBIsOutdated] = useState(false);
   const [optimizationAdoptedInSession, setOptimizationAdoptedInSession] = useState(false);
+  const [navigateTarget, setNavigateTarget] = useState<NavigateToInputTarget | null>(null);
 
   const currentPlan = editingVariant === 'A' ? plan : planB!;
   const setCurrentPlan = editingVariant === 'A' ? setPlan : setPlanB;
 
+  const liveResult = useMemo(() => {
+    if (isPlanEmpty(currentPlan)) return null;
+    try {
+      return calculatePlan(currentPlan);
+    } catch {
+      return null;
+    }
+  }, [currentPlan]);
+
   const handleCalculate = useCallback(() => {
     setOptimizationGoal(undefined);
     setOptimizationStatus('idle');
+    setNavigateTarget(null);
     const res = calculatePlan(currentPlan);
     setPlanUsedForResult(currentPlan);
     setResult(res);
@@ -113,6 +127,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
 
   const handleRunOptimization = useCallback(
     (goal: OptimizationGoal) => {
+      setNavigateTarget(null);
       const res = calculatePlan(currentPlan);
       setOptimizationGoal(goal);
       setOptimizationStatus('proposed');
@@ -130,6 +145,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
 
   const handleShowComparison = useCallback(() => {
     if (!planB) return;
+    setNavigateTarget(null);
     setResult(null);
     setView('compare');
   }, [planB]);
@@ -153,6 +169,12 @@ export const ElterngeldCalculationPage: React.FC = () => {
   }, [view]);
 
   const handleBack = useCallback(() => {
+    setNavigateTarget(null);
+    setView('input');
+  }, []);
+
+  const handleNavigateToInput = useCallback((target: NavigateToInputTarget) => {
+    setNavigateTarget(target);
     setView('input');
   }, []);
 
@@ -289,7 +311,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
           Unverbindliche Schätzung – Orientierung für Ihre Planung
         </p>
         <p className="elterngeld-calculation__storage-hint">
-          Ihre Eingaben werden lokal gespeichert.
+          ✓ Deine Angaben werden automatisch lokal gespeichert.
         </p>
 
         {conflictDetected && !conflictResolved && (
@@ -340,29 +362,29 @@ export const ElterngeldCalculationPage: React.FC = () => {
 
         {conflictResolved && view === 'input' && (
           <>
+            {liveResult && <ElterngeldLiveCard result={liveResult} />}
             {planB && (
-              <div className="elterngeld-variant-tabs" role="tablist">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={editingVariant === 'A'}
-                  className={`elterngeld-variant-tab ${editingVariant === 'A' ? 'elterngeld-variant-tab--active' : ''}`}
+              <div className="elterngeld-variant-tabs elterngeld-select-btn-row" role="tablist">
+                <ElterngeldSelectButton
+                  label="Aktueller Plan"
+                  selected={editingVariant === 'A'}
+                  showCheck={false}
                   onClick={() => setEditingVariant('A')}
-                >
-                  Aktueller Plan
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={editingVariant === 'B'}
-                  className={`elterngeld-variant-tab ${editingVariant === 'B' ? 'elterngeld-variant-tab--active' : ''}`}
+                  ariaPressed={editingVariant === 'A'}
+                  className="elterngeld-variant-select-btn"
+                />
+                <ElterngeldSelectButton
+                  label="Alternative Variante"
+                  selected={editingVariant === 'B'}
+                  showCheck={false}
                   onClick={() => setEditingVariant('B')}
+                  ariaPressed={editingVariant === 'B'}
+                  className="elterngeld-variant-select-btn"
                 >
-                  Alternative Variante
                   {variantBIsOutdated && (
                     <span className="elterngeld-variant-tab__badge">älterer Stand</span>
                   )}
-                </button>
+                </ElterngeldSelectButton>
               </div>
             )}
             {variantBIsOutdated && editingVariant === 'B' && (
@@ -394,6 +416,16 @@ export const ElterngeldCalculationPage: React.FC = () => {
             <StepCalculationInput
               plan={editingVariant === 'A' ? plan : planB!}
               onChange={editingVariant === 'A' ? setPlan : (p) => setPlanB(p)}
+              initialFocusMonth={
+                navigateTarget && 'focusMonth' in navigateTarget ? navigateTarget.focusMonth : null
+              }
+              initialScrollTo={
+                navigateTarget && 'focusSection' in navigateTarget
+                  ? navigateTarget.focusSection
+                  : navigateTarget && 'focusMonth' in navigateTarget
+                    ? 'monatsplan'
+                    : null
+              }
             />
             <div className="next-steps__stack elterngeld-nav elterngeld-nav--with-variants">
               <Button
@@ -495,6 +527,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
               onCreatePdf={handleCreatePdf}
               isSubmitting={isSubmitting}
               onOpenOptimizationGoal={() => setShowOptimizationGoalDialog(true)}
+              onNavigateToInput={handleNavigateToInput}
             />
             <div className="next-steps__stack elterngeld-nav">
               {optimizationGoal && (
@@ -504,7 +537,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
                   className="next-steps__button btn--softpill"
                   onClick={() => setShowOptimizationGoalDialog(true)}
                 >
-                  Anderes Optimierungsziel wählen
+                  Zurück zur Optimierung
                 </Button>
               )}
               {planB && (

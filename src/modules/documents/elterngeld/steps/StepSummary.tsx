@@ -2,21 +2,8 @@ import React from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
+import type { CalculationResult } from '../calculation';
 import { getElterngeldDeadlineInfo } from '../elterngeldDeadlines';
-import { GERMAN_STATES } from '../stateConfig';
-
-const EMPLOYMENT_LABELS: Record<string, string> = {
-  employed: 'Angestellt',
-  self_employed: 'Selbstständig',
-  mixed: 'Gemischt',
-  none: 'Keine Erwerbstätigkeit',
-};
-
-const APPLICANT_MODE_LABELS: Record<string, string> = {
-  single_applicant: 'Nur ich',
-  both_parents: 'Beide Elternteile',
-  single_parent: 'Ich bin alleinerziehend',
-};
 
 function formatDate(value?: string | null): string {
   if (!value) return '–';
@@ -24,11 +11,20 @@ function formatDate(value?: string | null): string {
   return Number.isNaN(d.getTime()) ? '–' : d.toLocaleDateString('de-DE');
 }
 
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+}
+
+function countBezugMonths(parent: CalculationResult['parents'][0]): number {
+  return parent.monthlyResults.filter((r) => r.mode !== 'none' || r.amount > 0).length;
+}
+
 type Props = {
   values: ElterngeldApplication;
   onCreatePdf: () => void;
   isSubmitting: boolean;
   onNavigateToCalculation?: () => void;
+  liveResult?: CalculationResult | null;
 };
 
 export const StepSummary: React.FC<Props> = ({
@@ -36,37 +32,43 @@ export const StepSummary: React.FC<Props> = ({
   onCreatePdf,
   isSubmitting,
   onNavigateToCalculation,
+  liveResult,
 }) => {
   const deadlineInfo = getElterngeldDeadlineInfo(values);
-  const stateName =
-    GERMAN_STATES.find((s) => s.stateCode === values.state)?.displayName || values.state || '–';
-  const applicantMode = values.applicantMode;
-  const showParentB = applicantMode === 'both_parents';
-  const parentB = values.parentB;
+  const showParentB = values.applicantMode === 'both_parents';
+  const birthDate = values.child.birthDate?.trim() || values.child.expectedBirthDate?.trim();
 
   return (
     <Card className="still-daily-checklist__card">
-      <h3 className="elterngeld-step__title">Zusammenfassung</h3>
+      <h3 className="elterngeld-step__title">Ergebnis</h3>
       <div className="elterngeld-step__summary">
-        <p><strong>Bundesland:</strong> {stateName}</p>
-        <p><strong>Geburtsdatum:</strong> {formatDate(values.child.birthDate)}</p>
-        <p><strong>ET (falls noch nicht geboren):</strong> {formatDate(values.child.expectedBirthDate)}</p>
-        <p><strong>Wer beantragt:</strong> {APPLICANT_MODE_LABELS[applicantMode] ?? applicantMode}</p>
-        <p><strong>Sie:</strong> {values.parentA.firstName} {values.parentA.lastName}</p>
-        <p><strong>Ihre Beschäftigung:</strong> {EMPLOYMENT_LABELS[values.parentA.employmentType] ?? values.parentA.employmentType}</p>
-        {showParentB && parentB && (
+        <p><strong>Geburt:</strong> {formatDate(birthDate)}</p>
+        {liveResult && (
           <>
-            <p><strong>Partner:</strong> {parentB.firstName} {parentB.lastName}</p>
-            <p><strong>Beschäftigung Partner:</strong> {EMPLOYMENT_LABELS[parentB.employmentType] ?? parentB.employmentType}</p>
+            <p><strong>Monate Mutter:</strong> {countBezugMonths(liveResult.parents[0])}</p>
+            {liveResult.parents[1] && (
+              <p><strong>Monate Partner:</strong> {countBezugMonths(liveResult.parents[1])}</p>
+            )}
           </>
         )}
-        <p><strong>Modell:</strong> {values.benefitPlan.model}</p>
-        <p><strong>Ihre Monate:</strong> {values.benefitPlan.parentAMonths || '–'}</p>
-        {showParentB && (
-          <p><strong>Monate Partner:</strong> {values.benefitPlan.parentBMonths || '–'}</p>
+        {!liveResult && (
+          <>
+            <p><strong>Monate Mutter:</strong> {values.benefitPlan.parentAMonths || '–'}</p>
+            {showParentB && (
+              <p><strong>Monate Partner:</strong> {values.benefitPlan.parentBMonths || '–'}</p>
+            )}
+          </>
         )}
-        {showParentB && (
-          <p><strong>Partnerschaftsbonus:</strong> {values.benefitPlan.partnershipBonus ? 'Ja' : 'Nein'}</p>
+        <p className="elterngeld-step__summary-section-title"><strong>Voraussichtliches Elterngeld</strong></p>
+        {liveResult ? (
+          <>
+            {liveResult.parents.map((p) => (
+              <p key={p.id}><strong>{p.label}:</strong> {formatCurrency(p.total)}</p>
+            ))}
+            <p><strong>Gesamt:</strong> {formatCurrency(liveResult.householdTotal)}</p>
+          </>
+        ) : (
+          <p>Bitte fülle die vorherigen Schritte aus, um die Schätzung zu sehen.</p>
         )}
       </div>
       {deadlineInfo.deadlineLabel && (
@@ -86,7 +88,7 @@ export const StepSummary: React.FC<Props> = ({
           onClick={onCreatePdf}
           disabled={isSubmitting}
         >
-          PDF erstellen
+          {isSubmitting ? 'Wird erstellt…' : 'PDF Übersicht erstellen'}
         </Button>
         {onNavigateToCalculation && (
           <Button
@@ -96,7 +98,7 @@ export const StepSummary: React.FC<Props> = ({
             className="next-steps__button btn--softpill"
             onClick={onNavigateToCalculation}
           >
-            Weiter zur Elterngeld-Berechnung
+            Plan speichern – weiter zur Berechnung
           </Button>
         )}
       </div>

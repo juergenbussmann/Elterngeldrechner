@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
 import { usePhase } from '../../../core/phase/usePhase';
@@ -9,6 +9,7 @@ import { addDocument } from '../application/service';
 import type { ElterngeldApplication } from './types/elterngeldTypes';
 import { INITIAL_ELTERNGELD_APPLICATION } from './types/elterngeldTypes';
 import { applicationToCalculationPlan } from './applicationToCalculationPlan';
+import { calculatePlan } from './calculation';
 import {
   loadPreparation,
   savePreparation,
@@ -16,54 +17,81 @@ import {
   isPreparationEmpty,
 } from './infra/elterngeldPreparationStorage';
 import { Card } from '../../../shared/ui/Card';
-import { StepBasicData } from './steps/StepBasicData';
-import { StepParents } from './steps/StepParents';
+import { StepIntro } from './steps/StepIntro';
+import { StepGeburtKind } from './steps/StepGeburtKind';
+import { StepEinkommen } from './steps/StepEinkommen';
+import { StepElternArbeit } from './steps/StepElternArbeit';
 import { StepPlan } from './steps/StepPlan';
-import { StepDocuments } from './steps/StepDocuments';
 import { StepSummary } from './steps/StepSummary';
-import { ElterngeldFlowStepper } from './ElterngeldFlowStepper';
+import { StepDocuments } from './steps/StepDocuments';
 import { buildElterngeldSummaryPdf } from './pdf/buildElterngeldSummaryPdf';
+import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
 import './ElterngeldWizardPage.css';
 import './ElterngeldFlowStepper.css';
+import './ui/elterngeld-ui.css';
 import '../../checklists/styles/softpill-buttons-in-cards.css';
 import '../../checklists/styles/softpill-cards.css';
 
 const CALCULATION_REQUIRED_ERROR =
   'Bitte geben Sie ein Geburtsdatum oder einen voraussichtlichen Geburtstermin an.';
 
-const STEPS = [
-  { id: 'basic', title: 'Grunddaten', component: StepBasicData },
-  { id: 'parents', title: 'Eltern & Arbeit', component: StepParents },
-  { id: 'plan', title: 'Elterngeld-Plan', component: StepPlan },
-  { id: 'documents', title: 'Unterlagen', component: StepDocuments },
-  { id: 'summary', title: 'Zusammenfassung', component: StepSummary },
+const WIZARD_STEPS = [
+  { id: 'geburtKind', title: 'Geburt & Kind' },
+  { id: 'einkommen', title: 'Einkommen' },
+  { id: 'elternArbeit', title: 'Eltern & Arbeit' },
+  { id: 'plan', title: 'Monate planen' },
+  { id: 'summary', title: 'Ergebnis' },
+  { id: 'documents', title: 'Dokumente' },
 ] as const;
+
+const TOTAL_STEPS = 7; /* Intro + 6 Wizard-Schritte */
 
 export const ElterngeldWizardPage: React.FC = () => {
   const { profile, actions } = usePhase();
   const { goTo } = useNavigation();
   const { showToast } = useNotifications();
+  const [wizardStarted, setWizardStarted] = useState(() => !isPreparationEmpty(loadPreparation()));
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<ElterngeldApplication>(() => {
     const persisted = loadPreparation();
     const base = persisted ?? INITIAL_ELTERNGELD_APPLICATION;
     const childDates = getInitialBirthDateValues(profile, base.child);
-    return { ...base, child: { ...base.child, ...childDates } };
+    return {
+      ...INITIAL_ELTERNGELD_APPLICATION,
+      ...base,
+      child: { ...INITIAL_ELTERNGELD_APPLICATION.child, ...base.child, ...childDates },
+      parentA: { ...INITIAL_ELTERNGELD_APPLICATION.parentA, ...base.parentA },
+      parentB: base.parentB ? { ...INITIAL_ELTERNGELD_APPLICATION.parentA, ...base.parentB } : null,
+      benefitPlan: { ...INITIAL_ELTERNGELD_APPLICATION.benefitPlan, ...base.benefitPlan },
+    };
   });
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
+  const [scrollToId, setScrollToId] = useState<string | null>(null);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
 
-  const step = STEPS[stepIndex];
-  const isLastStep = stepIndex === STEPS.length - 1;
+  const step = WIZARD_STEPS[stepIndex] ?? WIZARD_STEPS[0];
+  const isLastStep = stepIndex === WIZARD_STEPS.length - 1;
+  const currentStepNumber = stepIndex + 2; /* Intro = 1, Basic = 2, ... */
+
+  const liveResult = useMemo(() => {
+    const birthDate = values.child.birthDate?.trim() || values.child.expectedBirthDate?.trim();
+    if (!birthDate) return null;
+    try {
+      const plan = applicationToCalculationPlan(values);
+      return calculatePlan(plan);
+    } catch {
+      return null;
+    }
+  }, [values]);
 
   const handleNext = useCallback(() => {
     setCalculationError(null);
     if (isLastStep) return;
-    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
+    setStepIndex((i) => Math.min(i + 1, WIZARD_STEPS.length - 1));
   }, [isLastStep]);
 
   const handleBack = useCallback(() => {
@@ -108,6 +136,17 @@ export const ElterngeldWizardPage: React.FC = () => {
   }, [profile]);
 
   useEffect(() => {
+    if (!scrollToId || !step?.id) return;
+    const id = scrollToId;
+    const t = setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setScrollToId(null);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [scrollToId, step?.id]);
+
+  useEffect(() => {
     if (!isPreparationEmpty(values)) {
       savePreparation(values);
     }
@@ -129,9 +168,15 @@ export const ElterngeldWizardPage: React.FC = () => {
     const childDates = getInitialBirthDateValues(profile, initial.child);
     setValues({ ...initial, child: { ...initial.child, ...childDates } });
     setStepIndex(0);
+    setWizardStarted(false);
     setCalculationError(null);
     showToast('Vorbereitung zurückgesetzt', { kind: 'success', durationMs: 3000 });
   }, [profile, showToast]);
+
+  const handleStartWizard = useCallback(() => {
+    setWizardStarted(true);
+    setStepIndex(0);
+  }, []);
 
   const handleCreatePdf = useCallback(async () => {
     setIsSubmitting(true);
@@ -159,7 +204,7 @@ export const ElterngeldWizardPage: React.FC = () => {
     return (
       <div className="screen-placeholder elterngeld-screen">
         <section className="next-steps next-steps--plain elterngeld__section">
-          <SectionHeader as="h1" title="Elterngeld vorbereiten" />
+          <SectionHeader as="h1" title="Elterngeld planen" />
           <Card className="still-daily-checklist__card">
             <p className="elterngeld-success-text">PDF erstellt und in „Dokumente“ gespeichert.</p>
             <Button
@@ -177,14 +222,37 @@ export const ElterngeldWizardPage: React.FC = () => {
     );
   }
 
+  if (!wizardStarted) {
+    return (
+      <div className="screen-placeholder elterngeld-screen">
+        <section className="next-steps next-steps--plain elterngeld__section">
+          <SectionHeader as="h1" title="Elterngeld planen" />
+          <div className="elterngeld-wizard-progress">
+            <p className="elterngeld-wizard-progress__label">Schritt 1 von {TOTAL_STEPS}</p>
+            <div className="elterngeld-wizard-progress__bar" role="progressbar" aria-valuenow={1} aria-valuemin={1} aria-valuemax={TOTAL_STEPS}>
+              <div className="elterngeld-wizard-progress__fill" style={{ width: `${(1 / TOTAL_STEPS) * 100}%` }} />
+            </div>
+          </div>
+          <StepIntro onStart={handleStartWizard} />
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="screen-placeholder elterngeld-screen">
       <section className="next-steps next-steps--plain elterngeld__section">
-        <SectionHeader as="h1" title="Elterngeld vorbereiten" />
-        <ElterngeldFlowStepper currentStep={1} />
-        <div className="elterngeld-progress">
-          Schritt {stepIndex + 1} von {STEPS.length}
+        <SectionHeader as="h1" title="Elterngeld planen" />
+        <div className="elterngeld-wizard-progress">
+          <p className="elterngeld-wizard-progress__label">Schritt {currentStepNumber} von {TOTAL_STEPS}</p>
+          <div className="elterngeld-wizard-progress__bar" role="progressbar" aria-valuenow={currentStepNumber} aria-valuemin={1} aria-valuemax={TOTAL_STEPS}>
+            <div className="elterngeld-wizard-progress__fill" style={{ width: `${(currentStepNumber / TOTAL_STEPS) * 100}%` }} />
+          </div>
         </div>
+        <p className="elterngeld-autosave-message">✓ Deine Angaben werden automatisch lokal gespeichert.</p>
+
+        {liveResult && <ElterngeldLiveCard result={liveResult} />}
+
         {calculationError && (
           <p
             ref={errorRef}
@@ -194,17 +262,27 @@ export const ElterngeldWizardPage: React.FC = () => {
             {calculationError}
           </p>
         )}
-        {step.id === 'basic' && (
-          <StepBasicData values={values} onChange={setValues} />
+        {step.id === 'geburtKind' && (
+          <StepGeburtKind values={values} onChange={setValues} />
         )}
-        {step.id === 'parents' && (
-          <StepParents values={values} onChange={setValues} />
+        {step.id === 'einkommen' && (
+          <StepEinkommen values={values} onChange={setValues} />
+        )}
+        {step.id === 'elternArbeit' && (
+          <StepElternArbeit values={values} onChange={setValues} />
         )}
         {step.id === 'plan' && (
-          <StepPlan values={values} onChange={setValues} />
-        )}
-        {step.id === 'documents' && (
-          <StepDocuments values={values} />
+          <StepPlan
+            values={values}
+            onChange={setValues}
+            onNavigateToStep={(stepId, idToScroll) => {
+              const idx = WIZARD_STEPS.findIndex((s) => s.id === stepId);
+              if (idx >= 0) {
+                setStepIndex(idx);
+                setScrollToId(idToScroll ?? null);
+              }
+            }}
+          />
         )}
         {step.id === 'summary' && (
           <StepSummary
@@ -212,7 +290,11 @@ export const ElterngeldWizardPage: React.FC = () => {
             onCreatePdf={handleCreatePdf}
             isSubmitting={isSubmitting}
             onNavigateToCalculation={handleNavigateToCalculation}
+            liveResult={liveResult}
           />
+        )}
+        {step.id === 'documents' && (
+          <StepDocuments values={values} />
         )}
         {step.id !== 'summary' && (
           <div className="next-steps__stack elterngeld-actions">
@@ -232,6 +314,18 @@ export const ElterngeldWizardPage: React.FC = () => {
               onClick={handleNext}
             >
               Weiter
+            </Button>
+          </div>
+        )}
+        {step.id === 'summary' && (
+          <div className="next-steps__stack elterngeld-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              className="next-steps__button btn--softpill"
+              onClick={handleNext}
+            >
+              Weiter zu Dokumente
             </Button>
           </div>
         )}

@@ -6,7 +6,17 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
-import { MonthTimeline } from '../MonthTimeline';
+import { Modal } from '../../../../shared/ui/Modal';
+import { MonthGrid } from '../ui/MonthGrid';
+import { PlanTimeline } from '../ui/PlanTimeline';
+import { PlanPhases } from '../ui/PlanPhases';
+import { MonthSummary } from '../ui/MonthSummary';
+import {
+  PartnerBonusCheckDialog,
+  getFirstPartnerBonusMonth,
+  type PartnerBonusAction,
+} from './PartnerBonusCheckDialog';
+import { getMonthGridItemsFromPlan, getMonthGridItemsFromResults } from '../monthGridMappings';
 import type {
   CalculationResult,
   MonthlyResult,
@@ -20,6 +30,9 @@ import {
   type OptimizationResultSet,
   type OptimizationSuggestion,
 } from '../calculation/elterngeldOptimization';
+import { getCombinedMonthState } from '../calculation/monthCombinedState';
+import type { CombinedWho } from '../calculation/monthCombinedState';
+import type { MonthMode } from '../calculation';
 import { plansAreEqual, isPlanEmpty } from '../infra/calculationPlanStorage';
 
 const MODE_LABELS: Record<string, string> = {
@@ -92,6 +105,8 @@ function getExplanationText(
         return 'Die optimierte Strategie erhöht die geschätzte Gesamtauszahlung.';
       case 'longerDuration':
         return 'Die optimierte Strategie verteilt den Bezug auf mehr Monate.';
+      case 'frontLoad':
+        return 'Diese Variante konzentriert höhere Auszahlungen in die ersten Lebensmonate.';
       case 'partnerBonus':
         return 'Die optimierte Strategie nutzt den Partnerschaftsbonus günstiger.';
       default:
@@ -99,6 +114,215 @@ function getExplanationText(
     }
   }
   return '';
+}
+
+function formatStateLabel(who: CombinedWho, mode: MonthMode): string {
+  if (who === 'none') return 'Kein Bezug';
+  if (who === 'both') return 'Partnerschaftsbonus';
+  if (who === 'mother') return mode === 'plus' ? 'Mutter – Plus' : 'Mutter – Basis';
+  if (who === 'partner') return mode === 'plus' ? 'Partner – Plus' : 'Partner – Basis';
+  return 'Beide – Bonus';
+}
+
+function getPlanChangePreview(
+  currentPlan: ElterngeldCalculationPlan,
+  optimizedPlan: ElterngeldCalculationPlan,
+  hasPartner: boolean,
+  maxLines: number = 5
+): string[] {
+  const allMonths = new Set<number>();
+  for (const p of currentPlan.parents) {
+    for (const m of p.months) allMonths.add(m.month);
+  }
+  for (const p of optimizedPlan.parents) {
+    for (const m of p.months) allMonths.add(m.month);
+  }
+  const months = [...allMonths].sort((a, b) => a - b);
+
+  type Change = { months: number[]; changeType: 'neu' | 'entfernt' | 'replace'; fromLabel?: string; toLabel?: string };
+  const changes: Change[] = [];
+  let currentRun: Change | null = null;
+
+  const getChangeKey = (cur: { who: CombinedWho; mode: MonthMode }, opt: { who: CombinedWho; mode: MonthMode }): string => {
+    const fromLabel = formatStateLabel(cur.who, cur.mode);
+    const toLabel = formatStateLabel(opt.who, opt.mode);
+    if (cur.who === 'none') return 'neu';
+    if (opt.who === 'none') return 'entfernt';
+    return `${fromLabel} → ${toLabel}`;
+  };
+
+  for (const month of months) {
+    const cur = getCombinedMonthState(currentPlan, month, hasPartner);
+    const opt = getCombinedMonthState(optimizedPlan, month, hasPartner);
+    const fromLabel = formatStateLabel(cur.who, cur.mode);
+    const toLabel = formatStateLabel(opt.who, opt.mode);
+
+    if (fromLabel === toLabel) continue;
+
+    const key = getChangeKey(cur, opt);
+
+    if (currentRun && getChangeKey(
+      getCombinedMonthState(currentPlan, currentRun.months[0], hasPartner),
+      getCombinedMonthState(optimizedPlan, currentRun.months[0], hasPartner)
+    ) === key) {
+      currentRun.months.push(month);
+    } else {
+      if (currentRun) changes.push(currentRun);
+      currentRun = {
+        months: [month],
+        changeType: cur.who === 'none' ? 'neu' : opt.who === 'none' ? 'entfernt' : 'replace',
+        fromLabel,
+        toLabel,
+      };
+    }
+  }
+  if (currentRun) changes.push(currentRun);
+
+  const formatMonthRange = (m: number[]): string => {
+    if (m.length === 0) return '';
+    if (m.length === 1) return `LM ${m[0]}`;
+    return `LM ${m[0]}–${m[m.length - 1]}`;
+  };
+
+  const lines: string[] = [];
+  for (const c of changes) {
+    const range = formatMonthRange(c.months);
+    const line =
+      c.changeType === 'neu'
+        ? `${range}: neu hinzugefügt`
+        : c.changeType === 'entfernt'
+          ? `${range}: entfernt`
+          : `${range}: ${c.fromLabel} → ${c.toLabel}`;
+    lines.push(line);
+  }
+
+  if (lines.length > maxLines) {
+    return lines.slice(0, maxLines - 1).concat([
+      `… und ${lines.length - maxLines + 1} weitere Änderungen`,
+    ]);
+  }
+  return lines;
+}
+
+type PlanStability = 'gut' | 'pruefen' | 'kritisch';
+
+function getPlanStability(result: CalculationResult): {
+  level: PlanStability;
+  label: string;
+  hints: string[];
+} {
+  const { validation, parents } = result;
+  const hasErrors = validation.errors.length > 0;
+  const hasWarnings = validation.warnings.length > 0;
+  const hasParentWarnings = parents.some((p) => p.warnings.length > 0);
+  const hasPartnerBonus = parents.some((p) =>
+    p.monthlyResults.some((m) => m.mode === 'partnerBonus')
+  );
+  const hasHoursWarning = validation.warnings.some((w) => w.includes('24–32') || w.includes('Wochenstunden'));
+  const hasPartnerBonusWarning = validation.warnings.some((w) =>
+    w.includes('Partnerschaftsbonus') || w.includes('Partnerbonus')
+  );
+
+  if (hasErrors) {
+    return {
+      level: 'kritisch',
+      label: 'Kritisch',
+      hints: validation.errors.slice(0, 3),
+    };
+  }
+
+  if (hasWarnings || hasParentWarnings) {
+    const hints: string[] = [];
+    if (hasPartnerBonusWarning) hints.push('Partnerschaftsbonus bitte mit Arbeitszeit abstimmen');
+    else if (hasHoursWarning) hints.push('Angaben zur Teilzeit sollten geprüft werden');
+    if (validation.warnings.some((w) => w.includes('Monat'))) hints.push('Mehrere Monate enthalten Sonderkonstellationen');
+    if (validation.warnings.some((w) => w.includes('Einkommen'))) hints.push('Einkommensangaben prüfen');
+    if (hints.length === 0) hints.push(...validation.warnings.slice(0, 2));
+    return {
+      level: 'pruefen',
+      label: 'Bitte prüfen',
+      hints: hints.length > 0 ? hints : ['Bitte prüfen Sie die angezeigten Hinweise.'],
+    };
+  }
+
+  if (hasPartnerBonus) {
+    return {
+      level: 'gut',
+      label: 'Gut planbar',
+      hints: ['Plan wirkt konsistent und gut nachvollziehbar.'],
+    };
+  }
+
+  return {
+    level: 'gut',
+    label: 'Gut planbar',
+    hints: ['Plan wirkt konsistent und gut nachvollziehbar.'],
+  };
+}
+
+/** Extrahiert Monatsnummer aus Warnungstext (z.B. "Monat 5: ..." → 5) */
+function extractMonthFromWarning(warning: string): number | null {
+  const m = warning.match(/Monat\s+(\d+)/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Erster Monat mit Plus oder PartnerBonus (für Arbeitszeit-Hinweise) */
+function getFirstRelevantMonth(result: CalculationResult): number | null {
+  for (const p of result.parents) {
+    const m = p.monthlyResults.find((r) => r.mode === 'partnerBonus' || r.mode === 'plus');
+    if (m) return m.month;
+  }
+  return null;
+}
+
+/** Prüft ob ein Hinweis eine konkrete Aktion hat */
+function getHintAction(
+  warning: string,
+  result: CalculationResult
+): { label: string; action: 'focusMonth' | 'focusEinkommen' | 'focusGrunddaten' | 'focusMonatsplan' | 'openOptimization' | null; month?: number } {
+  const month = extractMonthFromWarning(warning);
+  if (month != null) return { label: `Zu Monat ${month} springen`, action: 'focusMonth', month };
+  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus')) return { label: 'Partnerschaftsbonus prüfen', action: 'openOptimization' };
+  if (warning.includes('24–32') || warning.includes('Wochenstunden') || warning.includes('Arbeitszeit')) {
+    const m = getFirstRelevantMonth(result);
+    return { label: 'Arbeitszeit prüfen', action: m != null ? 'focusMonth' : 'focusMonatsplan', month: m ?? undefined };
+  }
+  if (warning.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  if (warning.includes('Geburtsdatum') || warning.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
+  return { label: '', action: null };
+}
+
+/** Aktion für Validierungsfehler (errors) */
+function getErrorAction(error: string): { label: string; action: 'focusGrunddaten' | 'focusEinkommen' | null } {
+  if (error.includes('Geburtsdatum') || error.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
+  if (error.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  return { label: '', action: null };
+}
+
+type PlanStabilityBlockProps = {
+  result: CalculationResult;
+  className?: string;
+};
+
+function PlanStabilityBlock({ result, className }: PlanStabilityBlockProps) {
+  const { level, label, hints } = getPlanStability(result);
+  const levelClass =
+    level === 'kritisch'
+      ? 'elterngeld-plan-stability--kritisch'
+      : level === 'pruefen'
+        ? 'elterngeld-plan-stability--pruefen'
+        : 'elterngeld-plan-stability--gut';
+  return (
+    <div className={`elterngeld-plan-stability ${levelClass} ${className ?? ''}`.trim()}>
+      <h4 className="elterngeld-plan-stability__title">Plan-Einschätzung</h4>
+      <p className="elterngeld-plan-stability__label">{label}</p>
+      <ul className="elterngeld-plan-stability__hints">
+        {hints.map((h, i) => (
+          <li key={i}>{h}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 type OptimizationComparisonBlockProps = {
@@ -111,7 +335,108 @@ type OptimizationComparisonBlockProps = {
   hasPartnerBonus: (r: CalculationResult) => boolean;
   onAdoptOptimization?: (plan: ElterngeldCalculationPlan) => void;
   onDiscardOptimization?: () => void;
+  onBackToOptimization?: () => void;
 };
+
+type AdoptConfirmDialogProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  currentPlan: ElterngeldCalculationPlan;
+  optimizedPlan: ElterngeldCalculationPlan;
+  hasPartner: boolean;
+  formatCurrency: (n: number) => string;
+  formatCurrencySigned: (n: number) => string;
+  deltaTotal: number;
+  deltaDuration: number;
+};
+
+function AdoptConfirmDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  currentPlan,
+  optimizedPlan,
+  hasPartner,
+  formatCurrency,
+  formatCurrencySigned,
+  deltaTotal,
+  deltaDuration,
+}: AdoptConfirmDialogProps) {
+  const planChangeLines = getPlanChangePreview(currentPlan, optimizedPlan, hasPartner);
+
+  const impactLines: string[] = [];
+  if (deltaTotal !== 0) {
+    impactLines.push(
+      deltaTotal > 0
+        ? `${formatCurrencySigned(deltaTotal)} mehr Gesamtauszahlung`
+        : `${formatCurrencySigned(deltaTotal)} weniger Gesamtauszahlung`
+    );
+  } else {
+    impactLines.push('Gesamtsumme unverändert');
+  }
+  if (deltaDuration !== 0) {
+    const unit = formatMonthsLabel(Math.abs(deltaDuration), 'Monat', 'Monate');
+    impactLines.push(
+      deltaDuration > 0 ? `+${deltaDuration} ${unit} längere Bezugsdauer` : `${deltaDuration} ${unit} kürzere Bezugsdauer`
+    );
+  } else {
+    impactLines.push('Bezugsdauer unverändert');
+  }
+
+  const maxMonths = Math.max(14, ...optimizedPlan.parents.flatMap((p) => p.months.map((m) => m.month)));
+  const timelineItems = getMonthGridItemsFromPlan(optimizedPlan, hasPartner, maxMonths);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Optimierungsvorschlag übernehmen" variant="softpill">
+      <div className="elterngeld-adopt-confirm">
+        <p className="elterngeld-adopt-confirm__intro">
+          Dieser Vorschlag verändert deinen aktuellen Plan.
+        </p>
+        <PlanTimeline items={timelineItems} compact showLegend />
+        {planChangeLines.length > 0 && (
+          <div className="elterngeld-adopt-confirm__section">
+            <h4 className="elterngeld-adopt-confirm__section-title">Änderungen im Plan</h4>
+            <ul className="elterngeld-adopt-confirm__list">
+              {planChangeLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="elterngeld-adopt-confirm__section">
+          <h4 className="elterngeld-adopt-confirm__section-title">Auswirkungen</h4>
+          <ul className="elterngeld-adopt-confirm__list">
+            {impactLines.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="elterngeld-adopt-confirm__actions next-steps__stack">
+          <Button
+            type="button"
+            variant="primary"
+            className="next-steps__button btn--softpill"
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+          >
+            Vorschlag übernehmen
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="next-steps__button btn--softpill"
+            onClick={onClose}
+          >
+            Abbrechen
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function OptimizationComparisonBlock({
   optimizationResultSet,
@@ -123,8 +448,11 @@ function OptimizationComparisonBlock({
   hasPartnerBonus,
   onAdoptOptimization,
   onDiscardOptimization,
+  onBackToOptimization,
 }: OptimizationComparisonBlockProps) {
-  const { goal, status, currentResult, suggestions } = optimizationResultSet;
+  const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
+  const { goal, status, currentPlan, currentResult, suggestions } = optimizationResultSet;
+  const hasPartner = currentPlan.parents.length > 1;
   const selectedSuggestion = suggestions[selectedSuggestionIndex] ?? suggestions[0];
   const hasSuggestions = suggestions.length > 0;
 
@@ -144,7 +472,9 @@ function OptimizationComparisonBlock({
   const differenzText = improved
     ? goal === 'longerDuration'
       ? `Verbesserung: +${deltaMonths} Monate`
-      : `Verbesserung: ${formatCurrencySigned(deltaTotal)}`
+      : goal === 'frontLoad'
+        ? 'Verbesserung: Mehr Auszahlung am Anfang'
+        : `Verbesserung: ${formatCurrencySigned(deltaTotal)}`
     : 'Wir haben verschiedene Alternativen geprüft, konnten aber keine Variante finden, die für das gewählte Ziel besser ist.';
 
   const blockTitle = improved ? 'Optimierungsvorschlag' : 'Der aktuelle Plan ist bereits sehr gut.';
@@ -196,13 +526,30 @@ function OptimizationComparisonBlock({
       lines.push(formatBonusLine());
       lines.push(formatTotalLine());
       if (deltaDuration !== 0) lines.push(formatDurationLine());
+    } else if (goal === 'frontLoad') {
+      if (s.deltaValue > 0) lines.push('Mehr Auszahlung in frühen Monaten');
+      lines.push(formatTotalLine());
+      if (deltaDuration !== 0) lines.push(formatDurationLine());
     }
     return lines;
   };
 
   return (
-    <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--comparison">
-      <h3 className="elterngeld-step__title">{blockTitle}</h3>
+    <>
+      <AdoptConfirmDialog
+        isOpen={showAdoptConfirm}
+        onClose={() => setShowAdoptConfirm(false)}
+        onConfirm={() => selectedSuggestion && onAdoptOptimization?.(selectedSuggestion.plan)}
+        currentPlan={currentPlan}
+        optimizedPlan={selectedSuggestion?.plan ?? currentPlan}
+        hasPartner={hasPartner}
+        formatCurrency={formatCurrency}
+        formatCurrencySigned={formatCurrencySigned}
+        deltaTotal={deltaTotal}
+        deltaDuration={deltaMonths}
+      />
+      <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--comparison">
+        <h3 className="elterngeld-step__title">{blockTitle}</h3>
       <p className="elterngeld-calculation__optimization-goal">
         Optimierungsziel: {GOAL_LABELS[goal]}
       </p>
@@ -228,6 +575,7 @@ function OptimizationComparisonBlock({
         <div className="elterngeld-calculation__suggestion-list" role="list">
           {suggestions.map((s, idx) => {
             const deltaLines = getSuggestionDeltaLines(s);
+            const planChangeLines = getPlanChangePreview(currentPlan, s.plan, hasPartner);
             return (
               <button
                 key={idx}
@@ -239,12 +587,31 @@ function OptimizationComparisonBlock({
                 <span className="elterngeld-calculation__suggestion-title">{s.title}</span>
                 {deltaLines.length > 0 && (
                   <span className="elterngeld-calculation__suggestion-delta">
-                    {deltaLines.map((line, i) => (
-                      <span key={i} className="elterngeld-calculation__suggestion-delta-line">
+                    {deltaLines.map((line, i) => {
+                        const isPositive = /^\+/.test(line) && !line.includes('−') && !/^-\d/.test(line);
+                        const isNegative = line.includes('−') || /^-\d/.test(line);
+                        const lineClass = isPositive
+                          ? 'elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--positive'
+                          : isNegative
+                            ? 'elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--negative'
+                            : 'elterngeld-calculation__suggestion-delta-line';
+                        return (
+                          <span key={i} className={lineClass}>
+                            {line}
+                          </span>
+                        );
+                      })}
+                  </span>
+                )}
+                {planChangeLines.length > 0 && (
+                  <div className="elterngeld-calculation__suggestion-plan-changes">
+                    <span className="elterngeld-calculation__suggestion-plan-changes-title">Änderungen im Plan</span>
+                    {planChangeLines.map((line, i) => (
+                      <span key={i} className="elterngeld-calculation__suggestion-plan-changes-line">
                         {line}
                       </span>
                     ))}
-                  </span>
+                  </div>
                 )}
                 <span className="elterngeld-calculation__suggestion-meta">
                   {formatCurrency(s.optimizedTotal)} · {s.optimizedDurationMonths} Monate
@@ -300,7 +667,15 @@ function OptimizationComparisonBlock({
         </div>
       </div>
 
-      <div className="elterngeld-calculation__optimization-differenz">
+      <div
+        className={`elterngeld-calculation__optimization-differenz ${
+          improved && (goal === 'maxMoney' ? deltaTotal > 0 : goal === 'longerDuration' ? deltaMonths > 0 : goal === 'frontLoad' ? (selectedSuggestion?.deltaValue ?? 0) > 0 : deltaTotal > 0)
+            ? 'elterngeld-calculation__optimization-differenz--positive'
+            : improved && (goal === 'maxMoney' ? deltaTotal < 0 : goal === 'longerDuration' ? deltaMonths < 0 : goal === 'frontLoad' ? (selectedSuggestion?.deltaValue ?? 0) < 0 : deltaTotal < 0)
+              ? 'elterngeld-calculation__optimization-differenz--negative'
+              : ''
+        }`}
+      >
         {differenzText}
       </div>
 
@@ -314,66 +689,93 @@ function OptimizationComparisonBlock({
         <p className="elterngeld-calculation__optimization-explanation">{explanationText}</p>
       )}
 
+      <PlanStabilityBlock result={currentResult} className="elterngeld-calculation__optimization-plan-stability" />
+
       <div className="elterngeld-calculation__optimization-timelines">
         <div className="elterngeld-calculation__optimization-timeline-section">
           <p className="elterngeld-calculation__optimization-timeline-label">Aktueller Plan</p>
-          {currentResult.parents.map((parent) => (
-            <div key={parent.id} className="elterngeld-calculation__optimization-timeline-parent">
-              <p className="elterngeld-calculation__optimization-timeline-parent-label">{parent.label}</p>
-              <MonthTimeline
-                months={parent.monthlyResults.map((r) => ({
-                  month: r.month,
-                  mode: r.mode,
-                  hasWarning: r.warnings.length > 0,
-                }))}
-              />
-            </div>
-          ))}
+          {(() => {
+            const items = getMonthGridItemsFromResults(
+              currentResult.parents,
+              Math.max(14, ...currentResult.parents.flatMap((p) => p.monthlyResults.map((r) => r.month)), 0)
+            );
+            return (
+              <>
+                <PlanPhases items={items} compact />
+                <MonthSummary items={items} compact />
+                <PlanTimeline items={items} compact />
+              </>
+            );
+          })()}
+          <MonthGrid
+            items={getMonthGridItemsFromResults(
+              currentResult.parents,
+              Math.max(14, ...currentResult.parents.flatMap((p) => p.monthlyResults.map((r) => r.month)), 0)
+            )}
+            legend=""
+          />
         </div>
         <div className="elterngeld-calculation__optimization-timeline-section">
           <p className="elterngeld-calculation__optimization-timeline-label">
             {improved ? 'Optimierte Strategie' : 'Geprüfte Vergleichsstrategie'}
           </p>
-          {optimizedResult.parents.map((parent) => (
-            <div key={parent.id} className="elterngeld-calculation__optimization-timeline-parent">
-              <p className="elterngeld-calculation__optimization-timeline-parent-label">{parent.label}</p>
-              <MonthTimeline
-                months={parent.monthlyResults.map((r) => ({
-                  month: r.month,
-                  mode: r.mode,
-                  hasWarning: r.warnings.length > 0,
-                }))}
-              />
-            </div>
-          ))}
+          {(() => {
+            const items = getMonthGridItemsFromResults(
+              optimizedResult.parents,
+              Math.max(14, ...optimizedResult.parents.flatMap((p) => p.monthlyResults.map((r) => r.month)), 0)
+            );
+            return (
+              <>
+                <PlanPhases items={items} compact />
+                <MonthSummary items={items} compact />
+                <PlanTimeline items={items} compact />
+              </>
+            );
+          })()}
+          <MonthGrid
+            items={getMonthGridItemsFromResults(
+              optimizedResult.parents,
+              Math.max(14, ...optimizedResult.parents.flatMap((p) => p.monthlyResults.map((r) => r.month)), 0)
+            )}
+            legend=""
+          />
         </div>
       </div>
 
-      {improved && selectedSuggestion && (
-        <div className="elterngeld-calculation__optimization-actions">
-          {onAdoptOptimization && (
-            <Button
-              type="button"
-              variant="primary"
-              className="btn--softpill"
-              onClick={() => onAdoptOptimization(selectedSuggestion.plan)}
-            >
-              Optimierung übernehmen und Berechnung aktualisieren
-            </Button>
-          )}
-          {onDiscardOptimization && (
-            <Button
-              type="button"
-              variant="secondary"
-              className="btn--softpill"
-              onClick={onDiscardOptimization}
-            >
-              Vorschlag verwerfen
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="elterngeld-calculation__optimization-actions">
+        {improved && selectedSuggestion && onAdoptOptimization && (
+          <Button
+            type="button"
+            variant="primary"
+            className="btn--softpill"
+            onClick={() => setShowAdoptConfirm(true)}
+          >
+            Optimierung übernehmen und Berechnung aktualisieren
+          </Button>
+        )}
+        {improved && onDiscardOptimization && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill"
+            onClick={onDiscardOptimization}
+          >
+            Vorschlag verwerfen
+          </Button>
+        )}
+        {onBackToOptimization && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill"
+            onClick={onBackToOptimization}
+          >
+            Zurück zur Optimierung
+          </Button>
+        )}
+      </div>
     </Card>
+    </>
   );
 }
 
@@ -457,6 +859,10 @@ function MonthlyBreakdownRow({ r }: { r: MonthlyResult }) {
   );
 }
 
+export type NavigateToInputTarget =
+  | { focusMonth: number }
+  | { focusSection: 'grunddaten' | 'einkommen' | 'monatsplan' };
+
 type Props = {
   result: CalculationResult;
   plan?: ElterngeldCalculationPlan | null;
@@ -469,6 +875,8 @@ type Props = {
   onCreatePdf?: () => void;
   isSubmitting?: boolean;
   onOpenOptimizationGoal?: () => void;
+  /** Springt zur Eingabe und fokussiert Monat/ Bereich */
+  onNavigateToInput?: (target: NavigateToInputTarget) => void;
 };
 
 export const StepCalculationResult: React.FC<Props> = ({
@@ -483,6 +891,7 @@ export const StepCalculationResult: React.FC<Props> = ({
   onCreatePdf,
   isSubmitting = false,
   onOpenOptimizationGoal,
+  onNavigateToInput,
 }) => {
   const { parents, householdTotal, validation, meta } = result;
 
@@ -494,6 +903,7 @@ export const StepCalculationResult: React.FC<Props> = ({
   }, [plan, result, optimizationGoal, validation.errors.length]);
 
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  const [showPartnerBonusCheck, setShowPartnerBonusCheck] = useState(false);
 
   useEffect(() => {
     setSelectedSuggestionIndex(0);
@@ -521,25 +931,95 @@ export const StepCalculationResult: React.FC<Props> = ({
 
       {validation.errors.length > 0 && (
         <div className="elterngeld-calculation__validation elterngeld-calculation__validation--error">
-          {validation.errors.map((e, i) => (
-            <p key={i}>{e}</p>
-          ))}
+          {validation.errors.map((e, i) => {
+            const action = getErrorAction(e);
+            return (
+              <div key={i} className="elterngeld-calculation__validation-item">
+                <p>{e}</p>
+                {action.action && onNavigateToInput && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
+                    onClick={() =>
+                      onNavigateToInput(
+                        action.action === 'focusGrunddaten'
+                          ? { focusSection: 'grunddaten' }
+                          : { focusSection: 'einkommen' }
+                      )
+                    }
+                  >
+                    {action.label}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {validation.warnings.length > 0 && (
         <div className="elterngeld-calculation__validation elterngeld-calculation__validation--warning">
-          {validation.warnings.map((w, i) => (
-            <p key={i}>{w}</p>
-          ))}
+          {validation.warnings.map((w, i) => {
+            const action = getHintAction(w, result);
+            return (
+              <div key={i} className="elterngeld-calculation__validation-item">
+                <p>{w}</p>
+                {action.action && action.action !== 'openOptimization' && onNavigateToInput && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
+                    onClick={() => {
+                      if (action.action === 'focusMonth' && action.month != null) {
+                        onNavigateToInput({ focusMonth: action.month });
+                      } else if (action.action === 'focusEinkommen') {
+                        onNavigateToInput({ focusSection: 'einkommen' });
+                      } else if (action.action === 'focusGrunddaten') {
+                        onNavigateToInput({ focusSection: 'grunddaten' });
+                      } else if (action.action === 'focusMonatsplan') {
+                        onNavigateToInput({ focusSection: 'monatsplan' });
+                      }
+                    }}
+                  >
+                    {action.label}
+                  </Button>
+                )}
+                {action.action === 'openOptimization' && onOpenOptimizationGoal && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
+                    onClick={onOpenOptimizationGoal}
+                  >
+                    {action.label}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {parents.some((p) => p.monthlyResults.some((m) => m.mode === 'partnerBonus')) && (
-        <p className="elterngeld-calculation__partner-bonus-hint">
-          Der Partnerschaftsbonus kann zusätzliche Monate ermöglichen, ist aber kein pauschaler
-          Zuschlag. Die finanzielle Wirkung hängt von Ihrer konkreten Verteilung ab.
-        </p>
+      <PlanStabilityBlock result={result} className="elterngeld-calculation__plan-stability" />
+
+      {plan && (
+        <div className="elterngeld-calculation__partner-bonus-block">
+          {parents.some((p) => p.monthlyResults.some((m) => m.mode === 'partnerBonus')) && (
+            <p className="elterngeld-calculation__partner-bonus-hint">
+              Der Partnerschaftsbonus kann zusätzliche Monate ermöglichen, ist aber kein pauschaler
+              Zuschlag. Die finanzielle Wirkung hängt von Ihrer konkreten Verteilung ab.
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill elterngeld-step__partner-bonus-check-btn"
+            onClick={() => setShowPartnerBonusCheck(true)}
+          >
+            Partnerschaftsbonus prüfen
+          </Button>
+        </div>
       )}
 
       {/* Optimierungsblock: Vergleichsanzeige nur bei unterstützten Zielen, nicht bei Validierungsfehlern */}
@@ -579,21 +1059,40 @@ export const StepCalculationResult: React.FC<Props> = ({
                 hasPartnerBonus={hasPartnerBonus}
                 onAdoptOptimization={onAdoptOptimization}
                 onDiscardOptimization={onDiscardOptimization}
+                onBackToOptimization={onOpenOptimizationGoal}
               />
             )}
           </>
         )}
 
+      <Card className="still-daily-checklist__card">
+        <h3 className="elterngeld-step__title">Monatsplan</h3>
+        {(() => {
+          const monthItems = getMonthGridItemsFromResults(
+            parents,
+            Math.max(14, ...parents.flatMap((p) => p.monthlyResults.map((r) => r.month)), 0)
+          );
+          return (
+            <>
+              <PlanPhases items={monthItems} />
+              <MonthSummary items={monthItems} />
+              <PlanTimeline
+                items={monthItems}
+                showLegend
+                onMonthClick={onNavigateToInput ? (m) => onNavigateToInput({ focusMonth: m }) : undefined}
+              />
+              <MonthGrid
+                items={monthItems}
+                legend="Lebensmonate – Mutter / Partner / Beide / Kein Bezug"
+              />
+            </>
+          );
+        })()}
+      </Card>
+
       {parents.map((parent) => (
         <Card key={parent.id} className="still-daily-checklist__card">
           <h3 className="elterngeld-step__title">{parent.label}</h3>
-          <MonthTimeline
-            months={parent.monthlyResults.map((r) => ({
-              month: r.month,
-              mode: r.mode,
-              hasWarning: r.warnings.length > 0,
-            }))}
-          />
           <div className="elterngeld-calculation__parent-result">
             <table className="elterngeld-calculation__table">
               <thead>
@@ -630,9 +1129,44 @@ export const StepCalculationResult: React.FC<Props> = ({
             </p>
             {parent.warnings.length > 0 && (
               <ul className="elterngeld-calculation__warnings">
-                {parent.warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
-                ))}
+                {parent.warnings.map((w, i) => {
+                  const action = getHintAction(w, result);
+                  return (
+                    <li key={i} className="elterngeld-calculation__warning-item">
+                      <span>{w}</span>
+                      {action.action && action.action !== 'openOptimization' && onNavigateToInput && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
+                          onClick={() => {
+                            if (action.action === 'focusMonth' && action.month != null) {
+                              onNavigateToInput({ focusMonth: action.month });
+                            } else if (action.action === 'focusEinkommen') {
+                              onNavigateToInput({ focusSection: 'einkommen' });
+                            } else if (action.action === 'focusGrunddaten') {
+                              onNavigateToInput({ focusSection: 'grunddaten' });
+                            } else if (action.action === 'focusMonatsplan') {
+                              onNavigateToInput({ focusSection: 'monatsplan' });
+                            }
+                          }}
+                        >
+                          {action.label}
+                        </Button>
+                      )}
+                      {action.action === 'openOptimization' && onOpenOptimizationGoal && (
+                        <Button
+                          type="button"
+                    variant="secondary"
+                    className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
+                    onClick={onOpenOptimizationGoal}
+                        >
+                          {action.label}
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
 
@@ -687,6 +1221,32 @@ export const StepCalculationResult: React.FC<Props> = ({
             Optimierungsziel wählen
           </Button>
         </div>
+      )}
+
+      {plan && (
+        <PartnerBonusCheckDialog
+          isOpen={showPartnerBonusCheck}
+          onClose={() => setShowPartnerBonusCheck(false)}
+          plan={plan}
+          onAction={(action: PartnerBonusAction) => {
+            if (action.type === 'focusMonth') {
+              onNavigateToInput?.({ focusMonth: action.month });
+            } else if (action.type === 'focusSection') {
+              if (action.section === 'elternArbeit') {
+                const m = plan ? getFirstPartnerBonusMonth(plan) : null;
+                onNavigateToInput?.(m != null ? { focusMonth: m } : { focusSection: 'monatsplan' });
+              } else if (action.section === 'eltern') {
+                onNavigateToInput?.({ focusSection: 'einkommen' });
+              } else if (
+                action.section === 'grunddaten' ||
+                action.section === 'einkommen' ||
+                action.section === 'monatsplan'
+              ) {
+                onNavigateToInput?.({ focusSection: action.section });
+              }
+            }
+          }}
+        />
       )}
 
       {onCreatePdf && (

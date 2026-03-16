@@ -51,7 +51,7 @@ export interface OptimizationResult {
 
 /** Einzelner Optimierungsvorschlag (für Top-3-Liste) */
 export interface OptimizationSuggestion {
-  goal: 'maxMoney' | 'longerDuration' | 'partnerBonus';
+  goal: 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus';
   status: 'improved' | 'checked_but_not_better';
   strategyType: string | null;
   title: string;
@@ -71,7 +71,7 @@ export interface OptimizationSuggestion {
 
 /** Ergebnis mit bis zu 3 Vorschlägen */
 export interface OptimizationResultSet {
-  goal: 'maxMoney' | 'longerDuration' | 'partnerBonus';
+  goal: 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus';
   status: OptimizationStatus;
   currentPlan: ElterngeldCalculationPlan;
   currentResult: CalculationResult;
@@ -92,13 +92,13 @@ export interface OptimizationOutcome {
 const GOAL_LABELS: Record<OptimizationGoal, string> = {
   maxMoney: 'Mehr Gesamtauszahlung',
   longerDuration: 'Längere Bezugsdauer',
-  frontLoad: 'Höhere Zahlungen am Anfang',
+  frontLoad: 'Am Anfang mehr Geld',
   balanced: 'Gleichmäßigere monatliche Zahlungen',
   partnerBonus: 'Partnerschaftsbonus prüfen',
 };
 
 /** Ziele ohne implementierte Strategielogik */
-const UNSUPPORTED_GOALS: OptimizationGoal[] = ['frontLoad', 'balanced'];
+const UNSUPPORTED_GOALS: OptimizationGoal[] = ['balanced'];
 
 const MAX_SUGGESTIONS = 3;
 
@@ -152,7 +152,7 @@ export function buildOptimizationResult(
   }
 
   const top3 = selectTop3(candidates, goal);
-  const suggestions = top3.map((c) => candidateToSuggestion(c, goal, currentDuration, currentTotal));
+  const suggestions = top3.map((c) => candidateToSuggestion(c, goal, currentDuration, currentTotal, currentResult));
 
   const status: OptimizationStatus =
     suggestions.length === 0
@@ -174,7 +174,7 @@ export function buildOptimizationResult(
       });
     }
     return {
-      goal: goal as 'maxMoney' | 'longerDuration' | 'partnerBonus',
+      goal: goal as 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus',
       status: 'no_candidate',
       currentPlan: plan,
       currentResult,
@@ -209,7 +209,7 @@ export function buildOptimizationResult(
   }
 
   return {
-    goal: goal as 'maxMoney' | 'longerDuration' | 'partnerBonus',
+    goal: goal as 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus',
     status,
     currentPlan: plan,
     currentResult,
@@ -221,7 +221,8 @@ function candidateToSuggestion(
   c: Candidate,
   goal: OptimizationGoal,
   currentDuration: number,
-  currentTotal: number
+  currentTotal: number,
+  currentResult: CalculationResult
 ): OptimizationSuggestion {
   const { plan, result, strategyType } = c;
   const optimizedTotal = result.householdTotal;
@@ -231,40 +232,60 @@ function candidateToSuggestion(
   let deltaValue: number;
   let improved: boolean;
   let metricLabel: string;
+  let currentMetricValue: number;
+  let optimizedMetricValue: number;
 
   switch (goal) {
     case 'maxMoney':
       metricLabel = 'Gesamtsumme';
       deltaValue = optimizedTotal - currentTotal;
       improved = deltaValue > 0;
+      currentMetricValue = currentTotal;
+      optimizedMetricValue = optimizedTotal;
       break;
     case 'longerDuration':
       metricLabel = 'Bezugsdauer (Monate)';
       deltaValue = optimizedDuration - currentDuration;
       improved = deltaValue > 0;
+      currentMetricValue = currentDuration;
+      optimizedMetricValue = optimizedDuration;
       break;
+    case 'frontLoad': {
+      const currentFL = computeFrontLoadScore(currentResult);
+      const optimizedFL = computeFrontLoadScore(result);
+      metricLabel = 'Auszahlung früher';
+      deltaValue = optimizedFL - currentFL;
+      improved = deltaValue > 0;
+      currentMetricValue = currentFL;
+      optimizedMetricValue = optimizedFL;
+      break;
+    }
     case 'partnerBonus':
       metricLabel = 'Gesamtsumme';
       deltaValue = optimizedTotal - currentTotal;
       improved = deltaValue > 0;
+      currentMetricValue = currentTotal;
+      optimizedMetricValue = optimizedTotal;
       break;
     default:
       metricLabel = 'Gesamtsumme';
       deltaValue = optimizedTotal - currentTotal;
       improved = deltaValue > 0;
+      currentMetricValue = currentTotal;
+      optimizedMetricValue = optimizedTotal;
   }
 
   const { title, explanation } = getSuggestionTitleAndExplanation(goal, strategyType);
 
   return {
-    goal: goal as 'maxMoney' | 'longerDuration' | 'partnerBonus',
+    goal: goal as 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus',
     status: improved ? 'improved' : 'checked_but_not_better',
     strategyType,
     title,
     explanation,
     metricLabel,
-    currentMetricValue: goal === 'longerDuration' ? currentDuration : currentTotal,
-    optimizedMetricValue: goal === 'longerDuration' ? optimizedDuration : optimizedTotal,
+    currentMetricValue,
+    optimizedMetricValue,
     deltaValue,
     currentTotal,
     optimizedTotal,
@@ -277,7 +298,7 @@ function candidateToSuggestion(
 }
 
 function getSuggestionTitleAndExplanation(
-  goal: 'maxMoney' | 'longerDuration' | 'partnerBonus',
+  goal: 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus',
   _strategyType: string | null
 ): { title: string; explanation: string } {
   switch (goal) {
@@ -290,6 +311,11 @@ function getSuggestionTitleAndExplanation(
       return {
         title: 'Längere Bezugsdauer',
         explanation: 'Diese Variante verteilt den Bezug auf mehr Monate.',
+      };
+    case 'frontLoad':
+      return {
+        title: 'Am Anfang mehr Geld',
+        explanation: 'Diese Variante konzentriert höhere Auszahlungen in die ersten Lebensmonate.',
       };
     case 'partnerBonus':
       return {
@@ -319,7 +345,7 @@ function countOverlappingPlusMonths(plan: ElterngeldCalculationPlan): number {
 type Candidate = {
   plan: ElterngeldCalculationPlan;
   result: CalculationResult;
-  strategyType: 'maxMoney' | 'longerDuration' | 'partnerBonus';
+  strategyType: 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus';
   /** Nur für maxMoney: Quelle der Kandidatenerzeugung (für Debug) */
   maxMoneySource?: 'shift' | 'plusToBasis';
 };
@@ -364,10 +390,18 @@ function filterImprovedCandidates(
   const baseDuration = countBezugMonths(currentResult);
   const basePartnerBonusMonths = countPartnerBonusMonths(currentResult);
 
+  const baseFrontLoadScore = goal === 'frontLoad' ? computeFrontLoadScore(currentResult) : 0;
+  const MIN_TOTAL_RATIO = 0.95;
+
   return candidates.filter((c) => {
     if (goal === 'maxMoney') return c.result.householdTotal > baseTotal;
     if (goal === 'longerDuration') return countBezugMonths(c.result) > baseDuration;
     if (goal === 'partnerBonus') return countPartnerBonusMonths(c.result) > basePartnerBonusMonths;
+    if (goal === 'frontLoad') {
+      const flScore = computeFrontLoadScore(c.result);
+      const total = c.result.householdTotal;
+      return flScore > baseFrontLoadScore && total >= baseTotal * MIN_TOTAL_RATIO;
+    }
     return false;
   });
 }
@@ -383,16 +417,48 @@ function countPartnerBonusMonths(result: CalculationResult): number {
   return months.size;
 }
 
-/** Sortiert nach Ziel und wählt maximal 3 unterschiedliche Kandidaten */
+/** Gewichtete Summe: frühe Monate zählen stärker. Höher = mehr Auszahlung am Anfang. */
+function computeFrontLoadScore(result: CalculationResult): number {
+  const monthToAmount = new Map<number, number>();
+  for (const p of result.parents) {
+    for (const r of p.monthlyResults) {
+      if (r.mode !== 'none' || r.amount > 0) {
+        monthToAmount.set(r.month, (monthToAmount.get(r.month) ?? 0) + r.amount);
+      }
+    }
+  }
+  const maxMonth = Math.max(24, ...monthToAmount.keys(), 1);
+  let score = 0;
+  for (const [month, amount] of monthToAmount) {
+    score += amount * (maxMonth - month + 1);
+  }
+  return score;
+}
+
+/** Ergebnis-Fingerprint für Duplikaterkennung (identische Ausgaben) */
+function resultFingerprint(c: Candidate, goal?: OptimizationGoal): string {
+  const total = c.result.householdTotal;
+  const duration = countBezugMonths(c.result);
+  const bonus = countPartnerBonusMonths(c.result);
+  if (goal === 'frontLoad') {
+    return `${total}-${duration}-${bonus}-${computeFrontLoadScore(c.result)}`;
+  }
+  return `${total}-${duration}-${bonus}`;
+}
+
+/** Sortiert nach Ziel und wählt maximal 3 unterschiedliche Kandidaten (ohne Duplikate) */
 function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[] {
   if (candidates.length === 0) return [];
 
-  const seen = new Set<string>();
+  const seenPlan = new Set<string>();
+  const seenResult = new Set<string>();
   const deduped: Candidate[] = [];
   for (const c of candidates) {
     const fp = planFingerprint(c.plan);
-    if (seen.has(fp)) continue;
-    seen.add(fp);
+    const rf = resultFingerprint(c, goal);
+    if (seenPlan.has(fp) || seenResult.has(rf)) continue;
+    seenPlan.add(fp);
+    seenResult.add(rf);
     deduped.push(c);
   }
 
@@ -418,7 +484,14 @@ function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[
               if (diff !== 0) return diff;
               return countBezugMonths(b.result) - countBezugMonths(a.result);
             })
-          : [...deduped];
+          : goal === 'frontLoad'
+            ? [...deduped].sort((a, b) => {
+                const flA = computeFrontLoadScore(a.result);
+                const flB = computeFrontLoadScore(b.result);
+                if (flB !== flA) return flB - flA;
+                return b.result.householdTotal - a.result.householdTotal;
+              })
+            : [...deduped];
 
   return sorted.slice(0, MAX_SUGGESTIONS);
 }
@@ -472,6 +545,12 @@ function generateMutationCandidates(
         improvedBonusMonths,
       });
     }
+    return;
+  }
+
+  if (goal === 'frontLoad') {
+    addFrontLoadCandidates(plan, currentResult, candidates, addIfNew);
+    return;
   }
 }
 
@@ -557,13 +636,16 @@ function addBasisToPlusCandidates(
   }
 }
 
-/** Strategie: Plus → Basis Umwandlung (max 2 pro Kandidat) */
+/** Strategie: Plus → Basis Umwandlung (max 2 pro Kandidat). Optional für frontLoad. */
 function addPlusToBasisCandidates(
   plan: ElterngeldCalculationPlan,
   _currentResult: CalculationResult,
   candidates: Candidate[],
-  addIfNew: AddCandidateFn
+  addIfNew: AddCandidateFn,
+  strategyTypeOverride?: 'frontLoad'
 ): void {
+  const strategyType = strategyTypeOverride ?? 'maxMoney';
+  const maxMoneySource = strategyType === 'maxMoney' ? ('plusToBasis' as const) : undefined;
   const plusEntries: { parentIdx: number; monthIdx: number }[] = [];
 
   for (let pIdx = 0; pIdx < plan.parents.length; pIdx++) {
@@ -581,7 +663,7 @@ function addPlusToBasisCandidates(
     const p = copy.parents[parentIdx];
     p.months[monthIdx] = { ...p.months[monthIdx], mode: 'basis' as MonthMode };
     const res = calculatePlan(copy);
-    addIfNew({ plan: copy, result: res, strategyType: 'maxMoney', maxMoneySource: 'plusToBasis' });
+    addIfNew({ plan: copy, result: res, strategyType, maxMoneySource });
   }
 
   for (let i = 0; i < plusEntries.length && candidates.length < MAX_CANDIDATES; i++) {
@@ -594,7 +676,7 @@ function addPlusToBasisCandidates(
       pa.months[a.monthIdx] = { ...pa.months[a.monthIdx], mode: 'basis' as MonthMode };
       pb.months[b.monthIdx] = { ...pb.months[b.monthIdx], mode: 'basis' as MonthMode };
       const res = calculatePlan(copy);
-      addIfNew({ plan: copy, result: res, strategyType: 'maxMoney', maxMoneySource: 'plusToBasis' });
+      addIfNew({ plan: copy, result: res, strategyType, maxMoneySource });
     }
   }
 }
@@ -742,6 +824,96 @@ function addShiftCandidatesInDirection(
     }
   }
   return out;
+}
+
+/** Strategie frontLoad: Monate verschieben und Plus→Basis – alle Kandidaten (Filter später) */
+function addFrontLoadCandidates(
+  plan: ElterngeldCalculationPlan,
+  currentResult: CalculationResult,
+  candidates: Candidate[],
+  addIfNew: AddCandidateFn
+): void {
+  const parentB = plan.parents[1];
+  if (!parentB) {
+    addPlusToBasisCandidates(plan, currentResult, candidates, addIfNew);
+    return;
+  }
+  addShiftCandidatesInDirectionForFrontLoad(plan, 0, 1, candidates, addIfNew);
+  if (candidates.length >= MAX_CANDIDATES) return;
+  addShiftCandidatesInDirectionForFrontLoad(plan, 1, 0, candidates, addIfNew);
+  if (candidates.length >= MAX_CANDIDATES) return;
+  addPlusToBasisCandidates(plan, currentResult, candidates, addIfNew, 'frontLoad');
+}
+
+/** Hilfsfunktion: Alle Shift-Mutationen für frontLoad (ohne Total-Filter) */
+function addShiftCandidatesInDirectionForFrontLoad(
+  plan: ElterngeldCalculationPlan,
+  sourceIdx: 0 | 1,
+  targetIdx: 0 | 1,
+  candidates: Candidate[],
+  addIfNew: AddCandidateFn
+): void {
+  const parentSource = plan.parents[sourceIdx];
+  const parentTarget = plan.parents[targetIdx];
+  if (!parentTarget || parentSource.incomeBeforeNet <= 0 || parentTarget.incomeBeforeNet <= 0) return;
+
+  const shiftableMonths: ShiftableMonth[] = [];
+  for (const m of parentSource.months) {
+    if (m.mode === 'none') continue;
+    const mTarget = parentTarget.months.find((x) => x.month === m.month);
+    if (mTarget && mTarget.mode !== 'none') continue;
+    shiftableMonths.push({
+      month: m.month,
+      mode: m.mode,
+      income: m.incomeDuringNet,
+      hours: m.hoursPerWeek,
+    });
+  }
+
+  for (const { month, mode, income, hours } of shiftableMonths) {
+    if (candidates.length >= MAX_CANDIDATES) return;
+    const copy = duplicatePlan(plan);
+    const pSource = copy.parents[sourceIdx];
+    const pTarget = copy.parents[targetIdx];
+    const idxSource = pSource.months.findIndex((x) => x.month === month);
+    if (idxSource < 0) continue;
+    pSource.months[idxSource] = { ...pSource.months[idxSource], mode: 'none' };
+    let idxTarget = pTarget.months.findIndex((x) => x.month === month);
+    if (idxTarget < 0) {
+      pTarget.months.push({ month, mode, incomeDuringNet: income, hoursPerWeek: hours });
+      pTarget.months.sort((a, b) => a.month - b.month);
+    } else {
+      pTarget.months[idxTarget] = { ...pTarget.months[idxTarget], mode, incomeDuringNet: income, hoursPerWeek: hours };
+    }
+    const res = calculatePlan(copy);
+    addIfNew({ plan: copy, result: res, strategyType: 'frontLoad' });
+  }
+
+  for (let i = 0; i < shiftableMonths.length && candidates.length < MAX_CANDIDATES; i++) {
+    for (let j = i + 1; j < shiftableMonths.length && candidates.length < MAX_CANDIDATES; j++) {
+      const ma = shiftableMonths[i];
+      const mb = shiftableMonths[j];
+      const copy = duplicatePlan(plan);
+      const pSource = copy.parents[sourceIdx];
+      const pTarget = copy.parents[targetIdx];
+      const idx1 = pSource.months.findIndex((x) => x.month === ma.month);
+      const idx2 = pSource.months.findIndex((x) => x.month === mb.month);
+      if (idx1 < 0 || idx2 < 0) continue;
+      pSource.months[idx1] = { ...pSource.months[idx1], mode: 'none' };
+      pSource.months[idx2] = { ...pSource.months[idx2], mode: 'none' };
+      for (const m of [ma, mb]) {
+        let idxTarget = pTarget.months.findIndex((x) => x.month === m.month);
+        if (idxTarget < 0) {
+          pTarget.months.push({ month: m.month, mode: m.mode, incomeDuringNet: m.income, hoursPerWeek: m.hours });
+        } else {
+          pTarget.months[idxTarget] = { ...pTarget.months[idxTarget], mode: m.mode, incomeDuringNet: m.income, hoursPerWeek: m.hours };
+        }
+      }
+      pTarget.months.sort((a, b) => a.month - b.month);
+      const res = calculatePlan(copy);
+      addIfNew({ plan: copy, result: res, strategyType: 'frontLoad' });
+    }
+  }
 }
 
 /** Strategie: Monate zwischen Eltern verschieben (maxMoney) – beide Richtungen A↔B */

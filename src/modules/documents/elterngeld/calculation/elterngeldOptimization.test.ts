@@ -176,8 +176,31 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
     });
   });
 
-  describe('F) longerDuration – Basis->Plus', () => {
-    it('F1: Mutter 2 Basis (1–2) – longerDuration', () => {
+  describe('F) frontLoad – Auszahlung am Anfang', () => {
+    it('F1: Mutter 3500€ (3–4), Vater 1200€ (1–2) – frontLoad verschiebt höhere Beträge nach vorne', () => {
+      const plan = createPlan({});
+      plan.parents[0].incomeBeforeNet = 3500;
+      plan.parents[1].incomeBeforeNet = 1200;
+      setMonth(plan, 0, 3, 'basis');
+      setMonth(plan, 0, 4, 'basis');
+      setMonth(plan, 1, 1, 'basis');
+      setMonth(plan, 1, 2, 'basis');
+
+      const result = calculatePlan(plan);
+      const outcome = buildOptimizationResult(plan, result, 'frontLoad');
+
+      expect(outcome).not.toBeNull();
+      expect('status' in outcome).toBe(true);
+      if ('suggestions' in outcome && outcome.suggestions.length > 0) {
+        const top = outcome.suggestions[0];
+        expect(top.goal).toBe('frontLoad');
+        expect(top.deltaValue).toBeGreaterThanOrEqual(0);
+      }
+    });
+  });
+
+  describe('G) longerDuration – Basis->Plus', () => {
+    it('G1: Mutter 2 Basis (1–2) – longerDuration', () => {
       const plan = createPlan({});
       plan.parents[0].incomeBeforeNet = 2000;
       plan.parents[1].incomeBeforeNet = 0;

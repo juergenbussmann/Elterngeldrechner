@@ -1,55 +1,41 @@
 import React from 'react';
 import { Card } from '../../../../shared/ui/Card';
+import { Button } from '../../../../shared/ui/Button';
+import { useNavigation } from '../../../../shared/lib/navigation/useNavigation';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
 
-const BASE_DOCUMENTS = [
+const DOCUMENT_CHECKLIST = [
   'Geburtsurkunde',
   'Einkommensnachweise',
-  'Bankverbindung',
+  'Arbeitgeberbescheinigung',
+  'Steuer-ID',
 ];
-
-function getDynamicDocuments(values: ElterngeldApplication): string[] {
-  const docs: string[] = [];
-  if (values.parentA.employmentType === 'employed' || values.parentA.employmentType === 'mixed') {
-    docs.push('Arbeitgeberbescheinigung');
-  }
-  if (values.parentA.employmentType === 'self_employed' || values.parentA.employmentType === 'mixed') {
-    docs.push('Nachweise bei Selbstständigkeit');
-  }
-  const showParentB = values.applicantMode === 'single_applicant' || values.applicantMode === 'both_parents';
-  if (showParentB && values.parentB) {
-    docs.push('Nachweis Vaterschaft / Anerkennung (falls zutreffend)');
-  }
-  if (values.applicantMode === 'both_parents' && values.parentB) {
-    if (values.parentB.employmentType === 'employed' || values.parentB.employmentType === 'mixed') {
-      docs.push('Arbeitgeberbescheinigung (Partner)');
-    }
-    if (values.parentB.employmentType === 'self_employed' || values.parentB.employmentType === 'mixed') {
-      docs.push('Nachweise bei Selbstständigkeit (Partner)');
-    }
-  }
-  return docs;
-}
 
 type Props = {
   values: ElterngeldApplication;
 };
 
-export const StepDocuments: React.FC<Props> = ({ values }) => {
-  const dynamic = getDynamicDocuments(values);
-  const all = [...BASE_DOCUMENTS, ...dynamic];
+export const StepDocuments: React.FC<Props> = () => {
+  const { goTo } = useNavigation();
 
   return (
     <Card className="still-daily-checklist__card">
-      <h3 className="elterngeld-step__title">Unterlagen</h3>
-      <p className="elterngeld-step__hint">
-        Typische Unterlagen für den Elterngeld-Antrag:
-      </p>
-      <ul className="elterngeld-step__doc-list">
-        {all.map((doc, i) => (
-          <li key={i}>{doc}</li>
+      <h3 className="elterngeld-step__title">Was du für den Antrag brauchst</h3>
+      <ul className="elterngeld-step__doc-list elterngeld-step__doc-list--checklist">
+        {DOCUMENT_CHECKLIST.map((doc, i) => (
+          <li key={i}>✓ {doc}</li>
         ))}
       </ul>
+      <div className="elterngeld-step__doc-actions">
+        <Button
+          type="button"
+          variant="ghost"
+          className="next-steps__button"
+          onClick={() => goTo('/notifications')}
+        >
+          Erinnerung setzen
+        </Button>
+      </div>
     </Card>
   );
 };

@@ -14,6 +14,8 @@ export interface ModalProps {
   variant?: 'default' | 'softpill';
   /** Header + Footer fix, nur Content scrollbar */
   scrollableContent?: boolean;
+  /** Standard-Footer (z. B. Schließen-Button) nicht rendern */
+  hideFooter?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -23,6 +25,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   variant = 'default',
   scrollableContent = false,
+  hideFooter = false,
 }) => {
   const theme = useTheme();
   const { colors, radii, spacing, shadows, typography, components } = theme;
@@ -97,7 +100,7 @@ export const Modal: React.FC<ModalProps> = ({
         >
           {children}
         </div>
-        {onClose ? (
+        {onClose && !hideFooter ? (
           <div
             style={{
               marginTop: spacing.lg,

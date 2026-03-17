@@ -234,9 +234,9 @@ function getSectionActionLabel(action: PartnerBonusAction): string {
   if (action.type === 'focusSection') {
     if (action.section === 'elternArbeit') return 'Arbeitszeit anpassen';
     if (action.section === 'eltern') return 'Familiensituation prüfen';
-    if (action.section === 'monatsplan') return 'Monate planen';
+    if (action.section === 'monatsplan') return 'Monatsplan anpassen';
   }
-  return 'Monate planen';
+  return 'Monatsplan anpassen';
 }
 
 /** Kontexttext direkt über dem Button – konkrete Handlung, keine abstrakten Hinweise. */
@@ -247,7 +247,7 @@ function getSectionContextText(action: PartnerBonusAction): string {
   if (action.type === 'focusSection') {
     if (action.section === 'elternArbeit') return 'Trage deine geplanten Wochenstunden ein (24–32 für Partnerschaftsbonus).';
     if (action.section === 'eltern') return 'Füge einen zweiten Elternteil hinzu.';
-    if (action.section === 'monatsplan') return 'Lege deine Monate fest und wähle ElterngeldPlus mit beiden Eltern für Bonusmonate.';
+    if (action.section === 'monatsplan') return 'Wähle in den Monaten ElterngeldPlus mit beiden Eltern für Bonusmonate.';
   }
   return 'Lege deine Monate fest und wähle ElterngeldPlus mit beiden Eltern für Bonusmonate.';
 }
@@ -284,10 +284,10 @@ export const PartnerBonusCheckDialog: React.FC<Props> = ({
     ? deriveSectionActionsFromResult(result!, validation)
     : deriveSectionActions(plan, validation);
 
-  const hasActionableItems = monthsNeedingFix.length > 0 || bothMonthsNotYetBonus.length > 1 || sectionActions.length > 0;
-  const showSuccessState = validation.isValid || !hasActionableItems;
+  /** Erfolgszustand ausschließlich aus Validierung – keine Fallbacks. */
+  const showSuccessState = validation.isValid;
   const successTitle = 'Partnerschaftsbonus ist vorbereitet';
-  const successText = 'Die erforderlichen Bonusmonate sind bereits korrekt gesetzt.';
+  const successText = 'Die Bonusmonate sind bereits korrekt gesetzt.';
 
   const handleAction = (a: PartnerBonusAction) => {
     if (onAction) {
@@ -324,6 +324,7 @@ export const PartnerBonusCheckDialog: React.FC<Props> = ({
       }
       variant="softpill"
       scrollableContent
+      hideFooter={showSuccessState}
     >
       <div className="elterngeld-partner-bonus-check__content">
         {showSuccessState ? (

@@ -460,7 +460,7 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
             ) : (
               <>
                 <span className="elterngeld-plan__bonus-preview-icon" aria-hidden="true">⚠️</span>{' '}
-                Keine gemeinsamen Monate geplant – Partnerschaftsbonus derzeit nicht möglich.
+                Keine gemeinsamen Monate geplant – für Partnerschaftsbonus gemeinsame Monate mit ElterngeldPlus erforderlich.
               </>
             )}
           </div>

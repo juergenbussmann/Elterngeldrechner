@@ -40,7 +40,7 @@ const WIZARD_STEPS = [
   { id: 'einkommen', title: 'Einkommen' },
   { id: 'elternArbeit', title: 'Eltern & Arbeit' },
   { id: 'plan', title: 'Monate planen' },
-  { id: 'summary', title: 'Ergebnis' },
+  { id: 'summary', title: 'Zusammenfassung' },
   { id: 'documents', title: 'Dokumente' },
 ] as const;
 

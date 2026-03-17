@@ -93,27 +93,6 @@ function formatMonthsLabel(n: number, singular: string, plural: string): string 
   return n === 1 ? singular : plural;
 }
 
-function getExplanationText(
-  goal: OptimizationGoal,
-  improved: boolean
-): string {
-  if (improved) {
-    switch (goal) {
-      case 'maxMoney':
-        return 'Die optimierte Strategie erhöht die geschätzte Gesamtauszahlung.';
-      case 'longerDuration':
-        return 'Die optimierte Strategie verteilt den Bezug auf mehr Monate.';
-      case 'frontLoad':
-        return 'Diese Variante konzentriert höhere Auszahlungen in die ersten Lebensmonate.';
-      case 'partnerBonus':
-        return 'Die optimierte Strategie nutzt den Partnerschaftsbonus günstiger.';
-      default:
-        return '';
-    }
-  }
-  return '';
-}
-
 function formatStateLabel(who: CombinedWho, mode: MonthMode): string {
   if (who === 'none') return 'Kein Bezug';
   if (who === 'both') return 'Partnerschaftsbonus';
@@ -220,6 +199,87 @@ function getResultChangePreview(
     return lines.slice(0, maxLines - 1).concat([
       `… und ${lines.length - maxLines + 1} weitere Änderungen`,
     ]);
+  }
+  return lines;
+}
+
+/** Technisches Label → verständliche Beschreibung für Nutzer. */
+function formatModeForUser(label: string): string {
+  if (label === 'Kein Bezug') return 'kein Bezug';
+  if (label === 'Partnerschaftsbonus') return 'Partnerschaftsbonus (beide Eltern)';
+  if (label === 'Beide – Bonus') return 'ElterngeldPlus mit beiden Eltern';
+  if (label === 'Mutter – Basis') return 'Basiselterngeld (Mutter)';
+  if (label === 'Mutter – Plus') return 'ElterngeldPlus (Mutter)';
+  if (label === 'Partner – Basis') return 'Basiselterngeld (Partner)';
+  if (label === 'Partner – Plus') return 'ElterngeldPlus (Partner)';
+  return label;
+}
+
+/** Änderungen im Plan – verständlich formatiert („Monat 3–5 wird zu ElterngeldPlus mit beiden Eltern“). */
+function getResultChangePreviewUserFriendly(
+  currentResult: CalculationResult,
+  optimizedResult: CalculationResult,
+  maxLines: number = 5
+): string[] {
+  const allMonths = new Set<number>();
+  for (const p of currentResult.parents) {
+    for (const r of p.monthlyResults) allMonths.add(r.month);
+  }
+  for (const p of optimizedResult.parents) {
+    for (const r of p.monthlyResults) allMonths.add(r.month);
+  }
+  const months = [...allMonths].sort((a, b) => a - b);
+
+  type Change = { months: number[]; changeType: 'neu' | 'entfernt' | 'replace'; fromLabel?: string; toLabel?: string };
+  const changes: Change[] = [];
+  let currentRun: Change | null = null;
+
+  for (const month of months) {
+    const cur = getStateFromResult(currentResult, month);
+    const opt = getStateFromResult(optimizedResult, month);
+    const fromLabel = formatStateLabel(cur.who, cur.mode);
+    const toLabel = formatStateLabel(opt.who, opt.mode);
+
+    if (fromLabel === toLabel) continue;
+
+    const changeType: 'neu' | 'entfernt' | 'replace' =
+      cur.who === 'none' ? 'neu' : opt.who === 'none' ? 'entfernt' : 'replace';
+
+    if (
+      currentRun &&
+      changeType === currentRun.changeType &&
+      (changeType === 'neu' ? toLabel === currentRun.toLabel : changeType === 'entfernt' ? fromLabel === currentRun.fromLabel : `${fromLabel}→${toLabel}` === `${currentRun.fromLabel}→${currentRun.toLabel}`)
+    ) {
+      currentRun.months.push(month);
+    } else {
+      if (currentRun) changes.push(currentRun);
+      currentRun = { months: [month], changeType, fromLabel, toLabel };
+    }
+  }
+  if (currentRun) changes.push(currentRun);
+
+  const formatMonthRangeUser = (m: number[]): string => {
+    if (m.length === 0) return '';
+    if (m.length === 1) return `Monat ${m[0]}`;
+    return `Monat ${m[0]}–${m[m.length - 1]}`;
+  };
+
+  const lines: string[] = [];
+  for (const c of changes) {
+    const range = formatMonthRangeUser(c.months);
+    const line =
+      c.changeType === 'entfernt'
+        ? `${range} wird entfernt`
+        : c.changeType === 'neu' && c.toLabel
+          ? `${range} wird zu ${formatModeForUser(c.toLabel)}`
+          : c.changeType === 'replace' && c.toLabel
+            ? `${range} wird zu ${formatModeForUser(c.toLabel)}`
+            : `${range}: ${c.fromLabel} → ${c.toLabel}`;
+    lines.push(line);
+  }
+
+  if (lines.length > maxLines) {
+    return lines.slice(0, maxLines - 1).concat([`… und ${lines.length - maxLines + 1} weitere Änderungen`]);
   }
   return lines;
 }
@@ -398,26 +458,15 @@ function AdoptConfirmDialog({
   deltaTotal,
   deltaDuration,
 }: AdoptConfirmDialogProps) {
-  const planChangeLines = getResultChangePreview(currentResult, optimizedResult);
+  const planChangeLines = getResultChangePreviewUserFriendly(currentResult, optimizedResult);
 
   const impactLines: string[] = [];
-  if (deltaTotal !== 0) {
-    impactLines.push(
-      deltaTotal > 0
-        ? `${formatCurrencySigned(deltaTotal)} mehr Gesamtauszahlung`
-        : `${formatCurrencySigned(deltaTotal)} weniger Gesamtauszahlung`
-    );
-  } else {
-    impactLines.push('Gesamtsumme unverändert');
-  }
+  if (deltaTotal !== 0) impactLines.push(formatCurrencySigned(deltaTotal));
   if (deltaDuration !== 0) {
     const unit = formatMonthsLabel(Math.abs(deltaDuration), 'Monat', 'Monate');
-    impactLines.push(
-      deltaDuration > 0 ? `+${deltaDuration} ${unit} längere Bezugsdauer` : `${deltaDuration} ${unit} kürzere Bezugsdauer`
-    );
-  } else {
-    impactLines.push('Bezugsdauer unverändert');
+    impactLines.push(deltaDuration > 0 ? `+${deltaDuration} ${unit}` : `${deltaDuration} ${unit}`);
   }
+  if (impactLines.length === 0) impactLines.push('±0 €');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Optimierungsvorschlag übernehmen" variant="softpill">
@@ -427,7 +476,7 @@ function AdoptConfirmDialog({
         </p>
         {planChangeLines.length > 0 && (
           <div className="elterngeld-adopt-confirm__section">
-            <h4 className="elterngeld-adopt-confirm__section-title">Änderungen im Plan</h4>
+            <h4 className="elterngeld-adopt-confirm__section-title">Änderungen</h4>
             <ul className="elterngeld-adopt-confirm__list">
               {planChangeLines.map((line, i) => (
                 <li key={i}>{line}</li>
@@ -483,7 +532,6 @@ function OptimizationComparisonBlock({
 }: OptimizationComparisonBlockProps) {
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
   const { goal, status, currentResult, suggestions } = optimizationResultSet;
-  const hasPartner = currentResult.parents.length > 1;
   const suggestionsWithDifference = suggestions.filter((s) => !resultsAreEqual(currentResult, s.result));
   const effectiveSuggestions = suggestionsWithDifference.length > 0 ? suggestionsWithDifference : suggestions;
   const clampedIndex = Math.min(selectedSuggestionIndex, Math.max(0, effectiveSuggestions.length - 1));
@@ -492,65 +540,43 @@ function OptimizationComparisonBlock({
 
   const currentTotal = currentResult.householdTotal;
   const currentDuration = countBezugMonths(currentResult);
-  const currentPB = hasPartnerBonus(currentResult);
 
   const optimizedResult = selectedSuggestion?.result ?? currentResult;
   const optimizedTotal = selectedSuggestion?.optimizedTotal ?? currentTotal;
   const optimizedDuration = selectedSuggestion?.optimizedDurationMonths ?? countBezugMonths(optimizedResult);
-  const optimizedPB = hasPartnerBonus(optimizedResult);
 
   const optimizedResultForCompare = selectedSuggestion?.result ?? currentResult;
   const resultsIdentical = resultsAreEqual(currentResult, optimizedResultForCompare);
   const improved = status === 'improved' && selectedSuggestion?.status === 'improved' && !resultsIdentical;
+  const isAlreadyOptimal = resultsIdentical || !improved;
   const deltaTotal = optimizedTotal - currentTotal;
   const deltaMonths = optimizedDuration - currentDuration;
 
-  const differenzText = improved
+  const benefitText = improved
     ? goal === 'longerDuration'
-      ? `Verbesserung: +${deltaMonths} Monate`
+      ? `+${deltaMonths} ${formatMonthsLabel(deltaMonths, 'Monat', 'Monate')}`
       : goal === 'frontLoad'
-        ? 'Verbesserung: Mehr Auszahlung am Anfang'
-        : `Verbesserung: ${formatCurrencySigned(deltaTotal)}`
-    : 'Wir haben verschiedene Alternativen geprüft, konnten aber keine Variante finden, die für das gewählte Ziel besser ist.';
-
-  const blockTitle = resultsIdentical
-    ? 'Dein aktueller Plan ist bereits optimal'
-    : improved
-      ? 'Verbesserung möglich'
-      : 'Der aktuelle Plan ist bereits sehr gut.';
-  const explanationText = resultsIdentical ? undefined : getExplanationText(goal, improved);
+        ? (selectedSuggestion?.deltaValue ?? 0) > 0
+          ? 'Mehr Auszahlung am Anfang'
+          : ''
+        : formatCurrencySigned(deltaTotal)
+    : '';
 
   const getSuggestionDeltaLines = (s: OptimizationSuggestion): string[] => {
     const deltaTotal = s.optimizedTotal - currentTotal;
     const deltaDuration = s.optimizedDurationMonths - currentDuration;
     const deltaBonus = countPartnerBonusMonths(s.result) - countPartnerBonusMonths(currentResult);
 
-    const formatTotalLine = (): string => {
-      if (deltaTotal > 0) return `${formatCurrencySigned(deltaTotal)} mehr Gesamtauszahlung`;
-      if (deltaTotal < 0) return `${formatCurrencySigned(deltaTotal)} weniger Gesamtauszahlung`;
-      return '±0 € gleiche Gesamtsumme';
-    };
+    const formatTotalLine = (): string => formatCurrencySigned(deltaTotal);
     const formatDurationLine = (): string => {
-      if (deltaDuration > 0) {
-        const unit = formatMonthsLabel(deltaDuration, 'Monat', 'Monate');
-        return `+${deltaDuration} ${unit} längere Bezugsdauer`;
-      }
-      if (deltaDuration < 0) {
-        const unit = formatMonthsLabel(-deltaDuration, 'Monat', 'Monate');
-        return `${deltaDuration} ${unit} kürzere Bezugsdauer`;
-      }
-      return '+0 Monate Bezugsdauer';
+      if (deltaDuration > 0) return `+${deltaDuration} ${formatMonthsLabel(deltaDuration, 'Monat', 'Monate')}`;
+      if (deltaDuration < 0) return `${deltaDuration} ${formatMonthsLabel(-deltaDuration, 'Monat', 'Monate')}`;
+      return '±0 Monate';
     };
     const formatBonusLine = (): string => {
-      if (deltaBonus > 0) {
-        const unit = formatMonthsLabel(deltaBonus, 'Partnerbonus-Monat', 'Partnerbonus-Monate');
-        return `+${deltaBonus} ${unit}`;
-      }
-      if (deltaBonus < 0) {
-        const unit = formatMonthsLabel(-deltaBonus, 'Partnerbonus-Monat', 'Partnerbonus-Monate');
-        return `${deltaBonus} ${unit}`;
-      }
-      return '0 gleiche Bonusmonate';
+      if (deltaBonus > 0) return `+${deltaBonus} ${formatMonthsLabel(deltaBonus, 'Partnerbonus-Monat', 'Partnerbonus-Monate')}`;
+      if (deltaBonus < 0) return `${deltaBonus} ${formatMonthsLabel(-deltaBonus, 'Partnerbonus-Monat', 'Partnerbonus-Monate')}`;
+      return '±0 Bonusmonate';
     };
 
     const lines: string[] = [];
@@ -588,198 +614,122 @@ function OptimizationComparisonBlock({
         deltaDuration={deltaMonths}
       />
       <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--comparison">
-        <h3 className="elterngeld-step__title">{blockTitle}</h3>
-      <p className="elterngeld-calculation__optimization-goal">
-        Optimierungsziel: {GOAL_LABELS[goal]}
-      </p>
-
-      {resultsIdentical ? (
-        <>
-          <p className="elterngeld-calculation__optimization-explanation">
-            Du kannst jetzt mit der Planung fortfahren.
-          </p>
-          {onBackToOptimization && (
-            <Button
-              type="button"
-              variant="secondary"
-              className="btn--softpill"
-              onClick={onBackToOptimization}
-            >
-              Zurück zur Optimierung
-            </Button>
-          )}
-        </>
-      ) : (
-        <>
-      {suggestions.length > 0 && improved && (
-        <>
-          <p className="elterngeld-calculation__optimization-improvements-intro">
-            Mögliche Verbesserungen
-          </p>
-          <p className="elterngeld-calculation__optimization-improvements-text">
-            Wir haben bis zu drei Varianten gefunden, die für das gewählte Ziel besser sein können.
-          </p>
-        </>
-      )}
-
-      {suggestions.length > 0 && !improved && (
-        <p className="elterngeld-calculation__optimization-no-improvement-intro">
-          Keine der geprüften Varianten verbessert das gewählte Ziel. Sie können die Unterschiede dennoch vergleichen.
-        </p>
-      )}
-
-      {hasSuggestions && (
-        <div className="elterngeld-calculation__suggestion-list" role="list">
-          {effectiveSuggestions.map((s, idx) => {
-            const deltaLines = getSuggestionDeltaLines(s);
-            const planChangeLines = getResultChangePreview(currentResult, s.result);
-            return (
-              <button
-                key={idx}
+        {isAlreadyOptimal ? (
+          <>
+            <h3 className="elterngeld-step__title">Dein aktueller Plan ist bereits optimal.</h3>
+            {onBackToOptimization && (
+              <Button
                 type="button"
-                role="listitem"
-                className={`elterngeld-calculation__suggestion-card ${idx === clampedIndex ? 'elterngeld-calculation__suggestion-card--selected' : ''}`}
-                onClick={() => onSelectSuggestion(idx)}
+                variant="secondary"
+                className="btn--softpill"
+                onClick={onBackToOptimization}
               >
-                <span className="elterngeld-calculation__suggestion-title">{s.title}</span>
-                {deltaLines.length > 0 && (
-                  <span className="elterngeld-calculation__suggestion-delta">
-                    {deltaLines.map((line, i) => {
-                        const isPositive = /^\+/.test(line) && !line.includes('−') && !/^-\d/.test(line);
-                        const isNegative = line.includes('−') || /^-\d/.test(line);
-                        const lineClass = isPositive
-                          ? 'elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--positive'
-                          : isNegative
-                            ? 'elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--negative'
-                            : 'elterngeld-calculation__suggestion-delta-line';
-                        return (
-                          <span key={i} className={lineClass}>
-                            {line}
-                          </span>
-                        );
-                      })}
-                  </span>
-                )}
-                {planChangeLines.length > 0 && (
-                  <div className="elterngeld-calculation__suggestion-plan-changes">
-                    <span className="elterngeld-calculation__suggestion-plan-changes-title">Änderungen im Plan</span>
-                    {planChangeLines.map((line, i) => (
-                      <span key={i} className="elterngeld-calculation__suggestion-plan-changes-line">
-                        {line}
+                Zurück zur Optimierung
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <h3 className="elterngeld-step__title">Verbesserung möglich</h3>
+            <div
+              className={`elterngeld-calculation__optimization-benefit ${
+                goal === 'maxMoney' ? deltaTotal > 0 : goal === 'longerDuration' ? deltaMonths > 0 : goal === 'frontLoad' ? (selectedSuggestion?.deltaValue ?? 0) > 0 : deltaTotal > 0
+                  ? 'elterngeld-calculation__optimization-benefit--positive'
+                  : goal === 'maxMoney' ? deltaTotal < 0 : goal === 'longerDuration' ? deltaMonths < 0 : goal === 'frontLoad' ? (selectedSuggestion?.deltaValue ?? 0) < 0 : deltaTotal < 0
+                    ? 'elterngeld-calculation__optimization-benefit--negative'
+                    : ''
+              }`}
+            >
+              {benefitText || 'Keine Verbesserung gefunden'}
+            </div>
+
+            {hasSuggestions && (
+              <div className="elterngeld-calculation__suggestion-list" role="list">
+                {effectiveSuggestions.map((s, idx) => {
+                  const deltaLines = getSuggestionDeltaLines(s);
+                  const planChangeLines = getResultChangePreviewUserFriendly(currentResult, s.result);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      role="listitem"
+                      className={`elterngeld-calculation__suggestion-card ${idx === clampedIndex ? 'elterngeld-calculation__suggestion-card--selected' : ''}`}
+                      onClick={() => onSelectSuggestion(idx)}
+                    >
+                      <span className="elterngeld-calculation__suggestion-title">{s.title}</span>
+                      {deltaLines.length > 0 && (
+                        <span className="elterngeld-calculation__suggestion-delta">
+                          {deltaLines.map((line, i) => {
+                            const isPositive = /^\+/.test(line) && !line.includes('−') && !/^-\d/.test(line);
+                            const isNegative = line.includes('−') || /^-\d/.test(line);
+                            const lineClass = isPositive
+                              ? 'elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--positive'
+                              : isNegative
+                                ? 'elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--negative'
+                                : 'elterngeld-calculation__suggestion-delta-line';
+                            return (
+                              <span key={i} className={lineClass}>
+                                {line}
+                              </span>
+                            );
+                          })}
+                        </span>
+                      )}
+                      {planChangeLines.length > 0 && (
+                        <div className="elterngeld-calculation__suggestion-plan-changes">
+                          <span className="elterngeld-calculation__suggestion-plan-changes-title">Änderungen</span>
+                          {planChangeLines.map((line, i) => (
+                            <span key={i} className="elterngeld-calculation__suggestion-plan-changes-line" title={line}>
+                              {line}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <span className="elterngeld-calculation__suggestion-meta">
+                        {formatCurrency(s.optimizedTotal)} · {s.optimizedDurationMonths} Monate
                       </span>
-                    ))}
-                  </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="elterngeld-calculation__optimization-actions">
+              {selectedSuggestion && onAdoptOptimization && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="btn--softpill elterngeld-calculation__optimization-action-primary"
+                  onClick={() => setShowAdoptConfirm(true)}
+                >
+                  Optimierung übernehmen
+                </Button>
+              )}
+              <div className="elterngeld-calculation__optimization-actions-secondary">
+                {onDiscardOptimization && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="btn--softpill"
+                    onClick={onDiscardOptimization}
+                  >
+                    Beibehalten
+                  </Button>
                 )}
-                <span className="elterngeld-calculation__suggestion-meta">
-                  {formatCurrency(s.optimizedTotal)} · {s.optimizedDurationMonths} Monate
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {suggestions.length > 0 && (
-        <p className="elterngeld-calculation__suggestion-hint">
-          Hinweis: Die Vorschläge sind alternative Varianten für dasselbe Optimierungsziel. Welche Variante am besten passt, hängt von Ihrer persönlichen Planung ab.
-        </p>
-      )}
-
-      <div className="elterngeld-calculation__optimization-compare-grid">
-        <div className="elterngeld-calculation__optimization-compare-col">
-          <h4 className="elterngeld-calculation__optimization-compare-col-title">Aktueller Plan</h4>
-          <div className="elterngeld-calculation__optimization-compare-row">
-            <span className="elterngeld-calculation__optimization-compare-label">Haushaltsgesamtsumme:</span>
-            <span className="elterngeld-calculation__optimization-compare-value">{formatCurrency(currentTotal)}</span>
-          </div>
-          <div className="elterngeld-calculation__optimization-compare-row">
-            <span className="elterngeld-calculation__optimization-compare-label">Bezugsdauer:</span>
-            <span className="elterngeld-calculation__optimization-compare-value">{currentDuration} Monate</span>
-          </div>
-          {goal === 'partnerBonus' && (
-            <div className="elterngeld-calculation__optimization-compare-row">
-              <span className="elterngeld-calculation__optimization-compare-label">Partnerschaftsbonus:</span>
-              <span className="elterngeld-calculation__optimization-compare-value">{currentPB ? 'ja' : 'nein'}</span>
+                {onBackToOptimization && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="btn--softpill"
+                    onClick={onBackToOptimization}
+                  >
+                    Zurück
+                  </Button>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-        <div className="elterngeld-calculation__optimization-compare-col">
-          <h4 className="elterngeld-calculation__optimization-compare-col-title">
-            {improved ? 'Optimierte Strategie' : 'Geprüfte Vergleichsstrategie'}
-          </h4>
-          <div className="elterngeld-calculation__optimization-compare-row">
-            <span className="elterngeld-calculation__optimization-compare-label">Haushaltsgesamtsumme:</span>
-            <span className="elterngeld-calculation__optimization-compare-value">{formatCurrency(optimizedTotal)}</span>
-          </div>
-          <div className="elterngeld-calculation__optimization-compare-row">
-            <span className="elterngeld-calculation__optimization-compare-label">Bezugsdauer:</span>
-            <span className="elterngeld-calculation__optimization-compare-value">{optimizedDuration} Monate</span>
-          </div>
-          {goal === 'partnerBonus' && (
-            <div className="elterngeld-calculation__optimization-compare-row">
-              <span className="elterngeld-calculation__optimization-compare-label">Partnerschaftsbonus:</span>
-              <span className="elterngeld-calculation__optimization-compare-value">{optimizedPB ? 'ja' : 'nein'}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div
-        className={`elterngeld-calculation__optimization-differenz ${
-          improved && (goal === 'maxMoney' ? deltaTotal > 0 : goal === 'longerDuration' ? deltaMonths > 0 : goal === 'frontLoad' ? (selectedSuggestion?.deltaValue ?? 0) > 0 : deltaTotal > 0)
-            ? 'elterngeld-calculation__optimization-differenz--positive'
-            : improved && (goal === 'maxMoney' ? deltaTotal < 0 : goal === 'longerDuration' ? deltaMonths < 0 : goal === 'frontLoad' ? (selectedSuggestion?.deltaValue ?? 0) < 0 : deltaTotal < 0)
-              ? 'elterngeld-calculation__optimization-differenz--negative'
-              : ''
-        }`}
-      >
-        {differenzText}
-      </div>
-
-      {!improved && (
-        <p className="elterngeld-calculation__optimization-no-improvement-hint">
-          Der aktuelle Plan bleibt daher die beste gefundene Lösung.
-        </p>
-      )}
-
-      {explanationText && (
-        <p className="elterngeld-calculation__optimization-explanation">{explanationText}</p>
-      )}
-
-      <div className="elterngeld-calculation__optimization-actions">
-        {improved && selectedSuggestion && onAdoptOptimization && (
-          <Button
-            type="button"
-            variant="primary"
-            className="btn--softpill"
-            onClick={() => setShowAdoptConfirm(true)}
-          >
-            Optimierung übernehmen und Berechnung aktualisieren
-          </Button>
+          </>
         )}
-        {improved && onDiscardOptimization && (
-          <Button
-            type="button"
-            variant="secondary"
-            className="btn--softpill"
-            onClick={onDiscardOptimization}
-          >
-            Vorschlag verwerfen
-          </Button>
-        )}
-        {onBackToOptimization && (
-          <Button
-            type="button"
-            variant="secondary"
-            className="btn--softpill"
-            onClick={onBackToOptimization}
-          >
-            Zurück zur Optimierung
-          </Button>
-        )}
-      </div>
-        </>
-      )}
     </Card>
     </>
   );

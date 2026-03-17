@@ -42,7 +42,7 @@ export const StepSummary: React.FC<Props> = ({
 
   return (
     <Card className="still-daily-checklist__card">
-      <h3 className="elterngeld-step__title">Ergebnis</h3>
+      <h3 className="elterngeld-step__title">Zusammenfassung</h3>
       <div className="elterngeld-step__summary">
         <p><strong>Geburt:</strong> {formatDate(birthDate)}</p>
         {liveResult && (

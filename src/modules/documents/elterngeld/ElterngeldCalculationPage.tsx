@@ -6,6 +6,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
 import { usePhase } from '../../../core/phase/usePhase';
@@ -94,6 +95,7 @@ function hasDataConflict(
 export const ElterngeldCalculationPage: React.FC = () => {
   const { profile } = usePhase();
   const { showToast } = useNotifications();
+  const { goTo } = useNavigation();
   const location = useLocation();
   const child = getChildDateContext(profile);
   const birthOrDue = child.effectiveDate ?? '';
@@ -561,7 +563,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
                 className="next-steps__button btn--softpill"
                 onClick={handleCalculate}
               >
-                Zur Berechnung
+                Berechnen
               </Button>
               <Button
                 type="button"
@@ -599,6 +601,16 @@ export const ElterngeldCalculationPage: React.FC = () => {
                   onClick={handleRemoveVariantB}
                 >
                   Alternative entfernen
+                </Button>
+              )}
+              {!isPreparationEmpty(loadPreparation()) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="next-steps__button btn--softpill"
+                  onClick={() => goTo('/documents/elterngeld')}
+                >
+                  Zurück zur Vorbereitung
                 </Button>
               )}
               <Button
@@ -695,6 +707,16 @@ export const ElterngeldCalculationPage: React.FC = () => {
               >
                 Zurück zur Eingabe
               </Button>
+              {!isPreparationEmpty(loadPreparation()) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="next-steps__button btn--softpill"
+                  onClick={() => goTo('/documents/elterngeld')}
+                >
+                  Zurück zur Vorbereitung
+                </Button>
+              )}
             </div>
           </>
         )}

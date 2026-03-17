@@ -99,10 +99,12 @@ export function validatePartnerBonus(plan: ElterngeldCalculationPlan): PartnerBo
     );
   }
 
+  const hasOnlyOneParentWarnings = warnings.some((w) => w.includes('beide Elternteile im selben Monat'));
   const hasHourWarnings = warnings.some((w) => w.includes('24–32'));
+  /** Gültig, wenn: keine Bonusmonate ODER mind. 2 zusammenhängend UND keine „nur ein Elternteil“- oder Stunden-Probleme. */
   const isValid =
     !hasPartnerBonusMonths ||
-    (longestSeries >= MIN_MONTHS && longestSeries <= MAX_MONTHS && !hasHourWarnings);
+    (longestSeries >= MIN_MONTHS && !hasOnlyOneParentWarnings && !hasHourWarnings);
 
   return {
     isValid,
@@ -150,14 +152,16 @@ export function validatePartnerBonusFromResult(result: CalculationResult): Partn
   const hasPartnerBonusMonths = result.parents.some((p) =>
     p.monthlyResults.some((r) => r.mode === 'partnerBonus')
   );
+  const hasOnlyOneParentWarnings = warnings.some((w) => w.includes('beide Elternteile im selben Monat'));
   if (hasPartnerBonusMonths && longestSeries > 0 && (longestSeries < MIN_MONTHS || longestSeries > MAX_MONTHS)) {
     warnings.push(
       `Partnerschaftsbonus: 2–4 zusammenhängende Monate erforderlich. Längste gültige Serie: ${longestSeries} Monat(e).`
     );
   }
+  /** Gültig, wenn: keine Bonusmonate ODER mind. 2 zusammenhängend UND keine „nur ein Elternteil“-Probleme. */
   const isValid =
     !hasPartnerBonusMonths ||
-    (longestSeries >= MIN_MONTHS && longestSeries <= MAX_MONTHS);
+    (longestSeries >= MIN_MONTHS && !hasOnlyOneParentWarnings);
 
   return { isValid, longestValidSeries: longestSeries, monthValidity, warnings };
 }

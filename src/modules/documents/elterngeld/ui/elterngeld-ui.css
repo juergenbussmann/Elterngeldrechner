@@ -139,12 +139,18 @@
 }
 
 .elterngeld-tile__bonus-hint {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   margin-top: 0.08rem;
   color: var(--color-primary, #2563eb);
   opacity: 0.8;
   font-weight: 500;
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .elterngeld-tile--none .elterngeld-tile__label,
@@ -307,47 +313,6 @@
   flex-wrap: wrap;
 }
 
-/* ===== MonthStatusBar – Statuszeile über Monatsansicht ===== */
-.elterngeld-month-status-bar {
-  margin-bottom: 0.75rem;
-  padding: 0.6rem 0.75rem;
-  background: rgba(37, 99, 235, 0.06);
-  border-radius: 8px;
-  border: 1px solid rgba(37, 99, 235, 0.15);
-}
-
-.elterngeld-month-status-bar__line {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--color-text-primary, #0f172a);
-}
-
-.elterngeld-month-status-bar__prefix {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-primary, #2563eb);
-  margin-bottom: 0.2rem;
-}
-
-.elterngeld-month-status-bar__status {
-  display: block;
-  font-weight: 500;
-}
-
-.elterngeld-month-status-bar__placeholder {
-  font-size: 0.9rem;
-  color: var(--color-text-secondary, #64748b);
-}
-
-.elterngeld-month-status-bar__legend {
-  margin: 0.5rem 0 0 0;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary, #64748b);
-  line-height: 1.4;
-}
-
 /* ===== Grid-Layouts (für MonthGrid) ===== */
 .elterngeld-tile-grid {
   display: grid;
@@ -386,6 +351,13 @@
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--color-text-secondary, #333);
+}
+
+.elterngeld-month-summary__hint {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #64748b);
+  line-height: 1.35;
 }
 
 .elterngeld-plan-phases__list {
@@ -434,133 +406,6 @@
 .elterngeld-month-summary__row--total .elterngeld-month-summary__label,
 .elterngeld-month-summary__row--total .elterngeld-month-summary__value {
   font-weight: 600;
-}
-
-/* ===== PlanTimeline – Kompakte Monats-Balkenübersicht ===== */
-.elterngeld-plan-timeline {
-  margin-bottom: 0.75rem;
-}
-
-.elterngeld-plan-timeline--compact {
-  margin-bottom: 0.5rem;
-}
-
-.elterngeld-plan-timeline__bar {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  background: var(--color-border, #e4e4e7);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.elterngeld-plan-timeline__segment {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.15s, transform 0.1s;
-}
-
-.elterngeld-plan-timeline--compact .elterngeld-plan-timeline__segment {
-  height: 24px;
-}
-
-.elterngeld-plan-timeline__segment--clickable {
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
-}
-
-.elterngeld-plan-timeline__segment--clickable:hover {
-  opacity: 0.9;
-  transform: scale(1.02);
-}
-
-.elterngeld-plan-timeline__segment--clickable:focus-visible {
-  outline: 2px solid var(--color-primary, #2563eb);
-  outline-offset: 2px;
-}
-
-.elterngeld-plan-timeline__num {
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: inherit;
-  opacity: 0.9;
-}
-
-.elterngeld-plan-timeline__tooltip {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.elterngeld-plan-timeline__axis {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  margin-top: 0.2rem;
-  font-size: 0.55rem;
-  color: var(--color-text-secondary, #64748b);
-}
-
-.elterngeld-plan-timeline__axis-num {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-}
-
-.elterngeld-plan-timeline__legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  margin-top: 0.5rem;
-  font-size: 0.7rem;
-  color: var(--color-text-secondary, #64748b);
-}
-
-.elterngeld-plan-timeline__legend-item::before {
-  content: '';
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  margin-right: 0.3rem;
-  vertical-align: middle;
-}
-
-.elterngeld-plan-timeline__legend-item--mother::before {
-  background: rgba(37, 99, 235, 0.5);
-  border: 1px solid rgba(37, 99, 235, 0.6);
-}
-
-.elterngeld-plan-timeline__legend-item--partner::before {
-  background: rgba(34, 197, 94, 0.5);
-  border: 1px solid rgba(34, 197, 94, 0.6);
-}
-
-.elterngeld-plan-timeline__legend-item--both::before {
-  background: rgba(168, 85, 247, 0.5);
-  border: 1px solid rgba(168, 85, 247, 0.6);
-}
-
-.elterngeld-plan-timeline__legend-item--none::before {
-  background: rgba(248, 250, 252, 0.95);
-  border: 1px solid #e2e8f0;
-}
-
-@media (max-width: 480px) {
-  .elterngeld-plan-timeline__segment {
-    height: 28px;
-  }
-
-  .elterngeld-plan-timeline--compact .elterngeld-plan-timeline__segment {
-    height: 20px;
-  }
 }
 
 /* ===== IncomeInput – Einkommensfelder mit €-Hinweis ===== */

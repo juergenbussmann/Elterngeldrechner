@@ -67,10 +67,11 @@ export function getCombinedMonthState(
     };
   }
   if (hasA && hasB) {
+    const isBonus = modeA === 'partnerBonus' && modeB === 'partnerBonus';
     return {
       who: 'both',
-      mode: 'partnerBonus',
-      modeLabel: 'Bonus',
+      mode: isBonus ? 'partnerBonus' : modeA,
+      modeLabel: isBonus ? 'Bonus' : MODE_LABELS[modeA],
       label: 'Beide',
       tileVariant: 'both',
     };

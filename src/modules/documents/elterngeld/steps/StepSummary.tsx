@@ -24,6 +24,7 @@ type Props = {
   onCreatePdf: () => void;
   isSubmitting: boolean;
   onNavigateToCalculation?: () => void;
+  onBackToPlan?: () => void;
   liveResult?: CalculationResult | null;
 };
 
@@ -32,6 +33,7 @@ export const StepSummary: React.FC<Props> = ({
   onCreatePdf,
   isSubmitting,
   onNavigateToCalculation,
+  onBackToPlan,
   liveResult,
 }) => {
   const deadlineInfo = getElterngeldDeadlineInfo(values);
@@ -80,6 +82,17 @@ export const StepSummary: React.FC<Props> = ({
         </p>
       )}
       <div className="elterngeld-step__summary-actions">
+        {onBackToPlan && (
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            className="next-steps__button btn--softpill elterngeld-step__back-to-plan"
+            onClick={onBackToPlan}
+          >
+            Zurück zur Planung
+          </Button>
+        )}
         <Button
           type="button"
           variant="primary"

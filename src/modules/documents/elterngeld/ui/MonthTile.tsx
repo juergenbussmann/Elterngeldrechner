@@ -19,7 +19,7 @@ export interface MonthTileProps {
   variant: MonthTileVariant;
   /** Primärer Text (z.B. "Mutter", "B", "–") */
   label: string;
-  /** Optionaler Zusatztext (z.B. "Basis", "Plus") */
+  /** Optionaler Zusatztext (z.B. "Basis", "Plus", "Bonus") – "Bonus" = bereits als Bonusmonat gesetzt */
   subLabel?: string;
   clickable?: boolean;
   active?: boolean;
@@ -61,7 +61,9 @@ export const MonthTile: React.FC<MonthTileProps> = ({
       <span className="elterngeld-tile__label">{label}</span>
       {subLabel && <span className="elterngeld-tile__sublabel">{subLabel}</span>}
       {variant === 'both' && (
-        <span className="elterngeld-tile__bonus-hint">möglicher Bonusmonat</span>
+        <span className="elterngeld-tile__bonus-hint">
+          {subLabel === 'Bonus' ? 'Bonus' : 'Bonusfähig'}
+        </span>
       )}
       {hasWarning && (
         <span className="elterngeld-tile__warning" aria-label="Hinweis" title="Bitte prüfen" />
@@ -69,9 +71,10 @@ export const MonthTile: React.FC<MonthTileProps> = ({
     </>
   );
 
+  const bonusHint = variant === 'both' ? (subLabel === 'Bonus' ? ' – Bonus' : ' – Bonusfähig') : '';
   const defaultAriaLabel =
     ariaLabel ??
-    `Lebensmonat ${month}: ${label}${subLabel ? ` – ${subLabel}` : ''}${variant === 'both' ? ' – möglicher Bonusmonat' : ''}`;
+    `Lebensmonat ${month}: ${label}${subLabel ? ` – ${subLabel}` : ''}${bonusHint}`;
 
   if (clickable && onClick) {
     return (

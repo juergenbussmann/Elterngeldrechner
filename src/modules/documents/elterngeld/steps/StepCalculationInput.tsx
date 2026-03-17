@@ -10,12 +10,10 @@ import { Button } from '../../../../shared/ui/Button';
 import { TextInput } from '../../../../shared/ui/TextInput';
 import { IncomeInput } from '../ui/IncomeInput';
 import { MonthGrid } from '../ui/MonthGrid';
-import { PlanTimeline } from '../ui/PlanTimeline';
 import { PlanPhases } from '../ui/PlanPhases';
 import { MonthSummary } from '../ui/MonthSummary';
-import { MonthStatusBar } from '../ui/MonthStatusBar';
 import { getMonthGridItemsFromPlan } from '../monthGridMappings';
-import { getCombinedMonthState, calculatePlan } from '../calculation';
+import { getCombinedMonthState, calculatePlan, applyCombinedSelection } from '../calculation';
 import { buildOptimizationResult } from '../calculation/elterngeldOptimization';
 import { CalculationMonthPanel } from './CalculationMonthPanel';
 import { OptimizationSuggestionBlock } from './OptimizationSuggestionBlock';
@@ -42,6 +40,8 @@ type Props = {
   initialFocusMonth?: number | null;
   /** Beim Mount: zu diesem Bereich scrollen */
   initialScrollTo?: 'grunddaten' | 'einkommen' | 'monatsplan' | null;
+  /** Beim Mount: diesen Monat als kürzlich geändert markieren (z. B. nach Bonus-Fix aus Ergebnis-Ansicht) */
+  initialChangedMonth?: number | null;
 };
 
 const SCROLL_IDS = {
@@ -68,14 +68,24 @@ function formatBothMonthRange(months: number[]): string {
   return sorted.join(', ');
 }
 
-export const StepCalculationInput: React.FC<Props> = ({ plan, onChange, initialFocusMonth, initialScrollTo }) => {
+export const StepCalculationInput: React.FC<Props> = ({
+  plan,
+  onChange,
+  initialFocusMonth,
+  initialScrollTo,
+  initialChangedMonth,
+}) => {
   const [activeMonth, setActiveMonth] = useState<number | null>(initialFocusMonth ?? null);
   const [showPartnerBonusCheck, setShowPartnerBonusCheck] = useState(false);
-  const [changedMonth, setChangedMonth] = useState<number | null>(null);
+  const [changedMonth, setChangedMonth] = useState<number | null>(initialChangedMonth ?? null);
 
   useEffect(() => {
     if (initialFocusMonth != null) setActiveMonth(initialFocusMonth);
   }, [initialFocusMonth]);
+
+  useEffect(() => {
+    if (initialChangedMonth != null) setChangedMonth(initialChangedMonth);
+  }, [initialChangedMonth]);
 
   useEffect(() => {
     if (!initialScrollTo) return;
@@ -132,6 +142,35 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange, initialF
   }, [plan]);
 
   const handlePartnerBonusAction = useCallback((action: PartnerBonusAction) => {
+    if (action.type === 'applyFix') {
+      const hasPartner = plan.parents.length > 1;
+      if (action.fix === 'switchToPlus') {
+        onChange(applyCombinedSelection(plan, action.month, { who: 'both', mode: 'partnerBonus' }, hasPartner));
+      } else if (action.fix === 'setBoth') {
+        onChange(applyCombinedSelection(plan, action.month, { who: 'both', mode: 'partnerBonus' }, hasPartner));
+      } else {
+        onChange(applyCombinedSelection(plan, action.month, { who: 'both', mode: 'partnerBonus' }, hasPartner));
+      }
+      setActiveMonth(action.month);
+      setChangedMonth(action.month);
+      const el = document.getElementById(SCROLL_IDS.monatsplan);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (action.type === 'applySetAllSuitableMonths') {
+      const hasPartner = plan.parents.length > 1;
+      let next = plan;
+      for (const m of action.months) {
+        next = applyCombinedSelection(next, m, { who: 'both', mode: 'partnerBonus' }, hasPartner);
+      }
+      onChange(next);
+      const firstM = action.months[0];
+      setActiveMonth(firstM ?? null);
+      if (firstM != null) setChangedMonth(firstM);
+      const el = document.getElementById(SCROLL_IDS.monatsplan);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     if (action.type === 'focusMonth') {
       setActiveMonth(action.month);
       const el = document.getElementById(SCROLL_IDS.monatsplan);
@@ -242,34 +281,16 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange, initialF
             <>
               <PlanPhases items={items} />
               <MonthSummary items={items} />
-              <PlanTimeline
-                items={items}
-                showLegend
-                onMonthClick={handleMonthClick}
-              />
             </>
           );
         })()}
 
         <div id="elterngeld-input-month-grid" className="elterngeld-input__month-grid-wrap">
-        <MonthStatusBar
-          activeMonth={activeMonth}
-          who={
-            activeMonth !== null
-              ? getCombinedMonthState(plan, activeMonth, !!parentB).who
-              : 'none'
-          }
-          mode={
-            activeMonth !== null
-              ? getCombinedMonthState(plan, activeMonth, !!parentB).mode
-              : 'none'
-          }
-          showLegend
-        />
         <MonthGrid
           items={getMonthGridItemsFromPlan(plan, !!parentB, maxMonth)}
           onMonthClick={handleMonthClick}
           activeMonth={activeMonth ?? undefined}
+          changedMonth={changedMonth}
         />
         </div>
 
@@ -324,17 +345,49 @@ export const StepCalculationInput: React.FC<Props> = ({ plan, onChange, initialF
           </p>
         )}
 
-        <p className="elterngeld-step__hint elterngeld-step__hint--below">
-          Bei ElterngeldPlus und Partnerschaftsbonus: 24–32 Wochenstunden erforderlich. Bitte tragen Sie Ihre geplanten Wochenstunden ein – es gibt keine automatische Übernahme.
-        </p>
-        <Button
-          type="button"
-          variant="secondary"
-          className="btn--softpill elterngeld-step__partner-bonus-check-btn"
-          onClick={() => setShowPartnerBonusCheck(true)}
-        >
-          Partnerschaftsbonus prüfen
-        </Button>
+        <div className="elterngeld-plan__partner-bonus-info elterngeld-plan__partner-bonus-actions">
+          <h4 className="elterngeld-plan__partner-bonus-info-title">Partnerschaftsbonus prüfen</h4>
+          {parentB && (() => {
+            const hasPlusOrBonus = plan.parents.some((p) =>
+              p.months.some((m) => m.mode === 'plus' || m.mode === 'partnerBonus')
+            );
+            const firstMonth = getFirstPartnerBonusMonth(plan)
+              ?? plan.parents.flatMap((p) => p.months).find((m) => m.mode === 'plus')?.month ?? null;
+            return (
+              <>
+                {hasPlusOrBonus && (
+                  <p className="elterngeld-plan__partner-bonus-info-text">
+                    Bei ElterngeldPlus und Partnerschaftsbonus: 24–32 Wochenstunden erforderlich.
+                  </p>
+                )}
+                <div className="elterngeld-plan__partner-bonus-buttons">
+                  {hasPlusOrBonus && firstMonth != null && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="elterngeld-plan__partner-bonus-work-link"
+                      onClick={() => {
+                        setActiveMonth(firstMonth);
+                        const el = document.getElementById(SCROLL_IDS.monatsplan);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }}
+                    >
+                      Arbeitszeit anpassen
+                    </Button>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill elterngeld-step__partner-bonus-check-btn"
+            onClick={() => setShowPartnerBonusCheck(true)}
+          >
+            Partnerschaftsbonus prüfen
+          </Button>
+        </div>
       </Card>
 
       <PartnerBonusCheckDialog

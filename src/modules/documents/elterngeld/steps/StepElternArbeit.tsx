@@ -38,14 +38,14 @@ export const StepElternArbeit: React.FC<Props> = ({ values, onChange }) => {
   const [showTeilzeitDetails, setShowTeilzeitDetails] = useState(false);
   const [showTeilzeitDetailsPartner, setShowTeilzeitDetailsPartner] = useState(false);
 
-  const updateParentA = (field: string, value: string | boolean) => {
+  const updateParentA = (field: string, value: string | boolean | number) => {
     onChange({
       ...values,
       parentA: { ...values.parentA, [field]: value },
     });
   };
 
-  const updateParentB = (field: string, value: string | boolean) => {
+  const updateParentB = (field: string, value: string | boolean | number) => {
     const parentB = values.parentB ?? EMPTY_ELTERNGELD_PARENT;
     onChange({
       ...values,
@@ -111,6 +111,36 @@ export const StepElternArbeit: React.FC<Props> = ({ values, onChange }) => {
             />
             <span>Geplante Teilzeit nach Geburt</span>
           </label>
+          {values.parentA.plannedPartTime && (
+            <div className="elterngeld-step__hours-field">
+              <label className="elterngeld-step__label">
+                <span>Wochenstunden nach Geburt</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={0.5}
+                  value={values.parentA.hoursPerWeek ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateParentA('hoursPerWeek', v === '' ? undefined : parseFloat(v) || 0);
+                  }}
+                  placeholder="z.B. 30"
+                  className="elterngeld-step__number-input"
+                />
+              </label>
+              <p className="elterngeld-step__hint elterngeld-step__hint--small">
+                Für Partnerschaftsbonus: 24–32 Stunden pro Woche
+              </p>
+              {values.parentA.hoursPerWeek != null &&
+                (values.parentA.hoursPerWeek < 24 || values.parentA.hoursPerWeek > 32) &&
+                values.parentA.hoursPerWeek > 0 && (
+                  <p className="elterngeld-step__hint elterngeld-step__hint--warning">
+                    Nicht im Bereich für Partnerschaftsbonus
+                  </p>
+                )}
+            </div>
+          )}
           <div className="elterngeld-hint elterngeld-hint--teilzeit">
             <p className="elterngeld-hint__text">
               Teilzeit kann die Höhe des Elterngeldes beeinflussen.
@@ -169,6 +199,36 @@ export const StepElternArbeit: React.FC<Props> = ({ values, onChange }) => {
                     />
                     <span>Geplante Teilzeit nach Geburt</span>
                   </label>
+                  {parentB.plannedPartTime && (
+                    <div className="elterngeld-step__hours-field">
+                      <label className="elterngeld-step__label">
+                        <span>Wochenstunden nach Geburt</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={60}
+                          step={0.5}
+                          value={parentB.hoursPerWeek ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            updateParentB('hoursPerWeek', v === '' ? undefined : parseFloat(v) || 0);
+                          }}
+                          placeholder="z.B. 30"
+                          className="elterngeld-step__number-input"
+                        />
+                      </label>
+                      <p className="elterngeld-step__hint elterngeld-step__hint--small">
+                        Für Partnerschaftsbonus: 24–32 Stunden pro Woche
+                      </p>
+                      {parentB.hoursPerWeek != null &&
+                        (parentB.hoursPerWeek < 24 || parentB.hoursPerWeek > 32) &&
+                        parentB.hoursPerWeek > 0 && (
+                          <p className="elterngeld-step__hint elterngeld-step__hint--warning">
+                            Nicht im Bereich für Partnerschaftsbonus
+                          </p>
+                        )}
+                    </div>
+                  )}
                   <div className="elterngeld-hint elterngeld-hint--teilzeit">
                     <p className="elterngeld-hint__text">
                       Teilzeit kann die Höhe des Elterngeldes beeinflussen.

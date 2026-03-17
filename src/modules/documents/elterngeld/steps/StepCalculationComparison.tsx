@@ -27,7 +27,7 @@ const MODE_LABELS: Record<string, string> = {
   none: '–',
   basis: 'Basis',
   plus: 'Plus',
-  partnerBonus: 'PartnerBonus',
+  partnerBonus: 'Partnerschaftsbonus',
 };
 
 function getAmountForMonth(parent: ParentCalculationResult, month: number): number {

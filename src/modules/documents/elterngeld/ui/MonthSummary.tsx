@@ -41,13 +41,16 @@ export const MonthSummary: React.FC<MonthSummaryProps> = ({ items, compact }) =>
   return (
     <div className={`elterngeld-month-summary ${compact ? 'elterngeld-month-summary--compact' : ''}`}>
       <h4 className="elterngeld-month-summary__title">Monatsübersicht</h4>
+      <p className="elterngeld-month-summary__hint">
+        Oben: sichtbare Lebensmonate im aktuellen Ausschnitt. Unten: berechnete Zuordnungen im Gesamtplan.
+      </p>
       <div className="elterngeld-month-summary__grid">
         <span className="elterngeld-month-summary__row">
-          <span className="elterngeld-month-summary__label">Mutter:</span>
+          <span className="elterngeld-month-summary__label">Zuordnungen Mutter:</span>
           <span className="elterngeld-month-summary__value">{mother} Monate</span>
         </span>
         <span className="elterngeld-month-summary__row">
-          <span className="elterngeld-month-summary__label">Partner:</span>
+          <span className="elterngeld-month-summary__label">Zuordnungen Partner:</span>
           <span className="elterngeld-month-summary__value">{partner} Monate</span>
         </span>
         <span className="elterngeld-month-summary__row">

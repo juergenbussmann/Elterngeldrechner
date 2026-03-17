@@ -23,6 +23,8 @@ export interface ElterngeldParent {
   employmentType: EmploymentType;
   incomeBeforeBirth: string;
   plannedPartTime: boolean;
+  /** Geplante Wochenstunden nach Geburt (nur relevant bei plannedPartTime) */
+  hoursPerWeek?: number;
 }
 
 export interface ElterngeldBenefitPlan {

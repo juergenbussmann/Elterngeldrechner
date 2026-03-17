@@ -77,6 +77,10 @@ export const ElterngeldWizardPage: React.FC = () => {
   const isLastStep = stepIndex === WIZARD_STEPS.length - 1;
   const currentStepNumber = stepIndex + 2; /* Intro = 1, Basic = 2, ... */
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [stepIndex, wizardStarted]);
+
   const liveResult = useMemo(() => {
     const birthDate = values.child.birthDate?.trim() || values.child.expectedBirthDate?.trim();
     if (!birthDate) return null;
@@ -290,6 +294,7 @@ export const ElterngeldWizardPage: React.FC = () => {
             onCreatePdf={handleCreatePdf}
             isSubmitting={isSubmitting}
             onNavigateToCalculation={handleNavigateToCalculation}
+            onBackToPlan={() => setStepIndex(WIZARD_STEPS.findIndex((s) => s.id === 'plan'))}
             liveResult={liveResult}
           />
         )}

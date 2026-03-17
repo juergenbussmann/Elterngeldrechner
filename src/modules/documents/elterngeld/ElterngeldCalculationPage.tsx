@@ -4,7 +4,7 @@
  * Unterstützt Variantenvergleich (Aktueller Plan vs. Alternative Variante).
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
@@ -14,7 +14,7 @@ import { useNotifications } from '../../../shared/lib/notifications';
 import { addDocument } from '../application/service';
 import type { ElterngeldCalculationPlan, CalculationResult } from './calculation';
 import type { NavigateToInputTarget } from './steps/StepCalculationResult';
-import { createDefaultPlan, calculatePlan, duplicatePlan } from './calculation';
+import { createDefaultPlan, calculatePlan, duplicatePlan, applyCombinedSelection } from './calculation';
 import {
   loadCalculationPlan,
   saveCalculationPlan,
@@ -25,6 +25,10 @@ import {
   isPlanEmpty,
   plansAreEqual,
 } from './infra/calculationPlanStorage';
+import { loadPreparation, savePreparation, isPreparationEmpty } from './infra/elterngeldPreparationStorage';
+import { applicationToCalculationPlan } from './applicationToCalculationPlan';
+import { mergePlanIntoPreparation } from './planToApplicationMerge';
+import { EditOriginDialog } from './steps/EditOriginDialog';
 import { Card } from '../../../shared/ui/Card';
 import { buildElterngeldCalculationPdf } from './pdf/buildElterngeldCalculationPdf';
 import { StepCalculationInput } from './steps/StepCalculationInput';
@@ -48,13 +52,29 @@ type EditingVariant = 'A' | 'B';
 
 type LocationState = { fromPreparation?: ElterngeldCalculationPlan } | null;
 
+/**
+ * Ermittelt den initialen Berechnungsplan.
+ * Priorität: Vorbereitung (führend) > persistierter Plan > Default.
+ * Keine doppelte Eingabe – Vorbereitungsdaten werden übernommen.
+ */
 function getInitialPlan(
   fromPreparation: ElterngeldCalculationPlan | undefined,
   birthOrDue: string
 ): ElterngeldCalculationPlan {
+  // 1. Explizit aus Vorbereitung: Nutzer kam von Wizard → Vorbereitung ist führend
+  if (fromPreparation) return fromPreparation;
+
+  // 2. Gespeicherte Vorbereitung: Bei direkter Navigation oder ohne location.state
+  const preparation = loadPreparation();
+  if (preparation && !isPreparationEmpty(preparation)) {
+    return applicationToCalculationPlan(preparation);
+  }
+
+  // 3. Persistierter Berechnungsstand (keine Vorbereitung vorhanden)
   const persisted = loadCalculationPlan();
   if (persisted) return persisted;
-  if (fromPreparation) return fromPreparation;
+
+  // 4. Fallback: Default-Plan
   return createDefaultPlan(birthOrDue, true);
 }
 
@@ -86,6 +106,8 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const [view, setView] = useState<View>('input');
   const [editingVariant, setEditingVariant] = useState<EditingVariant>('A');
   const [plan, setPlan] = useState<ElterngeldCalculationPlan>(() => {
+    // Bei Konflikt: Vorbereitung ist führend – fromPreparation als Standard
+    if (conflictDetected && fromPreparation) return fromPreparation;
     if (conflictDetected) return persisted!;
     return getInitialPlan(fromPreparation, birthOrDue);
   });
@@ -102,6 +124,12 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const [variantBIsOutdated, setVariantBIsOutdated] = useState(false);
   const [optimizationAdoptedInSession, setOptimizationAdoptedInSession] = useState(false);
   const [navigateTarget, setNavigateTarget] = useState<NavigateToInputTarget | null>(null);
+  const [showEditOriginDialog, setShowEditOriginDialog] = useState(false);
+  const [sessionChoiceKeepAsComparison, setSessionChoiceKeepAsComparison] = useState(false);
+
+  const planFromPreparationRef = useRef<ElterngeldCalculationPlan | null>(null);
+  const planOriginFromPreparationRef = useRef(false);
+  const initOriginRef = useRef(false);
 
   const currentPlan = editingVariant === 'A' ? plan : planB!;
   const setCurrentPlan = editingVariant === 'A' ? setPlan : setPlanB;
@@ -151,6 +179,48 @@ export const ElterngeldCalculationPage: React.FC = () => {
   }, [planB]);
 
   useEffect(() => {
+    if (initOriginRef.current) return;
+    initOriginRef.current = true;
+    const usedFromPrep = fromPreparation != null;
+    const prep = loadPreparation();
+    const usedFromStored = !usedFromPrep && prep != null && !isPreparationEmpty(prep);
+    if (usedFromPrep) {
+      planFromPreparationRef.current = fromPreparation!;
+      planOriginFromPreparationRef.current = true;
+    } else if (usedFromStored && prep) {
+      planFromPreparationRef.current = applicationToCalculationPlan(prep);
+      planOriginFromPreparationRef.current = true;
+    }
+  }, [fromPreparation]);
+
+  useEffect(() => {
+    if (!planOriginFromPreparationRef.current || sessionChoiceKeepAsComparison) return;
+    if (editingVariant !== 'A') return;
+    const origin = planFromPreparationRef.current;
+    if (!origin || plansAreEqual(plan, origin)) return;
+    setShowEditOriginDialog(true);
+  }, [plan, editingVariant, sessionChoiceKeepAsComparison]);
+
+  const handleUpdatePreparation = useCallback(() => {
+    const prep = loadPreparation();
+    if (!prep) return;
+    const merged = mergePlanIntoPreparation(prep, plan);
+    savePreparation(merged);
+    planFromPreparationRef.current = plan;
+    setShowEditOriginDialog(false);
+    showToast('Vorbereitung wurde aktualisiert.', { kind: 'success', durationMs: 3000 });
+  }, [plan, showToast]);
+
+  const handleKeepAsComparison = useCallback(() => {
+    setSessionChoiceKeepAsComparison(true);
+    setShowEditOriginDialog(false);
+    showToast('Änderung gilt nur für diese Berechnung. Vorbereitung bleibt unverändert.', {
+      kind: 'success',
+      durationMs: 3000,
+    });
+  }, [showToast]);
+
+  useEffect(() => {
     if (!isPlanEmpty(plan)) {
       saveCalculationPlan(plan);
     }
@@ -178,11 +248,57 @@ export const ElterngeldCalculationPage: React.FC = () => {
     setView('input');
   }, []);
 
+  const handleApplyPartnerBonusFix = useCallback(
+    (month: number, fix: 'switchToPlus' | 'setBoth' | 'setBonusMonth') => {
+      const hasPartner = plan.parents.length > 1;
+      const updated = applyCombinedSelection(plan, month, { who: 'both', mode: 'partnerBonus' }, hasPartner);
+      setPlan(updated);
+      saveCalculationPlan(updated);
+      setNavigateTarget({ focusMonth: month, changedMonth: month });
+      setView('input');
+      showToast('Monat angepasst. Prüfen Sie die Änderung im Plan.', { kind: 'success', durationMs: 3000 });
+    },
+    [plan, showToast]
+  );
+
+  const handleApplyPartnerBonusFixMultiple = useCallback(
+    (months: number[]) => {
+      if (months.length === 0) return;
+      const hasPartner = plan.parents.length > 1;
+      let updated = plan;
+      for (const m of months) {
+        updated = applyCombinedSelection(updated, m, { who: 'both', mode: 'partnerBonus' }, hasPartner);
+      }
+      setPlan(updated);
+      saveCalculationPlan(updated);
+      const firstM = months[0];
+      setNavigateTarget({ focusMonth: firstM, changedMonth: firstM });
+      setView('input');
+      showToast('Monate als Bonusmonate gesetzt. Prüfen Sie die Änderung im Plan.', { kind: 'success', durationMs: 3000 });
+    },
+    [plan, showToast]
+  );
+
   const handleReset = useCallback(() => {
     clearCalculationPlan();
     clearVariantBPlan();
-    setPlan(createDefaultPlan(birthOrDue, true));
+    setSessionChoiceKeepAsComparison(false);
+    setShowEditOriginDialog(false);
+    // Vorbereitung ist führend: Wenn vorhanden, daraus Plan bauen (keine abweichenden Defaults)
+    const preparation = loadPreparation();
+    const planToUse =
+      preparation && !isPreparationEmpty(preparation)
+        ? applicationToCalculationPlan(preparation)
+        : createDefaultPlan(birthOrDue, true);
+    setPlan(planToUse);
     setPlanB(null);
+    if (preparation && !isPreparationEmpty(preparation)) {
+      planFromPreparationRef.current = planToUse;
+      planOriginFromPreparationRef.current = true;
+    } else {
+      planFromPreparationRef.current = null;
+      planOriginFromPreparationRef.current = false;
+    }
     setPlanUsedForResult(null);
     setOptimizationGoal(undefined);
     setOptimizationStatus('idle');
@@ -253,6 +369,9 @@ export const ElterngeldCalculationPage: React.FC = () => {
     if (!fromPreparation) return;
     setPlan(fromPreparation);
     saveCalculationPlan(fromPreparation);
+    planFromPreparationRef.current = fromPreparation;
+    planOriginFromPreparationRef.current = true;
+    setSessionChoiceKeepAsComparison(false);
     const hasB = planB && !isPlanEmpty(planB);
     if (hasB) setVariantBIsOutdated(true);
     setConflictResolved(true);
@@ -270,6 +389,9 @@ export const ElterngeldCalculationPage: React.FC = () => {
     if (!fromPreparation) return;
     setPlan(fromPreparation);
     saveCalculationPlan(fromPreparation);
+    planFromPreparationRef.current = fromPreparation;
+    planOriginFromPreparationRef.current = true;
+    setSessionChoiceKeepAsComparison(false);
     clearVariantBPlan();
     setPlanB(null);
     setVariantBIsOutdated(false);
@@ -326,19 +448,19 @@ export const ElterngeldCalculationPage: React.FC = () => {
                 type="button"
                 variant="primary"
                 className="btn--softpill"
-                onClick={handleUsePersisted}
+                onClick={handleUseFromPreparation}
               >
-                {planB && !isPlanEmpty(planB)
-                  ? 'Bestehende Varianten fortsetzen'
-                  : 'Gespeicherten Stand fortsetzen'}
+                Vorbereitungsdaten übernehmen (empfohlen)
               </Button>
               <Button
                 type="button"
                 variant="secondary"
                 className="btn--softpill"
-                onClick={handleUseFromPreparation}
+                onClick={handleUsePersisted}
               >
-                Aktuellen Plan mit neuen Vorbereitungsdaten ersetzen
+                {planB && !isPlanEmpty(planB)
+                  ? 'Bestehende Varianten fortsetzen'
+                  : 'Gespeicherten Stand fortsetzen'}
               </Button>
               {planB && !isPlanEmpty(planB) && (
                 <Button
@@ -418,6 +540,11 @@ export const ElterngeldCalculationPage: React.FC = () => {
               onChange={editingVariant === 'A' ? setPlan : (p) => setPlanB(p)}
               initialFocusMonth={
                 navigateTarget && 'focusMonth' in navigateTarget ? navigateTarget.focusMonth : null
+              }
+              initialChangedMonth={
+                navigateTarget && 'focusMonth' in navigateTarget && 'changedMonth' in navigateTarget
+                  ? navigateTarget.changedMonth ?? null
+                  : null
               }
               initialScrollTo={
                 navigateTarget && 'focusSection' in navigateTarget
@@ -513,11 +640,17 @@ export const ElterngeldCalculationPage: React.FC = () => {
           onConfirm={handleRunOptimization}
         />
 
+        <EditOriginDialog
+          isOpen={showEditOriginDialog}
+          onUpdatePreparation={handleUpdatePreparation}
+          onKeepAsComparison={handleKeepAsComparison}
+        />
+
         {conflictResolved && view === 'result' && result && (
           <>
             <StepCalculationResult
               result={result}
-              plan={planUsedForResult}
+              plan={plan}
               planB={planB}
               optimizationGoal={optimizationGoal}
               optimizationStatus={optimizationStatus}
@@ -528,6 +661,8 @@ export const ElterngeldCalculationPage: React.FC = () => {
               isSubmitting={isSubmitting}
               onOpenOptimizationGoal={() => setShowOptimizationGoalDialog(true)}
               onNavigateToInput={handleNavigateToInput}
+              onApplyPartnerBonusFix={handleApplyPartnerBonusFix}
+              onApplyPartnerBonusFixMultiple={handleApplyPartnerBonusFixMultiple}
             />
             <div className="next-steps__stack elterngeld-nav">
               {optimizationGoal && (

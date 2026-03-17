@@ -16,7 +16,7 @@ export function plansAreEqual(a: ElterngeldCalculationPlan, b: ElterngeldCalcula
   for (let i = 0; i < a.parents.length; i++) {
     const pa = a.parents[i];
     const pb = b.parents[i];
-    if (pa.id !== pb.id || pa.label !== pb.label || pa.incomeBeforeNet !== pb.incomeBeforeNet) return false;
+    if (pa.id !== pb.id || pa.label !== pb.label || pa.incomeBeforeNet !== pb.incomeBeforeNet || pa.employmentType !== pb.employmentType) return false;
     if (pa.months.length !== pb.months.length) return false;
     for (let j = 0; j < pa.months.length; j++) {
       const ma = pa.months[j];

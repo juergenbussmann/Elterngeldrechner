@@ -106,7 +106,7 @@ export const OptimizationSuggestionBlock: React.FC<OptimizationSuggestionBlockPr
           </ul>
         </div>
       )}
-      <p className="elterngeld-optimization-suggestion__result">Ergebnis: Partnerschaftsbonus möglich</p>
+      <p className="elterngeld-optimization-suggestion__result">Ergebnis: Partnerschaftsbonus nutzbar</p>
       <Button
         type="button"
         variant="primary"

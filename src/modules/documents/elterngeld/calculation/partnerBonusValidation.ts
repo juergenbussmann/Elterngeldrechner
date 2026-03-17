@@ -3,7 +3,7 @@
  * Regeln: beide im selben Monat partnerBonus, beide 24–32 h/Woche, 2–4 zusammenhängende Monate.
  */
 
-import type { ElterngeldCalculationPlan } from './types';
+import type { ElterngeldCalculationPlan, CalculationResult } from './types';
 
 export interface PartnerBonusValidationResult {
   isValid: boolean;
@@ -110,4 +110,54 @@ export function validatePartnerBonus(plan: ElterngeldCalculationPlan): PartnerBo
     monthValidity,
     warnings,
   };
+}
+
+/** Validierung aus Result-Daten (für Ergebnis-Screen, eine Quelle: result). Stundenprüfung entfällt. */
+export function validatePartnerBonusFromResult(result: CalculationResult): PartnerBonusValidationResult {
+  const parentA = result.parents[0];
+  const parentB = result.parents[1];
+  if (!parentB) {
+    return { isValid: true, longestValidSeries: 0, monthValidity: {}, warnings: [] };
+  }
+  const byMonthA = new Map(parentA.monthlyResults.map((r) => [r.month, r.mode]));
+  const byMonthB = new Map(parentB.monthlyResults.map((r) => [r.month, r.mode]));
+  const allMonths = new Set([...byMonthA.keys(), ...byMonthB.keys()]);
+  const warnings: string[] = [];
+  const monthValidity: Record<number, boolean> = {};
+  let longestSeries = 0;
+  let currentSeries = 0;
+
+  for (const month of Array.from(allMonths).sort((a, b) => a - b)) {
+    const modeA = byMonthA.get(month) ?? 'none';
+    const modeB = byMonthB.get(month) ?? 'none';
+    const bothPartnerBonus = modeA === 'partnerBonus' && modeB === 'partnerBonus';
+    monthValidity[month] = bothPartnerBonus;
+
+    if (bothPartnerBonus) {
+      currentSeries++;
+      longestSeries = Math.max(longestSeries, currentSeries);
+    } else {
+      if (modeA === 'partnerBonus' && modeB !== 'partnerBonus') {
+        warnings.push(`Monat ${month}: Partnerschaftsbonus nur möglich, wenn beide Elternteile im selben Monat beziehen.`);
+      }
+      if (modeB === 'partnerBonus' && modeA !== 'partnerBonus') {
+        warnings.push(`Monat ${month}: Partnerschaftsbonus nur möglich, wenn beide Elternteile im selben Monat beziehen.`);
+      }
+      currentSeries = 0;
+    }
+  }
+
+  const hasPartnerBonusMonths = result.parents.some((p) =>
+    p.monthlyResults.some((r) => r.mode === 'partnerBonus')
+  );
+  if (hasPartnerBonusMonths && longestSeries > 0 && (longestSeries < MIN_MONTHS || longestSeries > MAX_MONTHS)) {
+    warnings.push(
+      `Partnerschaftsbonus: 2–4 zusammenhängende Monate erforderlich. Längste gültige Serie: ${longestSeries} Monat(e).`
+    );
+  }
+  const isValid =
+    !hasPartnerBonusMonths ||
+    (longestSeries >= MIN_MONTHS && longestSeries <= MAX_MONTHS);
+
+  return { isValid, longestValidSeries: longestSeries, monthValidity, warnings };
 }

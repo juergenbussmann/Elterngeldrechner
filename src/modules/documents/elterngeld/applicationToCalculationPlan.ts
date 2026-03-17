@@ -31,7 +31,8 @@ const MAX_HORIZONT = 36;
 function createMonths(
   count: number,
   mode: MonthMode,
-  benefitModel: string
+  benefitModel: string,
+  hoursPerWeek?: number
 ): ParentMonthInput[] {
   const maxBelegung = benefitModel === 'plus' || benefitModel === 'partnerBonus' ? MAX_BELEGUNG_PLUS : MAX_BELEGUNG_BASIS;
   const horizon = Math.max(MIN_HORIZONT, Math.min(count, MAX_HORIZONT));
@@ -40,11 +41,10 @@ function createMonths(
   const months: ParentMonthInput[] = [];
   for (let m = 1; m <= horizon; m++) {
     const useMode = m <= belegteMonate ? mode : 'none';
-    months.push({
-      month: m,
-      mode: useMode,
-      incomeDuringNet: 0,
-    });
+    const base: ParentMonthInput = { month: m, mode: useMode, incomeDuringNet: 0 };
+    months.push(
+      hoursPerWeek != null && hoursPerWeek > 0 ? { ...base, hoursPerWeek } : base
+    );
   }
   return months;
 }
@@ -95,7 +95,12 @@ export function applicationToCalculationPlan(app: ElterngeldApplication): Eltern
       ? parseMonthCount(app.benefitPlan.parentBMonths)
       : 0;
 
-  let parentAMonths = createMonths(countA, defaultMode, model);
+  let parentAMonths = createMonths(
+    countA,
+    defaultMode,
+    model,
+    app.parentA.plannedPartTime ? app.parentA.hoursPerWeek : undefined
+  );
 
   if (hasActualBirthDate) {
     parentAMonths = parentAMonths.map((m) =>
@@ -126,7 +131,8 @@ export function applicationToCalculationPlan(app: ElterngeldApplication): Eltern
 
   if (hasSecondParent && app.parentB) {
     const partnerMode = app.benefitPlan.partnershipBonus ? 'partnerBonus' : defaultMode;
-    let parentBMonths = createMonths(countB, partnerMode, model);
+    const hoursB = app.parentB.plannedPartTime ? app.parentB.hoursPerWeek : undefined;
+    let parentBMonths = createMonths(countB, partnerMode, model, hoursB);
     parentBMonths = ensureSharedHorizon(parentBMonths, sharedHorizon);
     parents.push({
       id: 'parentB',

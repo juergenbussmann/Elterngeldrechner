@@ -38,6 +38,12 @@ function normalizeBoolean(v: unknown): boolean {
   return Boolean(v);
 }
 
+function normalizeHoursPerWeek(v: unknown): number | undefined {
+  if (v == null || v === '') return undefined;
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isNaN(n) || n < 0 ? undefined : n;
+}
+
 function normalizeParent(raw: unknown): ElterngeldApplication['parentA'] | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
@@ -48,6 +54,7 @@ function normalizeParent(raw: unknown): ElterngeldApplication['parentA'] | null 
     employmentType: validEmployment ? (o.employmentType as ElterngeldApplication['parentA']['employmentType']) : 'employed',
     incomeBeforeBirth: normalizeString(o.incomeBeforeBirth ?? ''),
     plannedPartTime: normalizeBoolean(o.plannedPartTime),
+    hoursPerWeek: normalizeHoursPerWeek(o.hoursPerWeek),
   };
 }
 

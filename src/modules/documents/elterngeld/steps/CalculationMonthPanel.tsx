@@ -141,6 +141,7 @@ export const CalculationMonthPanel: React.FC<CalculationMonthPanelProps> = ({
   useEffect(() => {
     setSelectedModelInDialog(state.mode === 'basis' ? 'basis' : 'plus');
     setSelectedWhoInDialog(state.who);
+    setSelectedApplyRange(null);
   }, [month, state.who, state.mode]);
 
   const applySelection = useCallback(
@@ -154,11 +155,13 @@ export const CalculationMonthPanel: React.FC<CalculationMonthPanelProps> = ({
 
   const handleLeistungClick = (model: 'basis' | 'plus') => {
     setSelectedModelInDialog(model);
+    setSelectedApplyRange(null);
     applySelection(selectedWhoInDialog, model);
   };
 
   const handleWhoClick = (who: CombinedWho) => {
     setSelectedWhoInDialog(who);
+    setSelectedApplyRange(null);
     applySelection(who, selectedModelInDialog);
   };
 
@@ -168,6 +171,7 @@ export const CalculationMonthPanel: React.FC<CalculationMonthPanelProps> = ({
       : 14;
 
   const [selectedApplyRange, setSelectedApplyRange] = useState<'next1' | 'next3' | 'toEnd' | null>(null);
+  const [showLeistungDetails, setShowLeistungDetails] = useState(false);
 
   const applyToFollowingMonths = useCallback(
     (rangeId: 'next1' | 'next3' | 'toEnd') => {
@@ -256,6 +260,41 @@ export const CalculationMonthPanel: React.FC<CalculationMonthPanelProps> = ({
               />
             ))}
           </div>
+          <div className="elterngeld-hint elterngeld-hint--leistung">
+            <p className="elterngeld-hint__text">
+              Basiselterngeld = mehr Geld pro Monat, kürzere Dauer
+              <br />
+              ElterngeldPlus = weniger pro Monat, dafür länger und mit Teilzeit kombinierbar
+            </p>
+            <button
+              type="button"
+              className="elterngeld-hint__toggle"
+              onClick={(e) => { e.stopPropagation(); setShowLeistungDetails((v) => !v); }}
+              aria-expanded={showLeistungDetails}
+            >
+              {showLeistungDetails ? 'Weniger anzeigen' : 'Mehr erfahren'}
+            </button>
+            {showLeistungDetails && (
+              <div className="elterngeld-hint__details">
+                <h4 className="elterngeld-hint__details-title">Unterschied Basiselterngeld und ElterngeldPlus</h4>
+                <p className="elterngeld-hint__details-text">
+                  <strong>Basiselterngeld</strong>
+                  <br />
+                  höhere monatliche Auszahlung · kürzere Bezugsdauer
+                </p>
+                <p className="elterngeld-hint__details-text">
+                  <strong>ElterngeldPlus</strong>
+                  <br />
+                  geringere monatliche Auszahlung · längere Bezugsdauer · sinnvoll bei Teilzeit
+                </p>
+                <p className="elterngeld-hint__details-text">
+                  <strong>Partnerschaftsbonus</strong>
+                  <br />
+                  nur mit ElterngeldPlus möglich · beide Eltern müssen gleichzeitig ElterngeldPlus beziehen
+                </p>
+              </div>
+            )}
+          </div>
         </div>
         <p className="elterngeld-plan__panel-sub">Wer nimmt diesen Monat?</p>
         <div className="elterngeld-plan__panel-actions">
@@ -271,16 +310,51 @@ export const CalculationMonthPanel: React.FC<CalculationMonthPanelProps> = ({
             />
           ))}
         </div>
-        {hasPartner && (
-          <>
-            <p className="elterngeld-plan__panel-hint">
-              Tipp: Monate mit „Beide“ können gemeinsame Monate für den Partnerschaftsbonus sein.
-            </p>
-            <p className="elterngeld-plan__panel-hint elterngeld-plan__panel-hint--bonus">
-              Hinweis: Partnerschaftsbonus ist nur mit ElterngeldPlus möglich.
-            </p>
-          </>
-        )}
+        {hasPartner && (() => {
+          const isPlus = selectedModelInDialog === 'plus';
+          const isBoth = selectedWhoInDialog === 'both';
+          const hint =
+            isBoth && isPlus
+              ? 'Als Bonusmonat gesetzt.'
+              : isBoth && !isPlus
+                ? 'Für Partnerschaftsbonus in diesem Monat auf ElterngeldPlus wechseln.'
+                : !isBoth && isPlus
+                ? 'Für Partnerschaftsbonus müssen in diesem Monat beide Eltern ausgewählt sein.'
+                : 'Für Partnerschaftsbonus in diesem Monat ElterngeldPlus und „Beide“ wählen.';
+          const showButton = !(isBoth && isPlus);
+          const buttonLabel =
+            isBoth && !isPlus
+              ? 'Auf ElterngeldPlus umstellen'
+              : isPlus && !isBoth
+                ? 'Beide auswählen'
+                : 'Diesen Monat als Bonusmonat setzen';
+          const handleQuickFix = () => {
+            setSelectedApplyRange(null);
+            if (isBoth && !isPlus) {
+              handleLeistungClick('plus');
+            } else if (isPlus && !isBoth) {
+              handleWhoClick('both');
+            } else {
+              applySelection('both', 'plus');
+            }
+          };
+          return (
+            <div className="elterngeld-plan__panel-hint-block">
+              <p className="elterngeld-plan__panel-hint elterngeld-plan__panel-hint--context">
+                {hint}
+              </p>
+              {showButton && (
+                <button
+                  type="button"
+                  className="elterngeld-plan__panel-quickfix-btn"
+                  onClick={(e) => { e.stopPropagation(); handleQuickFix(); }}
+                >
+                  {buttonLabel}
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {needsIncomeHours && (
           <div className="elterngeld-calculation__month-panel-fields">

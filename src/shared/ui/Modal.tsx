@@ -12,6 +12,8 @@ export interface ModalProps {
   children: ReactNode;
   /** Checklisten-Design: Glass-Overlay, Softpill-Card */
   variant?: 'default' | 'softpill';
+  /** Header + Footer fix, nur Content scrollbar */
+  scrollableContent?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -20,6 +22,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   variant = 'default',
+  scrollableContent = false,
 }) => {
   const theme = useTheme();
   const { colors, radii, spacing, shadows, typography, components } = theme;
@@ -46,6 +49,9 @@ export const Modal: React.FC<ModalProps> = ({
   const containerStyle: CSSProperties = {
     width: '100%',
     maxWidth: '28rem',
+    maxHeight: scrollableContent ? '90vh' : undefined,
+    display: scrollableContent ? 'flex' : undefined,
+    flexDirection: scrollableContent ? 'column' : undefined,
     backgroundColor: card.background,
     borderRadius: radii.md,
     boxShadow: card.shadow ?? shadows.md,
@@ -74,10 +80,32 @@ export const Modal: React.FC<ModalProps> = ({
           isSoftpill ? 'modal__container still-daily-checklist__card modal__container--softpill' : undefined
         }
       >
-        {title ? <div style={titleStyle}>{title}</div> : null}
-        <div>{children}</div>
+        {title ? (
+          <div style={{ ...titleStyle, flexShrink: scrollableContent ? 0 : undefined }}>{title}</div>
+        ) : null}
+        <div
+          style={
+            scrollableContent
+              ? {
+                  flex: 1,
+                  overflowY: 'auto',
+                  minHeight: 0,
+                  paddingRight: 8,
+                }
+              : undefined
+          }
+        >
+          {children}
+        </div>
         {onClose ? (
-          <div style={{ marginTop: spacing.lg, display: 'flex', justifyContent: 'flex-end' }}>
+          <div
+            style={{
+              marginTop: spacing.lg,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              flexShrink: scrollableContent ? 0 : undefined,
+            }}
+          >
             <Button
               type="button"
               variant="secondary"

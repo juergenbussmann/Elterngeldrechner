@@ -14,7 +14,7 @@ import type {
   ParentMonthInput,
   MonthMode,
 } from './types';
-import { validatePartnerBonus } from './partnerBonusValidation';
+import { validatePartnerBonus, validateParallelBasis } from './partnerBonusValidation';
 
 /** clamp(value, min, max) – Wert in Bereich begrenzen */
 export function clamp(value: number, min: number, max: number): number {
@@ -56,6 +56,12 @@ export function calculateSiblingBonus(amount: number): number {
 
 /** Mehrlingszuschlag pro zusätzlichem Kind (€) */
 const MEHRLINGSZUSCHLAG_PER_CHILD = 300;
+
+/**
+ * Grobe Einkommensgrenze (Haushalt, Monatsnetto × 12 ≈ Jahresäquivalent).
+ * 175.000 € / 12 ≈ 14.583 €. Guard bei 15.000 €/Monat Summe beider Elternteile.
+ */
+const INCOME_GUARD_MONTHLY_HOUSEHOLD = 15_000;
 
 export interface MonthlyCalculationInput {
   type: 'basis' | 'plus' | 'partnerBonus';
@@ -164,6 +170,42 @@ export function calculatePlan(plan: ElterngeldCalculationPlan): CalculationResul
     errors.push('Geburtsdatum oder voraussichtlicher Termin fehlt.');
   }
 
+  const householdMonthlyIncome = plan.parents.reduce((sum, p) => sum + (p.incomeBeforeNet || 0), 0);
+  if (householdMonthlyIncome > INCOME_GUARD_MONTHLY_HOUSEHOLD) {
+    errors.push(
+      `Einkommensgrenze: Bei einem geschätzten Haushaltseinkommen von über ${INCOME_GUARD_MONTHLY_HOUSEHOLD.toLocaleString('de-DE')} € monatlich (ca. 180.000 € jährlich) entfällt in der Regel der Elterngeld-Anspruch. Diese Berechnung wird nicht durchgeführt. Bitte prüfen Sie die offizielle Einkommensgrenze (z. B. Familienportal).`
+    );
+  }
+
+  const parallelBasis = validateParallelBasis(plan);
+  if (!parallelBasis.isValid && parallelBasis.warning) {
+    globalWarnings.push(parallelBasis.warning);
+  }
+
+  if (errors.length > 0) {
+    return {
+      parents: plan.parents.map((p) => ({
+        id: p.id,
+        label: p.label,
+        monthlyResults: [],
+        total: 0,
+        warnings: [],
+      })),
+      householdTotal: 0,
+      validation: { isValid: false, errors, warnings: globalWarnings },
+      meta: {
+        isEstimate: true,
+        disclaimer:
+          'Unverbindliche Schätzung. Die endgültige Entscheidung trifft die zuständige Elterngeldstelle. Diese Berechnung dient der Orientierung und ersetzt keine amtliche Prüfung.',
+        transparencyHints: [
+          'Einkommensgrenze (175.000 €): grobe Prüfung bei Überschreitung',
+          'Mutterschaftsleistungen: vereinfachte Berücksichtigung',
+          'Parallelbezug Basis: maximal 1 Monat gleichzeitig erlaubt (wird geprüft)',
+        ],
+      },
+    };
+  }
+
   const parents: ParentCalculationResult[] = plan.parents.map((parent) => {
     const monthlyResults: MonthlyResult[] = [];
     const parentWarnings: string[] = [];
@@ -242,6 +284,11 @@ export function calculatePlan(plan: ElterngeldCalculationPlan): CalculationResul
       isEstimate: true,
       disclaimer:
         'Unverbindliche Schätzung. Die endgültige Entscheidung trifft die zuständige Elterngeldstelle. Diese Berechnung dient der Orientierung und ersetzt keine amtliche Prüfung.',
+      transparencyHints: [
+        'Einkommensgrenze (175.000 €): grobe Prüfung bei Überschreitung',
+        'Mutterschaftsleistungen: vereinfachte Berücksichtigung',
+        'Parallelbezug Basis: maximal 1 Monat gleichzeitig erlaubt (wird geprüft)',
+      ],
     },
   };
 }

@@ -466,7 +466,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
           {/* Schritt 1: Zielauswahl */}
           <div className="elterngeld-optimization-overlay__goal-section">
             <p className="elterngeld-optimization-goal__intro">
-              Wähle dein Ziel – wir suchen die beste passende Variante.
+              Wähle dein Ziel – wir prüfen passende Varianten für deine Planung.
             </p>
             <div
               className="elterngeld-optimization-goal__options elterngeld-select-btn-group"
@@ -492,7 +492,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
                   className="next-steps__button btn--softpill"
                   onClick={handleStartOptimization}
                 >
-                  Beste Variante finden
+                  Passende Variante finden
                 </Button>
               </div>
             )}
@@ -512,7 +512,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
                 <h3 className="elterngeld-step__title">
                   {hasAnySuggestions
                     ? 'Für dieses Ziel keine Verbesserung möglich.'
-                    : 'Dein aktueller Plan ist bereits optimal.'}
+                    : 'Dein aktueller Plan passt gut zu deinem Ziel.'}
                 </h3>
                 <Button
                   type="button"
@@ -526,7 +526,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
             ) : (
               <>
                 <h3 className="elterngeld-step__title">
-                  Ich habe die beste passende Variante für dein Ziel gefunden.
+                  Passende Variante für dein Ziel gefunden.
                 </h3>
 
                 {hasSuggestions && (
@@ -576,7 +576,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
                                   )}
                                   {calcBreakdown.length > 0 && (
                                     <div className="elterngeld-calculation__beleg-section">
-                                      <span className="elterngeld-calculation__beleg-title">So wird das berechnet:</span>
+                                      <span className="elterngeld-calculation__beleg-title">So wird geschätzt:</span>
                                       <ul className="elterngeld-calculation__beleg-list">
                                         {calcBreakdown.map((line, i) => (
                                           <li key={i}>{line.value ? `${line.label} ${line.value}` : line.label}</li>
@@ -648,6 +648,9 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
                     </Button>
                   </div>
                 </div>
+                <p className="elterngeld-calculation__elterngeldstelle-hint">
+                  Auch bei diesem Vorschlag entscheidet die zuständige Elterngeldstelle abschließend über deinen Anspruch und die Auszahlung.
+                </p>
               </>
             )}
           </Card>

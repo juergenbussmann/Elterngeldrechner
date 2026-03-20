@@ -17,26 +17,14 @@ export type OptimizationGoal =
   | 'balanced'
   | 'partnerBonus';
 
-const MAIN_GOAL_OPTIONS: {
+export const MAIN_GOAL_OPTIONS: {
   value: 'maxMoney' | 'longerDuration' | 'frontLoad';
   label: string;
   description: string;
 }[] = [
-  {
-    value: 'maxMoney',
-    label: 'Mehr Gesamtauszahlung',
-    description: 'Maximiert die geschätzte Gesamtsumme.',
-  },
-  {
-    value: 'longerDuration',
-    label: 'Längere Bezugsdauer',
-    description: 'Verteilt den Bezug auf mehr Monate.',
-  },
-  {
-    value: 'frontLoad',
-    label: 'Am Anfang mehr Geld',
-    description: 'Bevorzugt höhere Auszahlungen in den ersten Lebensmonaten.',
-  },
+  { value: 'maxMoney', label: 'mehr Geld insgesamt', description: '' },
+  { value: 'frontLoad', label: 'früher mehr Geld', description: '' },
+  { value: 'longerDuration', label: 'länger verteilt', description: '' },
 ];
 
 type Props = {
@@ -51,12 +39,10 @@ export const OptimizationGoalDialog: React.FC<Props> = ({
   onConfirm,
 }) => {
   const [mainGoal, setMainGoal] = useState<'maxMoney' | 'longerDuration' | 'frontLoad'>('maxMoney');
-  const [includePartnerBonus, setIncludePartnerBonus] = useState(false);
 
   const handleConfirm = () => {
-    const goalToRun: OptimizationGoal = includePartnerBonus ? 'partnerBonus' : mainGoal;
-    if (UNSUPPORTED_GOALS.includes(goalToRun)) return;
-    onConfirm(goalToRun);
+    if (UNSUPPORTED_GOALS.includes(mainGoal)) return;
+    onConfirm(mainGoal);
     onClose();
   };
 
@@ -64,17 +50,17 @@ export const OptimizationGoalDialog: React.FC<Props> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Was möchten Sie optimieren?"
+      title="Was ist dir wichtiger?"
       variant="softpill"
     >
       <>
         <p className="elterngeld-optimization-goal__intro">
-          Wählen Sie Hauptziel und optional die Zusatzprüfung.
+          Wähle dein Ziel – wir prüfen passende Varianten für deine Planung.
         </p>
         <div
           className="elterngeld-optimization-goal__options elterngeld-select-btn-group"
           role="radiogroup"
-          aria-label="Hauptziel"
+          aria-label="Ziel"
         >
           {MAIN_GOAL_OPTIONS.map((opt) => (
             <ElterngeldSelectButton
@@ -87,18 +73,6 @@ export const OptimizationGoalDialog: React.FC<Props> = ({
             />
           ))}
         </div>
-        <div className="elterngeld-optimization-goal__addon">
-          <label className="elterngeld-step__label elterngeld-step__label--row">
-            <input
-              type="checkbox"
-              checked={includePartnerBonus}
-              onChange={(e) => setIncludePartnerBonus(e.target.checked)}
-            />
-            <span>
-              <strong>Zusätzlich:</strong> Partnerschaftsbonus prüfen – ob der Bonus sinnvoll nutzbar ist
-            </span>
-          </label>
-        </div>
         <div className="next-steps__stack elterngeld-optimization-goal__actions">
           <Button
             type="button"
@@ -106,7 +80,7 @@ export const OptimizationGoalDialog: React.FC<Props> = ({
             className="next-steps__button btn--softpill"
             onClick={handleConfirm}
           >
-            Optimierung starten
+            Passende Variante finden
           </Button>
           <Button
             type="button"

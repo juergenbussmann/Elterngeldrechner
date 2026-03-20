@@ -1,0 +1,58 @@
+.phase-onboarding-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0.5rem 0;
+}
+
+.phase-onboarding-panel__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.phase-onboarding-panel__subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.phase-onboarding-panel__mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.phase-onboarding-panel__radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phase-onboarding-panel__radio input {
+  margin: 0;
+}
+
+.phase-onboarding-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.phase-onboarding-panel__label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.phase-onboarding-panel__hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.phase-onboarding-panel__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}

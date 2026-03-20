@@ -302,7 +302,7 @@ const PregnancyPhaseScreen: React.FC = () => {
       {hasDate && (
         <div className="next-steps__stack">
           <PhaseShortcut title="Elternzeit vorbereiten" route="/documents/parental-leave" />
-          <PhaseShortcut title="Elterngeld berechnen" route="/documents/elterngeld-calculation" />
+          <PhaseShortcut title="Elterngeld planen" route="/documents/elterngeld" />
         </div>
       )}
       <NextStepsSection
@@ -384,7 +384,7 @@ const BirthPhaseScreen: React.FC = () => {
       {hasDate && (
         <div className="next-steps__stack">
           <PhaseShortcut title="Elternzeit vorbereiten" route="/documents/parental-leave" />
-          <PhaseShortcut title="Elterngeld berechnen" route="/documents/elterngeld-calculation" />
+          <PhaseShortcut title="Elterngeld planen" route="/documents/elterngeld" />
         </div>
       )}
       <NextStepsSection

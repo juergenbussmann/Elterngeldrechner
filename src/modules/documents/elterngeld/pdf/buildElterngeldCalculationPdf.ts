@@ -49,7 +49,7 @@ export function buildElterngeldCalculationPdf(result: CalculationResult): Blob {
   let y = MARGIN;
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Elterngeld-Berechnung – Unverbindliche Schätzung', MARGIN, y);
+  doc.text('Elterngeld-Planung – Orientierung', MARGIN, y);
   y += LINE_HEIGHT * 1.5;
 
   doc.setFont('helvetica', 'normal');
@@ -59,7 +59,7 @@ export function buildElterngeldCalculationPdf(result: CalculationResult): Blob {
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Berechnungsergebnis', MARGIN, y);
+  doc.text('Planungsergebnis', MARGIN, y);
   y += LINE_HEIGHT;
 
   doc.setFont('helvetica', 'normal');

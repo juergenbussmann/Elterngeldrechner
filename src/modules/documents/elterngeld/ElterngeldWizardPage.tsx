@@ -24,6 +24,9 @@ import { StepElternArbeit } from './steps/StepElternArbeit';
 import { StepPlan } from './steps/StepPlan';
 import { StepSummary } from './steps/StepSummary';
 import { StepDocuments } from './steps/StepDocuments';
+import { OptimizationOverlay } from './steps/OptimizationOverlay';
+import { buildOptimizationResult } from './calculation/elterngeldOptimization';
+import { mergePlanIntoPreparation } from './planToApplicationMerge';
 import { buildElterngeldSummaryPdf } from './pdf/buildElterngeldSummaryPdf';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
 import './ElterngeldWizardPage.css';
@@ -69,6 +72,7 @@ export const ElterngeldWizardPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [scrollToId, setScrollToId] = useState<string | null>(null);
+  const [showOptimizationOverlay, setShowOptimizationOverlay] = useState(false);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
@@ -92,6 +96,30 @@ export const ElterngeldWizardPage: React.FC = () => {
     }
   }, [values]);
 
+  const planForOptimization = useMemo(() => applicationToCalculationPlan(values), [values]);
+
+  const optimizationSummary = useMemo(() => {
+    if (!liveResult || liveResult.validation.errors.length > 0) return { hasAnySuggestions: false, partnerBonusSuggestion: null };
+    try {
+      const goals = ['maxMoney', 'longerDuration', 'frontLoad', 'partnerBonus'] as const;
+      let hasAnySuggestions = false;
+      let partnerBonusSuggestion = null;
+      for (const goal of goals) {
+        const outcome = buildOptimizationResult(planForOptimization, liveResult, goal);
+        if ('status' in outcome && outcome.status === 'unsupported') continue;
+        const ors = outcome as { currentResult: typeof liveResult; suggestions: { status: string; result: typeof liveResult }[] };
+        const hasImproved = ors.suggestions.some((s) => s.status === 'improved');
+        if (hasImproved) hasAnySuggestions = true;
+        if (goal === 'partnerBonus' && ors.suggestions.length > 0 && ors.suggestions[0].status === 'improved') {
+          partnerBonusSuggestion = ors.suggestions[0];
+        }
+      }
+      return { hasAnySuggestions, partnerBonusSuggestion };
+    } catch {
+      return { hasAnySuggestions: false, partnerBonusSuggestion: null };
+    }
+  }, [planForOptimization, liveResult]);
+
   const handleNext = useCallback(() => {
     setCalculationError(null);
     if (isLastStep) return;
@@ -102,22 +130,6 @@ export const ElterngeldWizardPage: React.FC = () => {
     setCalculationError(null);
     setStepIndex((i) => Math.max(i - 1, 0));
   }, []);
-
-  const handleNavigateToCalculation = useCallback(() => {
-    setCalculationError(null);
-    const birthDate = values.child.birthDate?.trim();
-    const expectedDate = values.child.expectedBirthDate?.trim();
-    if (!birthDate && !expectedDate) {
-      setCalculationError(CALCULATION_REQUIRED_ERROR);
-      setStepIndex(0);
-      requestAnimationFrame(() => {
-        errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      });
-      return;
-    }
-    const plan = applicationToCalculationPlan(values);
-    goTo('/documents/elterngeld-calculation', { state: { fromPreparation: plan } });
-  }, [values, goTo]);
 
   // Profil → Formular: Wenn Profil sich ändert (z.B. in Einstellungen), Kind-Datumsfelder nachziehen
   useEffect(() => {
@@ -286,6 +298,15 @@ export const ElterngeldWizardPage: React.FC = () => {
                 setScrollToId(idToScroll ?? null);
               }
             }}
+            showOptimizationOverlay={showOptimizationOverlay}
+            onShowOptimizationOverlay={setShowOptimizationOverlay}
+            optimizationSummary={optimizationSummary}
+            onApplyBonusFix={() =>
+              showToast('Ich habe die Monate für den Partnerschaftsbonus angepasst.', {
+                kind: 'success',
+                durationMs: 3000,
+              })
+            }
           />
         )}
         {step.id === 'summary' && (
@@ -293,9 +314,15 @@ export const ElterngeldWizardPage: React.FC = () => {
             values={values}
             onCreatePdf={handleCreatePdf}
             isSubmitting={isSubmitting}
-            onNavigateToCalculation={handleNavigateToCalculation}
             onBackToPlan={() => setStepIndex(WIZARD_STEPS.findIndex((s) => s.id === 'plan'))}
+            onOpenOptimization={() => setShowOptimizationOverlay(true)}
+            onNavigateToCalculation={() =>
+              goTo('/documents/elterngeld-calculation', {
+                state: { fromPreparation: applicationToCalculationPlan(values) },
+              })
+            }
             liveResult={liveResult}
+            optimizationSummary={optimizationSummary}
           />
         )}
         {step.id === 'documents' && (
@@ -306,7 +333,7 @@ export const ElterngeldWizardPage: React.FC = () => {
             <Button
               type="button"
               variant="secondary"
-              className="next-steps__button btn--softpill"
+              className="next-steps__button btn--softpill elterngeld-actions__secondary"
               onClick={handleBack}
               disabled={stepIndex === 0}
             >
@@ -315,10 +342,12 @@ export const ElterngeldWizardPage: React.FC = () => {
             <Button
               type="button"
               variant="primary"
-              className="next-steps__button btn--softpill"
+              className="next-steps__button btn--softpill elterngeld-actions__primary"
               onClick={handleNext}
             >
-              Weiter
+              {step.id === 'plan' && liveResult && liveResult.validation.errors.length === 0
+                ? 'Weiter zum Ergebnis'
+                : 'Weiter'}
             </Button>
           </div>
         )}
@@ -326,8 +355,8 @@ export const ElterngeldWizardPage: React.FC = () => {
           <div className="next-steps__stack elterngeld-actions">
             <Button
               type="button"
-              variant="secondary"
-              className="next-steps__button btn--softpill"
+              variant="primary"
+              className="next-steps__button btn--softpill elterngeld-actions__primary"
               onClick={handleNext}
             >
               Weiter zu Dokumente
@@ -338,12 +367,28 @@ export const ElterngeldWizardPage: React.FC = () => {
           <Button
             type="button"
             variant="ghost"
-            className="next-steps__button"
+            className="next-steps__button elterngeld-actions__reset"
             onClick={handleReset}
           >
             Neu beginnen
           </Button>
         </div>
+
+        {(step.id === 'plan' || step.id === 'summary') &&
+          liveResult &&
+          optimizationSummary.hasAnySuggestions && (
+            <OptimizationOverlay
+              isOpen={showOptimizationOverlay}
+              onClose={() => setShowOptimizationOverlay(false)}
+              plan={planForOptimization}
+              result={liveResult}
+              hasAnySuggestions={optimizationSummary.hasAnySuggestions}
+              onAdoptOptimization={(plan) => {
+                setValues((prev) => mergePlanIntoPreparation(prev, plan));
+                setShowOptimizationOverlay(false);
+              }}
+            />
+          )}
       </section>
     </div>
   );

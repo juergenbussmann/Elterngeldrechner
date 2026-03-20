@@ -93,5 +93,7 @@ export interface CalculationResult {
   meta: {
     isEstimate: true;
     disclaimer: string;
+    /** Konkrete Transparenz-Hinweise (Einkommensgrenze, Mutterschaft, Parallelbezug). */
+    transparencyHints?: string[];
   };
 }

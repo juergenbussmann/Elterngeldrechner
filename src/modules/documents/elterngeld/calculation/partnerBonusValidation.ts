@@ -5,6 +5,36 @@
 
 import type { ElterngeldCalculationPlan, CalculationResult } from './types';
 
+/** Ergebnis der Parallelbezug-Basis-Prüfung (max. 1 Monat gleichzeitig in den ersten 12 LM). */
+export interface ParallelBasisValidationResult {
+  parallelBasisMonthsInFirst12: number;
+  isValid: boolean;
+  warning: string | null;
+}
+
+/** Prüft, ob mehr als 1 Monat gleichzeitiger Basisbezug in den ersten 12 Lebensmonaten vorliegt. */
+export function validateParallelBasis(plan: ElterngeldCalculationPlan): ParallelBasisValidationResult {
+  const parentA = plan.parents[0];
+  const parentB = plan.parents[1];
+  if (!parentB) {
+    return { parallelBasisMonthsInFirst12: 0, isValid: true, warning: null };
+  }
+  const monthsA = new Map(parentA.months.map((m) => [m.month, m.mode]));
+  const monthsB = new Map(parentB.months.map((m) => [m.month, m.mode]));
+  let count = 0;
+  for (let month = 1; month <= 12; month++) {
+    const modeA = monthsA.get(month) ?? 'none';
+    const modeB = monthsB.get(month) ?? 'none';
+    if (modeA === 'basis' && modeB === 'basis') count++;
+  }
+  const isValid = count <= 1;
+  const warning =
+    count > 1
+      ? `Parallelbezug Basiselterngeld: In den ersten 12 Lebensmonaten dürfen beide Eltern maximal 1 Monat gleichzeitig Basiselterngeld beziehen. Ihr Plan hat ${count} solche Monate.`
+      : null;
+  return { parallelBasisMonthsInFirst12: count, isValid, warning };
+}
+
 export interface PartnerBonusValidationResult {
   isValid: boolean;
   longestValidSeries: number;

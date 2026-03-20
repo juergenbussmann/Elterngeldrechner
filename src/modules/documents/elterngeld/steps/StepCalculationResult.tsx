@@ -29,6 +29,13 @@ import {
   type OptimizationResultSet,
   type OptimizationSuggestion,
 } from '../calculation/elterngeldOptimization';
+import {
+  getExplainableAdvantageWhenSameDurationLessTotal,
+  getMainRecommendationExplanation,
+  getCalculationBreakdown,
+  getOptimizationBreakdown,
+  shouldShowVariant,
+} from './optimizationExplanation';
 import type { CombinedWho } from '../calculation/monthCombinedState';
 import type { MonthMode } from '../calculation';
 import { isPlanEmpty } from '../infra/calculationPlanStorage';
@@ -87,6 +94,22 @@ function countPartnerBonusMonths(result: CalculationResult): number {
     }
   }
   return months.size;
+}
+
+function getSuggestionDedupKey(s: OptimizationSuggestion): string {
+  const total = Math.round(s.result.householdTotal);
+  const duration = countBezugMonths(s.result);
+  const bonus = countPartnerBonusMonths(s.result);
+  const modeSig = s.result.parents
+    .map((p) =>
+      p.monthlyResults
+        .filter((r) => r.mode !== 'none')
+        .map((r) => `${r.month}:${r.mode}`)
+        .sort((a, b) => parseInt(a.split(':')[0], 10) - parseInt(b.split(':')[0], 10))
+        .join(',')
+    )
+    .join('|');
+  return `${s.goal}-${total}-${duration}-${bonus}-${modeSig}`;
 }
 
 function formatMonthsLabel(n: number, singular: string, plural: string): string {
@@ -338,7 +361,7 @@ function getPlanStability(result: CalculationResult): {
     return {
       level: 'pruefen',
       label: 'Bitte prüfen',
-      hints: hints.length > 0 ? hints : ['Bitte prüfen Sie die angezeigten Hinweise.'],
+      hints: hints.length > 0 ? hints : ['Bitte prüfe die angezeigten Hinweise.'],
     };
   }
 
@@ -469,7 +492,7 @@ function AdoptConfirmDialog({
   if (impactLines.length === 0) impactLines.push('±0 €');
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Optimierungsvorschlag übernehmen" variant="softpill">
+    <Modal isOpen={isOpen} onClose={onClose} title="Optimierungsvorschlag übernehmen" variant="softpill" scrollableContent>
       <div className="elterngeld-adopt-confirm">
         <p className="elterngeld-adopt-confirm__intro">
           Dieser Vorschlag verändert deinen aktuellen Plan.
@@ -533,7 +556,15 @@ function OptimizationComparisonBlock({
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
   const { goal, status, currentResult, suggestions } = optimizationResultSet;
   const suggestionsWithDifference = suggestions.filter((s) => !resultsAreEqual(currentResult, s.result));
-  const effectiveSuggestions = suggestionsWithDifference.length > 0 ? suggestionsWithDifference : suggestions;
+  const suggestionsToShow = suggestionsWithDifference.length > 0 ? suggestionsWithDifference : suggestions;
+  const seenKeys = new Set<string>();
+  const effectiveSuggestions = suggestionsToShow.filter((s) => {
+    const key = getSuggestionDedupKey(s);
+    if (seenKeys.has(key)) return false;
+    if (!shouldShowVariant(s, currentResult, goal)) return false;
+    seenKeys.add(key);
+    return true;
+  });
   const clampedIndex = Math.min(selectedSuggestionIndex, Math.max(0, effectiveSuggestions.length - 1));
   const selectedSuggestion = effectiveSuggestions[clampedIndex] ?? effectiveSuggestions[0];
   const hasSuggestions = effectiveSuggestions.length > 0;
@@ -584,18 +615,34 @@ function OptimizationComparisonBlock({
       lines.push(formatTotalLine());
       lines.push(formatDurationLine());
       if (deltaBonus !== 0) lines.push(formatBonusLine());
+      if (deltaDuration === 0 && deltaTotal < 0) {
+        const advantage = getExplainableAdvantageWhenSameDurationLessTotal(currentResult, s.result, goal, s);
+        if (advantage) lines.push(advantage);
+      }
     } else if (goal === 'longerDuration') {
       lines.push(formatDurationLine());
       lines.push(formatTotalLine());
       if (deltaBonus !== 0) lines.push(formatBonusLine());
+      if (deltaDuration === 0 && deltaTotal < 0) {
+        const advantage = getExplainableAdvantageWhenSameDurationLessTotal(currentResult, s.result, goal, s);
+        if (advantage) lines.push(advantage);
+      }
     } else if (goal === 'partnerBonus') {
       lines.push(formatBonusLine());
       lines.push(formatTotalLine());
       if (deltaDuration !== 0) lines.push(formatDurationLine());
+      if (deltaDuration === 0 && deltaTotal < 0) {
+        const advantage = getExplainableAdvantageWhenSameDurationLessTotal(currentResult, s.result, goal, s);
+        if (advantage) lines.push(advantage);
+      }
     } else if (goal === 'frontLoad') {
       if (s.deltaValue > 0) lines.push('Mehr Auszahlung in frühen Monaten');
       lines.push(formatTotalLine());
       if (deltaDuration !== 0) lines.push(formatDurationLine());
+      if (deltaDuration === 0 && deltaTotal < 0) {
+        const advantage = getExplainableAdvantageWhenSameDurationLessTotal(currentResult, s.result, goal, s);
+        if (advantage) lines.push(advantage);
+      }
     }
     return lines;
   };
@@ -616,7 +663,7 @@ function OptimizationComparisonBlock({
       <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--comparison">
         {isAlreadyOptimal ? (
           <>
-            <h3 className="elterngeld-step__title">Dein aktueller Plan ist bereits optimal.</h3>
+            <h3 className="elterngeld-step__title">Dein aktueller Plan passt gut zu deinem Ziel.</h3>
             {onBackToOptimization && (
               <Button
                 type="button"
@@ -675,6 +722,12 @@ function OptimizationComparisonBlock({
                           })}
                         </span>
                       )}
+                      {idx === 0 && (() => {
+                        const explanation = getMainRecommendationExplanation(currentResult, s.result, goal, s);
+                        return explanation ? (
+                          <p className="elterngeld-calculation__suggestion-hint">{explanation}</p>
+                        ) : null;
+                      })()}
                       {planChangeLines.length > 0 && (
                         <div className="elterngeld-calculation__suggestion-plan-changes">
                           <span className="elterngeld-calculation__suggestion-plan-changes-title">Änderungen</span>
@@ -685,6 +738,35 @@ function OptimizationComparisonBlock({
                           ))}
                         </div>
                       )}
+                      {idx === clampedIndex && selectedSuggestion && (() => {
+                        const optBreakdown = getOptimizationBreakdown(currentResult, s.result);
+                        const calcBreakdown = getCalculationBreakdown(s.result);
+                        if (optBreakdown.length === 0 && calcBreakdown.length === 0) return null;
+                        return (
+                          <div className="elterngeld-calculation__suggestion-beleg">
+                            {optBreakdown.length > 0 && (
+                              <div className="elterngeld-calculation__beleg-section">
+                                <span className="elterngeld-calculation__beleg-title">Was wurde geändert:</span>
+                                <ul className="elterngeld-calculation__beleg-list">
+                                  {optBreakdown.map((line, i) => (
+                                    <li key={i}>{line}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {calcBreakdown.length > 0 && (
+                              <div className="elterngeld-calculation__beleg-section">
+                                <span className="elterngeld-calculation__beleg-title">So wird geschätzt:</span>
+                                <ul className="elterngeld-calculation__beleg-list">
+                                  {calcBreakdown.map((line, i) => (
+                                    <li key={i}>{line.value ? `${line.label} ${line.value}` : line.label}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <span className="elterngeld-calculation__suggestion-meta">
                         {formatCurrency(s.optimizedTotal)} · {s.optimizedDurationMonths} Monate
                       </span>
@@ -702,7 +784,7 @@ function OptimizationComparisonBlock({
                   className="btn--softpill elterngeld-calculation__optimization-action-primary"
                   onClick={() => setShowAdoptConfirm(true)}
                 >
-                  Optimierung übernehmen
+                  Vorschlag übernehmen
                 </Button>
               )}
               <div className="elterngeld-calculation__optimization-actions-secondary">
@@ -837,6 +919,8 @@ type Props = {
   onApplyPartnerBonusFix?: (month: number, fix: 'switchToPlus' | 'setBoth' | 'setBonusMonth') => void;
   /** Setzt mehrere Monate als Bonusmonate (ElterngeldPlus + Beide) */
   onApplyPartnerBonusFixMultiple?: (months: number[]) => void;
+  /** Ersetzt den Plan durch gemeinsame Monate für Partnerschaftsbonus */
+  onApplyCreatePartnerOverlap?: (suggestedPlan: ElterngeldCalculationPlan) => void;
 };
 
 export const StepCalculationResult: React.FC<Props> = ({
@@ -854,6 +938,7 @@ export const StepCalculationResult: React.FC<Props> = ({
   onNavigateToInput,
   onApplyPartnerBonusFix,
   onApplyPartnerBonusFixMultiple,
+  onApplyCreatePartnerOverlap,
 }) => {
   const { parents, householdTotal, validation, meta } = result;
 
@@ -883,10 +968,10 @@ export const StepCalculationResult: React.FC<Props> = ({
     <div className="elterngeld-calculation-result">
       <div className="elterngeld-calculation__disclaimer">
         <p className="elterngeld-calculation__disclaimer-text">
-          <strong>Unverbindliche Schätzung</strong>
+          <strong>Orientierung für deine Planung</strong>
         </p>
         <p className="elterngeld-calculation__disclaimer-text">
-          {meta.disclaimer}
+          Diese Planung hilft dir bei der Orientierung und ersetzt keine offizielle Prüfung. Wichtige Grenzen und typische Konflikte werden geprüft. Einige Regeln werden vereinfacht dargestellt, zum Beispiel bei Mutterschaftsleistungen. Die endgültige Entscheidung trifft die Elterngeldstelle.
         </p>
       </div>
 
@@ -979,7 +1064,7 @@ export const StepCalculationResult: React.FC<Props> = ({
           {parents.some((p) => p.monthlyResults.some((m) => m.mode === 'partnerBonus')) && (
             <p className="elterngeld-calculation__partner-bonus-hint">
               Der Partnerschaftsbonus kann zusätzliche Monate ermöglichen, ist aber kein pauschaler
-              Zuschlag. Die finanzielle Wirkung hängt von Ihrer konkreten Verteilung ab.
+              Zuschlag. Die finanzielle Wirkung hängt von deiner konkreten Verteilung ab.
             </p>
           )}
           <Button
@@ -1001,9 +1086,9 @@ export const StepCalculationResult: React.FC<Props> = ({
           <>
             {isOptimizationAdopted ? (
               <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--adopted">
-                <h3 className="elterngeld-step__title">Optimierung übernommen</h3>
+                <h3 className="elterngeld-step__title">Vorschlag übernommen</h3>
                 <p className="elterngeld-calculation__adopted-banner">
-                  Die aktive Berechnung basiert jetzt auf der optimierten Strategie.
+                  Die Planung basiert jetzt auf dem übernommenen Vorschlag.
                 </p>
                 <p className="elterngeld-step__hint elterngeld-step__hint--section">
                   Der ursprüngliche Plan wurde als Vergleich gespeichert.
@@ -1088,7 +1173,7 @@ export const StepCalculationResult: React.FC<Props> = ({
               <p className="elterngeld-calculation__no-data">Kein Bezug geplant</p>
             )}
             <p className="elterngeld-calculation__total">
-              <strong>Gesamt {parent.label}:</strong> {formatCurrency(parent.total)}
+              <strong>Geschätzt {parent.label}:</strong> {formatCurrency(parent.total)}
             </p>
             {parent.warnings.length > 0 && (
               <ul className="elterngeld-calculation__warnings">
@@ -1168,12 +1253,49 @@ export const StepCalculationResult: React.FC<Props> = ({
         <p className="elterngeld-calculation__household-total">
           {formatCurrency(householdTotal)}
         </p>
+        {(() => {
+          const breakdown = getCalculationBreakdown(result);
+          if (breakdown.length === 0) return null;
+          return (
+            <div className="elterngeld-calculation__beleg elterngeld-plan-phases">
+              <h4 className="elterngeld-plan-phases__title">So wird geschätzt:</h4>
+              <ul className="elterngeld-plan-phases__list">
+                {breakdown.map((line, i) => (
+                  <li key={i} className="elterngeld-plan-phases__item">
+                    {line.value ? (
+                      <>
+                        <span className="elterngeld-plan-phases__label">{line.label}</span>
+                        <span className="elterngeld-plan-phases__range">{line.value}</span>
+                      </>
+                    ) : (
+                      line.label
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
+        <div className="elterngeld-calculation__transparency-hint">
+          {meta.transparencyHints && meta.transparencyHints.length > 0 ? (
+            <ul className="elterngeld-calculation__transparency-list">
+              {meta.transparencyHints.map((hint, i) => (
+                <li key={i}>{hint}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>Die Planung basiert auf den aktuellen Elterngeld-Regeln und dient als Orientierung.</p>
+          )}
+        </div>
+        <p className="elterngeld-calculation__elterngeldstelle-hint">
+          Die endgültige Entscheidung über deinen Anspruch und die Auszahlung trifft immer die zuständige Elterngeldstelle. Diese Planung dient zur Orientierung und ersetzt keine offizielle Prüfung.
+        </p>
       </Card>
 
       {!optimizationGoal && onOpenOptimizationGoal && (
         <div className="elterngeld-calculation__optimization-hint-block">
           <p className="elterngeld-calculation__optimization-hint-text">
-            Sie können jetzt auch prüfen, ob eine andere Aufteilung vorteilhafter wäre.
+            Du kannst jetzt prüfen, ob eine andere Aufteilung vorteilhafter wäre.
           </p>
           <Button
             type="button"
@@ -1181,7 +1303,7 @@ export const StepCalculationResult: React.FC<Props> = ({
             className="btn--softpill"
             onClick={onOpenOptimizationGoal}
           >
-            Optimierungsziel wählen
+            Aufteilung prüfen
           </Button>
         </div>
       )}
@@ -1193,6 +1315,11 @@ export const StepCalculationResult: React.FC<Props> = ({
           plan={plan}
           result={result}
           onAction={(action: PartnerBonusAction) => {
+            if (action.type === 'applyCreatePartnerOverlap') {
+              onApplyCreatePartnerOverlap?.(action.suggestedPlan);
+              setShowPartnerBonusCheck(false);
+              return;
+            }
             if (action.type === 'applyFix') {
               onApplyPartnerBonusFix?.(action.month, action.fix);
             } else if (action.type === 'applySetAllSuitableMonths') {

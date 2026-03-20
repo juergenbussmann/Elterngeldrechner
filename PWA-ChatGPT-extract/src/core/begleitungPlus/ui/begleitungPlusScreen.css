@@ -1,0 +1,72 @@
+/* BegleitungPlusScreen – nur Layout-Glue.
+   Keine background, border, shadow, radius. Nur Layout + Vollbreite. */
+
+[data-bp-scope] .begleitung-plus__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+[data-bp-scope] .begleitung-plus__plans {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+[data-bp-scope] .begleitung-plus__plans > * {
+  width: 100%;
+  text-align: left;
+}
+
+[data-bp-scope] .begleitung-plus__plan-title {
+  display: block;
+}
+
+[data-bp-scope] .begleitung-plus__plan-sub {
+  display: block;
+}
+
+[data-bp-scope] .begleitung-plus__benefits {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+[data-bp-scope] .begleitung-plus__benefits li {
+  margin-bottom: 0.5rem;
+}
+
+[data-bp-scope] .begleitung-plus__benefits li:last-child {
+  margin-bottom: 0;
+}
+
+[data-bp-scope] .begleitung-plus__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+[data-bp-scope] .begleitung-plus-sheet__price {
+  margin: 0;
+}
+
+[data-bp-scope] .begleitung-plus-sheet__price-savings {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+[data-bp-scope] .begleitung-plus__restore-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 0.5rem;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  color: inherit;
+}
+
+[data-bp-scope] .begleitung-plus__restore-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

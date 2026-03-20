@@ -23,7 +23,7 @@ export interface ElterngeldLiveCardProps {
 
 export const ElterngeldLiveCard: React.FC<ElterngeldLiveCardProps> = ({
   result,
-  title = 'Voraussichtliches Elterngeld',
+  title = 'Geschätzte Orientierung',
 }) => {
   return (
     <Card className="still-daily-checklist__card elterngeld-live-card">
@@ -36,7 +36,7 @@ export const ElterngeldLiveCard: React.FC<ElterngeldLiveCardProps> = ({
           </div>
         ))}
         <div className="elterngeld-live-card__row elterngeld-live-card__row--total">
-          <span className="elterngeld-live-card__label">Gesamt:</span>
+          <span className="elterngeld-live-card__label">Geschätzt gesamt:</span>
           <span className="elterngeld-live-card__value">
             {formatCurrency(result.householdTotal)}
           </span>

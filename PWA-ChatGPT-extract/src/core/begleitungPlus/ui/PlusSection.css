@@ -1,0 +1,15 @@
+.plus-section__card {
+  margin-top: 1rem;
+}
+
+.plus-section__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.plus-section__teaser {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}

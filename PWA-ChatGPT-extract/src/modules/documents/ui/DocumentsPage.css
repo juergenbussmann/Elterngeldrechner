@@ -1,0 +1,103 @@
+/* DocumentsPage – Layout wie Checklisten (screen-placeholder, next-steps, softpill) */
+
+.documents-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.documents__section {
+  margin-top: 0;
+}
+
+.documents__actions {
+  margin-top: 0.5rem;
+}
+
+.documents__add-choice-card {
+  margin-top: 0;
+}
+
+.documents__add-choice-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.documents__file-input {
+  display: none;
+}
+
+.documents__content-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  scroll-margin-top: 1rem;
+}
+
+.documents__inline-info {
+  line-height: 1.4;
+  margin: 0.5rem 0 1rem 0;
+}
+
+.documents__empty-text {
+  margin: 0;
+}
+
+.documents__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.documents__item {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.documents__doc-card {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.14s ease-out;
+}
+
+.documents__doc-card:active {
+  transform: scale(0.99);
+}
+
+.documents__thumbnail {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border, var(--ui-border));
+}
+
+.documents__thumbnail--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: var(--color-background, #f4f4f5);
+}
+
+.documents__doc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.documents__modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.documents__modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

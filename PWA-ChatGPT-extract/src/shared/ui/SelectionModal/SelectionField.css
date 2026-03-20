@@ -1,0 +1,95 @@
+.selection-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.selection-field__label-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.selection-field__label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.selection-field__required {
+  color: var(--color-primary, #2563eb);
+}
+
+.selection-field__hint {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.selection-field__error {
+  font-size: 0.8rem;
+  color: var(--color-error, #dc2626);
+}
+
+.selection-field__trigger {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: var(--ui-control-bg, #fff);
+  border: 1px solid var(--ui-border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--color-text-primary, #0f172a);
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.selection-field__trigger:hover {
+  border-color: var(--color-border-hover, #cbd5e1);
+}
+
+.selection-field__trigger:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary, #2563eb);
+}
+
+.selection-field__trigger[aria-invalid="true"] {
+  border-color: var(--color-error, #dc2626);
+}
+
+.selection-field__trigger--placeholder .selection-field__trigger-text {
+  color: var(--color-text-secondary, #64748b);
+}
+
+.selection-field__trigger-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selection-field__trigger-text:empty::before {
+  content: attr(data-placeholder);
+}
+
+.selection-field__trigger-chevron {
+  font-size: 0.65rem;
+  color: var(--color-text-secondary, #64748b);
+  flex-shrink: 0;
+}
+
+/* Documents-form variant: match form styling */
+.selection-field--documents-form .selection-field__trigger {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ui-border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}

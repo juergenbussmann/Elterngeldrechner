@@ -1655,6 +1655,13 @@
   margin-bottom: 0;
 }
 
+.elterngeld-calculation__elterngeldstelle-hint {
+  margin: 1rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #505050);
+  line-height: 1.4;
+}
+
 .elterngeld-calculation__validation {
   padding: 0.75rem 1rem;
   border-radius: 8px;
@@ -2127,6 +2134,70 @@
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
   color: #444;
+}
+
+/* OptimizationOverlay – minimal notwendige Styles */
+.elterngeld-optimization-overlay-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.elterngeld-optimization-overlay__goal-section {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border, #e4e4e7);
+}
+
+.elterngeld-optimization-overlay__unavailable {
+  margin: 0.5rem 0 1rem 0;
+  padding: 0.75rem;
+  background: rgba(120, 96, 76, 0.08);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary, #333);
+}
+
+.elterngeld-optimization-overlay__suggestion-list-wrap {
+  margin: 0.75rem 0 1rem 0;
+}
+
+.elterngeld-calculation__suggestion-card {
+  position: relative;
+}
+
+.elterngeld-calculation__suggestion-card-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary, #2563eb);
+  background: rgba(37, 99, 235, 0.15);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.elterngeld-calculation__suggestion-main-signal {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.elterngeld-calculation__suggestion-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #505050);
+}
+
+.elterngeld-calculation__suggestion-plan-changes--primary {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 /* Vorschlagsliste (Top-3) oberhalb des Detailvergleichs */

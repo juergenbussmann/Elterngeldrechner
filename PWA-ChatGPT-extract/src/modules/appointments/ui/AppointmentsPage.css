@@ -1,0 +1,204 @@
+/* AppointmentsPage – Layout wie Checklisten (screen-placeholder, next-steps, softpill) */
+
+/* Native Date/Time Picker: kein Clipping – overflow + transform scoped überschreiben */
+.appointments-screen .appointments__composer-section,
+.appointments-screen .appointments__composer-card,
+.appointments-screen .appointments__composer-content {
+  overflow: visible !important;
+}
+
+.appointments-screen .appointments__composer-section,
+.appointments-screen .appointments__composer-card {
+  transform: none;
+}
+
+/* scrollIntoView: Inputs oberhalb des Footers positionieren */
+.appointments__composer-card input[type="date"],
+.appointments__composer-card input[type="time"] {
+  scroll-margin-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+}
+
+.appointments-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.appointments__limit-banner {
+  margin-bottom: 0.5rem;
+}
+
+.appointments__section {
+  margin-top: 0;
+}
+
+.appointments__actions {
+  margin-top: 0.5rem;
+}
+
+.appointments__list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  scroll-margin-top: 1rem;
+}
+
+.appointments__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.appointments__date-label {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 0.25rem !important;
+}
+
+.appointments__item {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.appointments__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Termin-Card Content (appointment-item) */
+.appointments-screen .appointment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.appointments-screen .appointment-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.appointments-screen .appointment-item__title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.appointments-screen .appointment-item__pill {
+  flex-shrink: 0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: var(--color-text-secondary);
+}
+
+.appointments-screen .appointment-item__meta {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.appointments-screen .appointment-item__saved-hint {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.appointments-screen .appointment-item__note {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+}
+
+.appointments__card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.appointments__empty-text {
+  margin: 0;
+}
+
+.appointments__composer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.appointments__composer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.appointments__composer-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.appointments__composer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.appointments__composer-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.appointments__composer-label span {
+  color: var(--color-text-primary);
+}
+
+.appointments__datetime-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.appointments__datetime-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.appointments__datetime-row input[type="time"] {
+  flex: 0 0 auto;
+  min-width: 6rem;
+}
+
+.appointments__field-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.2rem;
+}
+
+.appointments__composer-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+/* Inline-Formular Inputs: an Softpill-Look anpassen */
+.appointments__composer-card input,
+.appointments__composer-card select,
+.appointments__composer-card textarea {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 18px;
+}

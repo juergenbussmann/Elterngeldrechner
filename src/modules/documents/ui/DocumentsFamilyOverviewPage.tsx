@@ -17,14 +17,8 @@ const ENTRY_OPTIONS = [
   {
     id: 'elterngeld',
     title: 'Elterngeld – Vorbereitung',
-    description: 'Antrag vorbereiten, Unterlagen planen und Fristen im Blick behalten',
+    description: 'Antrag vorbereiten, Planung prüfen und Orientierung erhalten',
     route: '/documents/elterngeld',
-  },
-  {
-    id: 'elterngeld-calculation',
-    title: 'Elterngeld – Berechnung',
-    description: 'Unverbindliche Schätzung: Monat für Monat planen und Beträge überschlagen',
-    route: '/documents/elterngeld-calculation',
   },
 ] as const;
 

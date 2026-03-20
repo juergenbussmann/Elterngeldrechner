@@ -14,8 +14,8 @@ import { getChildDateContext } from '../../../shared/lib/childDateContext';
 import { useNotifications } from '../../../shared/lib/notifications';
 import { addDocument } from '../application/service';
 import type { ElterngeldCalculationPlan, CalculationResult } from './calculation';
-import type { NavigateToInputTarget } from './steps/StepCalculationResult';
 import { createDefaultPlan, calculatePlan, duplicatePlan, applyCombinedSelection } from './calculation';
+import type { NavigateToInputTarget } from './steps/StepCalculationResult';
 import {
   loadCalculationPlan,
   saveCalculationPlan,
@@ -37,6 +37,7 @@ import { StepCalculationResult } from './steps/StepCalculationResult';
 import { StepCalculationComparison } from './steps/StepCalculationComparison';
 import {
   OptimizationGoalDialog,
+  MAIN_GOAL_OPTIONS,
   type OptimizationGoal,
 } from './steps/OptimizationGoalDialog';
 import { ElterngeldFlowStepper } from './ElterngeldFlowStepper';
@@ -48,7 +49,7 @@ import './ui/elterngeld-ui.css';
 import '../../checklists/styles/softpill-buttons-in-cards.css';
 import '../../checklists/styles/softpill-cards.css';
 
-type View = 'input' | 'result' | 'compare';
+type View = 'goal' | 'input' | 'result' | 'compare';
 type EditingVariant = 'A' | 'B';
 
 type LocationState = { fromPreparation?: ElterngeldCalculationPlan } | null;
@@ -105,7 +106,10 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const conflictDetected = hasDataConflict(persisted, fromPreparation);
 
   const [conflictResolved, setConflictResolved] = useState(!conflictDetected);
-  const [view, setView] = useState<View>('input');
+  const [usingPreparationFlow, setUsingPreparationFlow] = useState(!!fromPreparation && !conflictDetected);
+  const [view, setView] = useState<View>(() =>
+    fromPreparation && !conflictDetected ? 'goal' : 'input'
+  );
   const [editingVariant, setEditingVariant] = useState<EditingVariant>('A');
   const [plan, setPlan] = useState<ElterngeldCalculationPlan>(() => {
     // Bei Konflikt: Vorbereitung ist führend – fromPreparation als Standard
@@ -128,6 +132,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const [navigateTarget, setNavigateTarget] = useState<NavigateToInputTarget | null>(null);
   const [showEditOriginDialog, setShowEditOriginDialog] = useState(false);
   const [sessionChoiceKeepAsComparison, setSessionChoiceKeepAsComparison] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<'maxMoney' | 'longerDuration' | 'frontLoad'>('maxMoney');
 
   const planFromPreparationRef = useRef<ElterngeldCalculationPlan | null>(null);
   const planOriginFromPreparationRef = useRef(false);
@@ -240,10 +245,27 @@ export const ElterngeldCalculationPage: React.FC = () => {
     }
   }, [view]);
 
+  useEffect(() => {
+    if (usingPreparationFlow && view === 'input') {
+      setView('goal');
+    }
+  }, [usingPreparationFlow, view]);
+
   const handleBack = useCallback(() => {
     setNavigateTarget(null);
-    setView('input');
-  }, []);
+    setView(fromPreparation ? 'goal' : 'input');
+  }, [fromPreparation]);
+
+  const handleGoalToPlan = useCallback(() => {
+    if (usingPreparationFlow) {
+      const res = calculatePlan(plan);
+      setPlanUsedForResult(plan);
+      setResult(res);
+      setView('result');
+    } else {
+      setView('input');
+    }
+  }, [usingPreparationFlow, plan]);
 
   const handleNavigateToInput = useCallback((target: NavigateToInputTarget) => {
     setNavigateTarget(target);
@@ -276,9 +298,22 @@ export const ElterngeldCalculationPage: React.FC = () => {
       const firstM = months[0];
       setNavigateTarget({ focusMonth: firstM, changedMonth: firstM });
       setView('input');
-      showToast('Monate als Bonusmonate gesetzt. Prüfen Sie die Änderung im Plan.', { kind: 'success', durationMs: 3000 });
+      showToast('Ich habe die Monate als Bonusmonate gesetzt.', { kind: 'success', durationMs: 3000 });
     },
     [plan, showToast]
+  );
+
+  const handleApplyCreatePartnerOverlap = useCallback(
+    (suggestedPlan: ElterngeldCalculationPlan) => {
+      setPlan(suggestedPlan);
+      saveCalculationPlan(suggestedPlan);
+      setPlanUsedForResult(suggestedPlan);
+      setResult(calculatePlan(suggestedPlan));
+      setView('input');
+      setNavigateTarget({ focusSection: 'monatsplan' });
+      showToast('Ich habe gemeinsame Monate für beide Eltern erstellt.', { kind: 'success', durationMs: 3000 });
+    },
+    [showToast]
   );
 
   const handleReset = useCallback(() => {
@@ -297,9 +332,13 @@ export const ElterngeldCalculationPage: React.FC = () => {
     if (preparation && !isPreparationEmpty(preparation)) {
       planFromPreparationRef.current = planToUse;
       planOriginFromPreparationRef.current = true;
+      setUsingPreparationFlow(true);
+      setView('goal');
     } else {
       planFromPreparationRef.current = null;
       planOriginFromPreparationRef.current = false;
+      setUsingPreparationFlow(false);
+      setView('input');
     }
     setPlanUsedForResult(null);
     setOptimizationGoal(undefined);
@@ -307,7 +346,6 @@ export const ElterngeldCalculationPage: React.FC = () => {
     setShowOptimizationGoalDialog(false);
     setOptimizationAdoptedInSession(false);
     setVariantBIsOutdated(false);
-    setView('input');
     setResult(null);
     setEditingVariant('A');
     setConflictResolved(true);
@@ -347,7 +385,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
       setVariantBIsOutdated(false);
       setOptimizationStatus('adopted');
       setOptimizationAdoptedInSession(true);
-      showToast('Optimierung übernommen und Berechnung aktualisiert.', {
+      showToast('Vorschlag übernommen – Plan aktualisiert.', {
         kind: 'success',
         durationMs: 4000,
       });
@@ -365,6 +403,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
 
   const handleUsePersisted = useCallback(() => {
     setConflictResolved(true);
+    setUsingPreparationFlow(false);
   }, []);
 
   const handleUseFromPreparation = useCallback(() => {
@@ -374,10 +413,11 @@ export const ElterngeldCalculationPage: React.FC = () => {
     planFromPreparationRef.current = fromPreparation;
     planOriginFromPreparationRef.current = true;
     setSessionChoiceKeepAsComparison(false);
+    setUsingPreparationFlow(true);
     const hasB = planB && !isPlanEmpty(planB);
     if (hasB) setVariantBIsOutdated(true);
     setConflictResolved(true);
-    setView('input');
+    setView('goal');
     setResult(null);
     showToast(
       hasB
@@ -394,12 +434,13 @@ export const ElterngeldCalculationPage: React.FC = () => {
     planFromPreparationRef.current = fromPreparation;
     planOriginFromPreparationRef.current = true;
     setSessionChoiceKeepAsComparison(false);
+    setUsingPreparationFlow(true);
     clearVariantBPlan();
     setPlanB(null);
     setVariantBIsOutdated(false);
     setEditingVariant('A');
     setConflictResolved(true);
-    setView('input');
+    setView('goal');
     setResult(null);
     showToast('Beide Varianten wurden neu gestartet.', { kind: 'success', durationMs: 3000 });
   }, [fromPreparation, showToast]);
@@ -429,21 +470,23 @@ export const ElterngeldCalculationPage: React.FC = () => {
   return (
     <div className="screen-placeholder elterngeld-screen">
       <section className="next-steps next-steps--plain elterngeld__section">
-        <SectionHeader as="h1" title="Elterngeld-Berechnung" />
-        <ElterngeldFlowStepper currentStep={view === 'input' ? 2 : 3} />
+        <SectionHeader as="h1" title="Elterngeld planen" />
+        <ElterngeldFlowStepper currentStep={view === 'goal' ? 1 : view === 'input' ? 2 : 3} />
         <p className="elterngeld-calculation__subtitle">
-          Unverbindliche Schätzung – Orientierung für Ihre Planung
+          Orientierung für deine Planung – keine amtliche Prüfung
         </p>
-        <p className="elterngeld-calculation__storage-hint">
-          ✓ Deine Angaben werden automatisch lokal gespeichert.
-        </p>
+        {view !== 'goal' && (
+          <p className="elterngeld-calculation__storage-hint">
+            ✓ Deine Angaben werden automatisch lokal gespeichert.
+          </p>
+        )}
 
         {conflictDetected && !conflictResolved && (
           <Card className="still-daily-checklist__card elterngeld-calculation__conflict-card">
             <p className="elterngeld-calculation__conflict-text">
               {planB && !isPlanEmpty(planB)
-                ? 'Sie haben bereits einen gespeicherten Plan und eine alternative Variante. Gleichzeitig liegen neue Daten aus der Vorbereitung vor. Was möchten Sie verwenden?'
-                : 'Sie haben bereits einen gespeicherten Berechnungsstand. Gleichzeitig liegen neue Daten aus der Vorbereitung vor. Was möchten Sie verwenden?'}
+                ? 'Du hast bereits einen gespeicherten Plan und eine alternative Variante. Gleichzeitig liegen neue Daten aus der Vorbereitung vor. Was möchtest du verwenden?'
+                : 'Du hast bereits einen gespeicherten Plan. Gleichzeitig liegen neue Daten aus der Vorbereitung vor. Was möchtest du verwenden?'}
             </p>
             <div className="elterngeld-calculation__conflict-actions">
               <Button
@@ -477,14 +520,49 @@ export const ElterngeldCalculationPage: React.FC = () => {
             </div>
             {planB && !isPlanEmpty(planB) && (
               <p className="elterngeld-calculation__conflict-hint">
-                Bei „Aktuellen Plan ersetzen“ bleibt Ihre alternative Variante erhalten. Sie basiert
+                Bei „Aktuellen Plan ersetzen“ bleibt deine alternative Variante erhalten. Sie basiert
                 möglicherweise nicht mehr auf der neuen Grundlage.
               </p>
             )}
           </Card>
         )}
 
-        {conflictResolved && view === 'input' && (
+        {conflictResolved && view === 'goal' && (
+          <Card className="still-daily-checklist__card elterngeld-calculation__goal-card">
+            <h3 className="elterngeld-step__title">Was ist dir wichtiger?</h3>
+            <p className="elterngeld-optimization-goal__intro">
+              Wähle dein Ziel – danach siehst du das Ergebnis.
+            </p>
+            <div
+              className="elterngeld-optimization-goal__options elterngeld-select-btn-group"
+              role="radiogroup"
+              aria-label="Ziel"
+            >
+              {MAIN_GOAL_OPTIONS.map((opt) => (
+                <ElterngeldSelectButton
+                  key={opt.value}
+                  label={opt.label}
+                  description={opt.description}
+                  selected={selectedGoal === opt.value}
+                  onClick={() => setSelectedGoal(opt.value)}
+                  ariaPressed={selectedGoal === opt.value}
+                />
+              ))}
+            </div>
+            <div className="next-steps__stack elterngeld-optimization-goal__actions">
+              <Button
+                type="button"
+                variant="primary"
+                className="next-steps__button btn--softpill"
+                onClick={handleGoalToPlan}
+              >
+                Weiter zur Planung
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {conflictResolved && view === 'input' && !usingPreparationFlow && (
           <>
             {liveResult && <ElterngeldLiveCard result={liveResult} />}
             {planB && (
@@ -525,7 +603,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
             {optimizationAdoptedInSession && editingVariant === 'A' && (
               <Card className="still-daily-checklist__card elterngeld-calculation__optimization-adopted-hint">
                 <p className="elterngeld-calculation__optimization-adopted-text">
-                  Die Eingaben wurden anhand der optimierten Strategie aktualisiert.
+                  Die Eingaben wurden anhand des übernommenen Vorschlags aktualisiert.
                 </p>
                 <Button
                   type="button"
@@ -563,7 +641,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
                 className="next-steps__button btn--softpill"
                 onClick={handleCalculate}
               >
-                Berechnen
+                Ergebnis prüfen
               </Button>
               <Button
                 type="button"
@@ -571,7 +649,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
                 className="next-steps__button btn--softpill"
                 onClick={() => setShowOptimizationGoalDialog(true)}
               >
-                Bezugsoptimierung prüfen
+                Aufteilung prüfen
               </Button>
               {planB && (
                 <Button
@@ -625,12 +703,12 @@ export const ElterngeldCalculationPage: React.FC = () => {
           </>
         )}
 
-        {conflictResolved && view === 'compare' && planB && (
+        {conflictResolved && view === 'compare' && planB && !usingPreparationFlow && (
           <>
             <StepCalculationComparison
               resultA={calculatePlan(plan)}
               resultB={calculatePlan(planB)}
-              labelA={optimizationStatus === 'adopted' ? 'Optimierte Strategie' : 'Aktueller Plan'}
+              labelA={optimizationStatus === 'adopted' ? 'Übernommener Vorschlag' : 'Aktueller Plan'}
               labelB={optimizationStatus === 'adopted' ? 'Ursprünglicher Plan' : 'Vergleichsvariante'}
             />
             <div className="next-steps__stack elterngeld-nav">
@@ -672,9 +750,10 @@ export const ElterngeldCalculationPage: React.FC = () => {
               onCreatePdf={handleCreatePdf}
               isSubmitting={isSubmitting}
               onOpenOptimizationGoal={() => setShowOptimizationGoalDialog(true)}
-              onNavigateToInput={handleNavigateToInput}
+              onNavigateToInput={usingPreparationFlow ? undefined : handleNavigateToInput}
               onApplyPartnerBonusFix={handleApplyPartnerBonusFix}
               onApplyPartnerBonusFixMultiple={handleApplyPartnerBonusFixMultiple}
+              onApplyCreatePartnerOverlap={handleApplyCreatePartnerOverlap}
             />
             <div className="next-steps__stack elterngeld-nav">
               {optimizationGoal && (
@@ -684,7 +763,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
                   className="next-steps__button btn--softpill"
                   onClick={() => setShowOptimizationGoalDialog(true)}
                 >
-                  Zurück zur Optimierung
+                  Zurück zur Aufteilung
                 </Button>
               )}
               {planB && (
@@ -705,7 +784,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
                 className="next-steps__button btn--softpill"
                 onClick={handleBack}
               >
-                Zurück zur Eingabe
+                {usingPreparationFlow ? 'Zurück zur Zielauswahl' : 'Zurück zur Eingabe'}
               </Button>
               {!isPreparationEmpty(loadPreparation()) && (
                 <Button

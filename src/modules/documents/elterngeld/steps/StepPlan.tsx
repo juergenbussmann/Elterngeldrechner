@@ -9,13 +9,77 @@ import { Button } from '../../../../shared/ui/Button';
 import { MonthGrid } from '../ui/MonthGrid';
 import { getMonthGridItemsFromCounts } from '../monthGridMappings';
 import { ElterngeldSelectButton } from '../ui/ElterngeldSelectButton';
-import { PartnerBonusCheckDialog, type PartnerBonusAction } from './PartnerBonusCheckDialog';
-import { OptimizationSuggestionBlock } from './OptimizationSuggestionBlock';
 import { applicationToCalculationPlan } from '../applicationToCalculationPlan';
-import { calculatePlan } from '../calculation';
-import { buildOptimizationResult } from '../calculation/elterngeldOptimization';
+import { mergePlanIntoPreparation } from '../planToApplicationMerge';
+import { calculatePlan, validatePartnerBonus } from '../calculation';
+import type { OptimizationSuggestion } from '../calculation/elterngeldOptimization';
+
+type OptimizationSummary = { hasAnySuggestions: boolean; partnerBonusSuggestion: OptimizationSuggestion | null };
 import type { ElterngeldApplication, BenefitModel } from '../types/elterngeldTypes';
-import type { ElterngeldCalculationPlan } from '../calculation';
+import type { ElterngeldCalculationPlan, CalculationResult } from '../calculation';
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function countBezugMonths(result: CalculationResult): number {
+  const months = new Set<number>();
+  for (const p of result.parents) {
+    for (const r of p.monthlyResults) {
+      if (r.mode !== 'none' || r.amount > 0) months.add(r.month);
+    }
+  }
+  return months.size;
+}
+
+function countPartnerBonusMonths(result: CalculationResult): number {
+  const months = new Set<number>();
+  for (const p of result.parents) {
+    for (const r of p.monthlyResults) {
+      if (r.mode === 'partnerBonus') months.add(r.month);
+    }
+  }
+  return months.size;
+}
+
+function extractMonthFromWarning(warning: string): number | null {
+  const m = warning.match(/Monat\s+(\d+)/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function getFirstRelevantMonth(result: CalculationResult): number | null {
+  for (const p of result.parents) {
+    const m = p.monthlyResults.find((r) => r.mode === 'partnerBonus' || r.mode === 'plus');
+    if (m) return m.month;
+  }
+  return null;
+}
+
+type HintAction = 'focusMonth' | 'focusEinkommen' | 'focusGrunddaten' | 'focusMonatsplan' | 'openOptimization' | 'openPartnerBonusCheck' | null;
+
+function getHintActionFromWarning(warning: string, result: CalculationResult): { label: string; action: HintAction; month?: number } {
+  const month = extractMonthFromWarning(warning);
+  if (month != null) return { label: `Monat ${month} anpassen`, action: 'focusMonth', month };
+  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus')) return { label: 'Partnerschaftsbonus prüfen', action: 'openPartnerBonusCheck' };
+  if (warning.includes('24–32') || warning.includes('Wochenstunden') || warning.includes('Arbeitszeit')) {
+    const m = getFirstRelevantMonth(result);
+    return { label: 'Arbeitszeit anpassen', action: m != null ? 'focusMonth' : 'focusMonatsplan', month: m ?? undefined };
+  }
+  if (warning.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  if (warning.includes('Geburtsdatum') || warning.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
+  return { label: '', action: null };
+}
+
+function getErrorActionFromError(error: string): { label: string; action: 'focusGrunddaten' | 'focusEinkommen' | null } {
+  if (error.includes('Geburtsdatum') || error.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
+  if (error.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  return { label: '', action: null };
+}
 
 const MODEL_OPTIONS: { value: BenefitModel; label: string }[] = [
   { value: 'basis', label: 'Basiselterngeld' },
@@ -41,40 +105,6 @@ const APPLY_RANGE_OPTIONS = [
   { id: 'next3' as const, label: 'nächste 3 Monate', count: 3 },
   { id: 'toEnd' as const, label: 'alle folgenden Monate', count: -1 },
 ] as const;
-
-/** Leitet benefitPlan-Updates aus einem ElterngeldCalculationPlan ab. Nur Mapping, keine Berechnung. */
-function planToBenefitPlanUpdates(plan: ElterngeldCalculationPlan): {
-  parentAMonths: string;
-  parentBMonths: string;
-  partnershipBonus: boolean;
-  model?: BenefitModel;
-} {
-  const parentA = plan.parents[0];
-  const parentB = plan.parents[1];
-  const countA = parentA
-    ? Math.max(0, ...parentA.months.filter((m) => m.mode !== 'none').map((m) => m.month))
-    : 0;
-  const countB = parentB
-    ? Math.max(0, ...parentB.months.filter((m) => m.mode !== 'none').map((m) => m.month))
-    : 0;
-  const partnershipBonus = plan.parents.some((p) =>
-    p.months.some((m) => m.mode === 'partnerBonus')
-  );
-  const result: {
-    parentAMonths: string;
-    parentBMonths: string;
-    partnershipBonus: boolean;
-    model?: BenefitModel;
-  } = {
-    parentAMonths: String(countA),
-    parentBMonths: String(countB),
-    partnershipBonus,
-  };
-  if (partnershipBonus) {
-    result.model = 'plus';
-  }
-  return result;
-}
 
 /** Formatiert Monatsnummern für Anzeige (z. B. "3–6" oder "3, 5, 7"). Nur Darstellung, keine Logik. */
 function formatBothMonthRange(months: number[]): string {
@@ -116,13 +146,26 @@ function getCurrentMonthState(
 type Props = {
   values: ElterngeldApplication;
   onChange: (values: ElterngeldApplication) => void;
-  /** Beim Klick auf Aktionsbutton im PartnerBonusCheckDialog: zu anderem Wizard-Step springen, optional mit scrollToId */
+  /** Zu anderem Wizard-Step springen, optional mit scrollToId */
   onNavigateToStep?: (stepId: string, scrollToId?: string) => void;
+  showOptimizationOverlay?: boolean;
+  onShowOptimizationOverlay?: (open: boolean) => void;
+  optimizationSummary?: OptimizationSummary;
+  /** Nach erfolgreicher Anwendung des Bonus-Fix (Toast etc.) */
+  onApplyBonusFix?: () => void;
 };
 
 type ApplyRangeId = 'next1' | 'next3' | 'toEnd';
 
-export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }) => {
+export const StepPlan: React.FC<Props> = ({
+  values,
+  onChange,
+  onNavigateToStep,
+  showOptimizationOverlay = false,
+  onShowOptimizationOverlay,
+  optimizationSummary = { hasAnySuggestions: false, partnerBonusSuggestion: null },
+  onApplyBonusFix,
+}) => {
   const [activeMonth, setActiveMonth] = useState<number | null>(null);
   const [showPartnerBonusCheck, setShowPartnerBonusCheck] = useState(false);
   const [selectedApplyRange, setSelectedApplyRange] = useState<ApplyRangeId | null>(null);
@@ -215,48 +258,6 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
     [values, onChange, maxMonths, countA, countB, hasPartner]
   );
 
-  const handlePartnerBonusAction = useCallback(
-    (action: PartnerBonusAction) => {
-      if (action.type === 'applyFix') {
-        if (action.fix === 'switchToPlus') {
-          update('model', 'plus');
-        } else if (action.fix === 'setBoth') {
-          assignMonth(action.month, 'both');
-        } else {
-          update('model', 'plus');
-          assignMonth(action.month, 'both');
-        }
-        return;
-      }
-      if (action.type === 'applySetAllSuitableMonths') {
-        if (action.months.length === 0) return;
-        update('model', 'plus');
-        const maxM = Math.max(...action.months);
-        assignMonth(maxM, 'both');
-        return;
-      }
-      if (action.type === 'focusMonth') {
-        setActiveMonth(action.month);
-        const el =
-          document.getElementById('elterngeld-plan-month-grid') ??
-          document.getElementById('elterngeld-plan-card');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else if (action.type === 'focusSection') {
-        if (action.section === 'elternArbeit') {
-          onNavigateToStep?.('elternArbeit', 'elterngeld-step-eltern-arbeit-teilzeit');
-        } else if (action.section === 'eltern') {
-          onNavigateToStep?.('elternArbeit');
-        } else if (action.section === 'monatsplan') {
-          const el =
-            document.getElementById('elterngeld-plan-month-grid') ??
-            document.getElementById('elterngeld-plan-card');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
-    },
-    [onNavigateToStep, update, assignMonth]
-  );
-
   const currentState =
     activeMonth !== null
       ? getCurrentMonthState(
@@ -326,21 +327,43 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
 
   const planForCheck = applicationToCalculationPlan(values);
 
-  const partnerBonusSuggestion = useMemo(() => {
-    if (!hasPartner) return null;
+  const planResult = useMemo(() => {
     try {
-      const result = calculatePlan(planForCheck);
-      const outcome = buildOptimizationResult(planForCheck, result, 'partnerBonus');
-      if ('status' in outcome && outcome.status === 'unsupported') return null;
-      const ors = outcome as { status: string; suggestions: { plan: ElterngeldCalculationPlan; status: string }[] };
-      if (ors.status === 'improved' && ors.suggestions.length > 0 && ors.suggestions[0].status === 'improved') {
-        return ors.suggestions[0];
-      }
+      return calculatePlan(planForCheck);
     } catch {
-      /* ignore */
+      return null;
+    }
+  }, [planForCheck]);
+
+  const partnerBonusValidation = useMemo(() => validatePartnerBonus(planForCheck), [planForCheck]);
+
+  const mainHint = useMemo(() => {
+    if (!planResult) return null;
+    const { validation } = planResult;
+    const firstError = validation.errors[0];
+    if (firstError) {
+      const { label, action } = getErrorActionFromError(firstError);
+      if (action) return { text: firstError, label, action: action as HintAction, month: undefined as number | undefined };
+    }
+    for (const w of validation.warnings) {
+      const { label, action, month } = getHintActionFromWarning(w, planResult);
+      if (action) return { text: w, label, action, month };
     }
     return null;
-  }, [planForCheck, hasPartner]);
+  }, [planResult]);
+
+  const items = useMemo(
+    () =>
+      getMonthGridItemsFromCounts(
+        countA,
+        countB,
+        values.benefitPlan.model,
+        values.benefitPlan.partnershipBonus,
+        hasPartner,
+        maxMonths
+      ),
+    [countA, countB, values.benefitPlan.model, values.benefitPlan.partnershipBonus, hasPartner, maxMonths]
+  );
 
   return (
     <Card id="elterngeld-plan-card" className="still-daily-checklist__card elterngeld-plan-card">
@@ -348,6 +371,82 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
       <p className="elterngeld-step__hint elterngeld-step__hint--section">
         Plane hier, welcher Elternteil in welchem Monat Elterngeld bezieht.
       </p>
+
+      {planResult && mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck' && (planResult.validation.errors.length > 0 || planResult.validation.warnings.length > 0) && (
+        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--warning">
+          <p className="elterngeld-plan__status-text">{mainHint.text}</p>
+          <Button
+            type="button"
+            variant="primary"
+            className="btn--softpill elterngeld-plan__status-btn"
+            onClick={() => {
+              if (mainHint.action === 'focusMonth' && mainHint.month != null) {
+                setActiveMonth(mainHint.month);
+                const el = document.getElementById('elterngeld-plan-month-grid') ?? document.getElementById('elterngeld-plan-card');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else if (mainHint.action === 'openOptimization') {
+                onShowOptimizationOverlay?.(true);
+              } else if (mainHint.action === 'focusEinkommen' && onNavigateToStep) {
+                onNavigateToStep('einkommen');
+              } else if (mainHint.action === 'focusGrunddaten' && onNavigateToStep) {
+                onNavigateToStep('geburtKind');
+              } else if (mainHint.action === 'focusMonatsplan') {
+                const el = document.getElementById('elterngeld-plan-month-grid') ?? document.getElementById('elterngeld-plan-card');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+          >
+            {mainHint.label}
+          </Button>
+        </div>
+      )}
+
+      {planResult && (
+        <Card className="elterngeld-plan__summary-card still-daily-checklist__card">
+          <div className="elterngeld-plan__summary-rows">
+            <div className="elterngeld-plan__summary-row">
+              <span className="elterngeld-plan__summary-label">Gesamtbetrag</span>
+              <span className="elterngeld-plan__summary-value">{formatCurrency(planResult.householdTotal)}</span>
+            </div>
+            <div className="elterngeld-plan__summary-row">
+              <span className="elterngeld-plan__summary-label">Dauer</span>
+              <span className="elterngeld-plan__summary-value">{countBezugMonths(planResult)} Monate</span>
+            </div>
+            <div className="elterngeld-plan__summary-row">
+              <span className="elterngeld-plan__summary-label">Bonusmonate</span>
+              <span className="elterngeld-plan__summary-value">{countPartnerBonusMonths(planResult)} Bonusmonate</span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {hasPartner && !partnerBonusValidation.isValid && !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
+        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--warning">
+          <p className="elterngeld-plan__status-text">
+            Der Partnerschaftsbonus ist möglich, aber noch nicht passend eingeplant.
+          </p>
+        </div>
+      )}
+
+      {hasPartner && partnerBonusValidation.isValid && optimizationSummary.hasAnySuggestions && !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
+        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
+          <p className="elterngeld-plan__status-text">Dein Plan ist grundsätzlich stimmig.</p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill elterngeld-plan__status-btn"
+            onClick={() => onShowOptimizationOverlay?.(true)}
+          >
+            Optimierung jetzt anwenden
+          </Button>
+        </div>
+      )}
+
+      {(!hasPartner || (partnerBonusValidation.isValid && !optimizationSummary.hasAnySuggestions)) && !(mainHint && mainHint.action) && (
+        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
+          <p className="elterngeld-plan__status-text">Dein Plan ist grundsätzlich stimmig.</p>
+        </div>
+      )}
 
       <div className="elterngeld-plan__model-row">
         <span className="elterngeld-plan__model-label">Standard-Leistung für neue Monate</span>
@@ -413,79 +512,14 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
       </div>
 
       <div id="elterngeld-plan-month-grid" className="elterngeld-plan__month-grid-wrap">
-      <MonthGrid
-        items={getMonthGridItemsFromCounts(
-          countA,
-          countB,
-          values.benefitPlan.model,
-          values.benefitPlan.partnershipBonus,
-          hasPartner,
-          maxMonths
-        )}
-        onMonthClick={handleMonthClick}
-        activeMonth={activeMonth ?? undefined}
-      />
+        <MonthGrid
+          items={items}
+          onMonthClick={handleMonthClick}
+          activeMonth={activeMonth ?? undefined}
+        />
       </div>
 
-      {hasPartner && (() => {
-        const items = getMonthGridItemsFromCounts(
-          countA,
-          countB,
-          values.benefitPlan.model,
-          values.benefitPlan.partnershipBonus,
-          hasPartner,
-          maxMonths
-        );
-        const bothMonths = items.filter((i) => i.state === 'both').map((i) => i.month);
-        const rangeStr = formatBothMonthRange(bothMonths);
-        const isBasisOnly = values.benefitPlan.model === 'basis';
-        return (
-          <div className={`elterngeld-plan__bonus-preview ${isBasisOnly ? 'elterngeld-plan__bonus-preview--basis-warning' : ''}`}>
-            {bothMonths.length > 0 ? (
-              <>
-                <span className="elterngeld-plan__bonus-preview-icon" aria-hidden="true">💡</span>{' '}
-                Gemeinsame Monate erkannt – diese können Grundlage für Partnerschaftsbonus sein, wenn ElterngeldPlus genutzt wird.
-                {rangeStr && (
-                  <span className="elterngeld-plan__bonus-preview-range"> Mögliche gemeinsame Monate: Lebensmonat {rangeStr}.</span>
-                )}
-                <span className="elterngeld-plan__bonus-preview-tip">
-                  Wähle oben „ElterngeldPlus“, um Bonusmonate zu planen.
-                </span>
-                {isBasisOnly && (
-                  <span className="elterngeld-plan__bonus-preview-warning">
-                    Partnerschaftsbonus ist nur mit ElterngeldPlus möglich.
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                <span className="elterngeld-plan__bonus-preview-icon" aria-hidden="true">⚠️</span>{' '}
-                Keine gemeinsamen Monate geplant – für Partnerschaftsbonus gemeinsame Monate mit ElterngeldPlus erforderlich.
-              </>
-            )}
-          </div>
-        );
-      })()}
-
-      {partnerBonusSuggestion && (
-        <OptimizationSuggestionBlock
-          currentPlan={planForCheck}
-          optimizedPlan={partnerBonusSuggestion.plan}
-          hasPartner={hasPartner}
-          onAdopt={() => {
-            const updates = planToBenefitPlanUpdates(partnerBonusSuggestion.plan);
-            onChange({
-              ...values,
-              benefitPlan: {
-                ...values.benefitPlan,
-                ...updates,
-              },
-            });
-          }}
-        />
-      )}
-
-      <div className="elterngeld-plan__counts">
+      <div className="elterngeld-plan__counts elterngeld-plan__counts--secondary">
         <div className="elterngeld-plan__summary-card">
           <h4 className="elterngeld-plan__summary-title">Monatsübersicht</h4>
           <div className="elterngeld-plan__summary-rows">
@@ -505,43 +539,7 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
             Monate mit gleichzeitigem Bezug werden bei beiden Eltern gezählt.
           </p>
         </div>
-        {hasPartner && (
-          <>
-            <div className="elterngeld-plan__partner-bonus-info">
-              <h4 className="elterngeld-plan__partner-bonus-info-title">Partnerschaftsbonus prüfen</h4>
-              <p className="elterngeld-plan__partner-bonus-info-text">
-                Wenn beide Eltern gleichzeitig 24–32 Stunden pro Woche arbeiten,
-                können zusätzliche Bonusmonate möglich sein.
-              </p>
-              {onNavigateToStep && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="elterngeld-plan__partner-bonus-work-link"
-                  onClick={() => onNavigateToStep('elternArbeit', 'elterngeld-step-eltern-arbeit-teilzeit')}
-                >
-                  Arbeitszeit anpassen
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="secondary"
-                className="btn--softpill elterngeld-step__partner-bonus-check-btn"
-                onClick={() => setShowPartnerBonusCheck(true)}
-              >
-                Partnerschaftsbonus prüfen
-              </Button>
-            </div>
-          </>
-        )}
       </div>
-
-      <PartnerBonusCheckDialog
-        isOpen={showPartnerBonusCheck}
-        onClose={() => setShowPartnerBonusCheck(false)}
-        plan={planForCheck}
-        onAction={handlePartnerBonusAction}
-      />
 
       {activeMonth !== null && (
         <div
@@ -553,11 +551,12 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
           aria-label="Schließen"
         >
           <div
-            className="elterngeld-plan__panel"
+            className="elterngeld-plan__panel scroll-container"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-labelledby="elterngeld-plan-panel-title"
           >
+            <div className="scroll-content">
             <h4 id="elterngeld-plan-panel-title" className="elterngeld-plan__panel-title">
               Lebensmonat {activeMonth}
             </h4>
@@ -713,9 +712,12 @@ export const StepPlan: React.FC<Props> = ({ values, onChange, onNavigateToStep }
                 Ohne Auswahl wird nur dieser Monat geändert.
               </p>
             </div>
-            <button type="button" className="elterngeld-plan__panel-close" onClick={handleConfirm}>
-              Übernehmen
-            </button>
+            </div>
+            <div className="scroll-footer">
+              <button type="button" className="elterngeld-plan__panel-close" onClick={handleConfirm}>
+                Übernehmen
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,0 +1,260 @@
+/* ===== GLOBALES UI-DESIGNSYSTEM – UTILITY-KOMPONENTEN
+   SSoT: Notes Composer (Bild 2) + pill tokens. Nur var(--ui-*).
+   Kein backdrop-filter, kein Glass-Blur. */
+
+/* ----- UA-Reset (scoped auf .ui-btn und .ui-control) ----- */
+.ui-btn,
+.ui-control {
+  font: inherit;
+  color: inherit;
+}
+
+.ui-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ----- .ui-card – Card-Flächen wie Bild 2 ----- */
+.ui-card {
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-card);
+  box-shadow: var(--ui-shadow), var(--ui-inset);
+  padding: var(--ui-pad-card);
+  transition:
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-card:hover {
+    box-shadow: var(--ui-shadow-hover), var(--ui-inset-hover);
+    border-color: var(--ui-border-hover);
+  }
+}
+
+.ui-card:active {
+  box-shadow: var(--ui-shadow-active), var(--ui-inset-active);
+}
+
+/* ----- .ui-control – Inputs/Textareas ----- */
+.ui-control {
+  width: 100%;
+  padding: var(--ui-pad-control);
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  box-shadow: var(--ui-inset);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.ui-control::placeholder {
+  color: var(--color-text-secondary, #64748b);
+}
+
+textarea.ui-control {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.ui-control:hover {
+  border-color: var(--ui-border-hover);
+}
+
+.ui-control:focus {
+  outline: none;
+  border-color: var(--ui-border-focus);
+  box-shadow: var(--ui-inset), 0 0 0 4px var(--ui-focus-ring);
+}
+
+.ui-control:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+/* ----- .ui-btn – Button-Basis ----- */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: var(--ui-pad-control);
+  border-radius: var(--ui-radius-control);
+  font-weight: var(--ui-font-weight-cta);
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-shadow), var(--ui-inset);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-btn:hover {
+    background: linear-gradient(180deg, var(--ui-surface-1-hover), var(--ui-surface-2-hover));
+    border-color: var(--ui-border-hover);
+    box-shadow: var(--ui-shadow-hover), var(--ui-inset-hover);
+    transform: translateY(-1px);
+  }
+}
+
+.ui-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--ui-shadow-active), var(--ui-inset-active);
+}
+
+.ui-btn:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+
+.ui-btn:disabled,
+.ui-btn--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: brightness(0.95);
+}
+
+/* ----- .ui-btn--pill – Pilliger Button ----- */
+.ui-btn--pill {
+  border-radius: var(--ui-radius-pill);
+}
+
+.ui-btn--full {
+  width: 100%;
+}
+
+/* ----- .ui-btn--ghost – dezenter Button ----- */
+.ui-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ui-btn--ghost:hover {
+  background: var(--overlay-hover-subtle, rgba(0, 0, 0, 0.05));
+  border-color: var(--ui-border);
+  box-shadow: none;
+}
+
+/* ----- .ui-chip – Paycards/Plan-Optionen ----- */
+.ui-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-pill);
+  box-shadow: var(--ui-shadow), var(--ui-inset);
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  transition:
+    filter 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-chip:hover {
+    filter: brightness(1.03);
+    border-color: var(--ui-border-hover);
+    box-shadow: var(--ui-shadow-hover), var(--ui-inset-hover);
+  }
+}
+
+.ui-chip:active {
+  filter: brightness(0.98);
+}
+
+.ui-chip:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.ui-chip--selected {
+  border: 1px solid var(--ui-selected-border);
+  box-shadow: var(--ui-selected-shadow);
+}
+
+/* ----- Text-Utilities (SSoT für Typo/Farbe) ----- */
+.ui-text-sm {
+  font-size: var(--ui-font-sm);
+}
+
+.ui-text-muted {
+  color: var(--color-text-muted, var(--color-text-secondary, #475569));
+}
+
+.ui-text-label {
+  font-weight: 600;
+}
+
+.ui-rounded {
+  border-radius: var(--ui-radius-control-sm);
+}
+
+/* ----- Link-Reset (Button-ähnlicher Link) ----- */
+.ui-link-reset {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-muted, var(--color-text-secondary, #475569));
+  font-size: var(--ui-font-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ----- Drag-Handle (Checklisten-Sortierung) ----- */
+.checklist-item__drag {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--color-border, var(--ui-border));
+  background: rgba(255, 255, 255, 0.65);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  font-size: 1rem;
+  color: inherit;
+}
+
+.checklist-item__drag:hover {
+  filter: brightness(1.05);
+}
+
+.checklist-item__drag:active {
+  cursor: grabbing;
+}
+
+/* ----- Nav-Link (inherit für Links in Cards) ----- */
+.checklists__nav-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.checklists__nav-link:visited {
+  color: inherit;
+}

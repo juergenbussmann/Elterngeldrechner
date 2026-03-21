@@ -1,240 +1,202 @@
 /**
- * STARTSEITE FINAL (Stand: 2026-02-11)
- * Änderungen nur nach Rücksprache:
- * - Viewport-Höhen (100dvh), Footer-Padding, Overflow-Clip
- * - Layering (Blur/Mask/Baby), Button-Stacking
+ * STARTSEITE – GESCHÜTZTER BEREICH
+ * ================================
+ * Diese Startseite ist bewusst individuell gebaut.
+ * NICHT an andere Screens angleichen.
+ * Keine automatischen Refactors, keine Vereinheitlichung.
+ *
+ * GLOBALE STYLES:
+ * → Keine Abhängigkeit von layout.css verändern.
+ * → Keine globalen Variablen unkontrolliert überschreiben.
+ * → Home ist bewusst „chromeless + isoliert“.
+ *
+ * SSoT: Start.tsx + start.css
+ * Stand: 2026-03-20
+ * Layout: Babybild + subtiler Shade, CTA immer sichtbar.
  */
 
+/* ----- Scoped Tokens ----- */
 .start {
-  width: 100%;
-  height: 100dvh;
+  --start-text: #3d2819;
+  --shade-a: rgba(255, 255, 255, 0.06);
+  --shade-b: rgba(255, 255, 255, 0.03);
+  --cta-padding-bottom: 32px;
+  --hero-shift: 0; /* Header ohne transform – Überlagerung vermeiden */
+}
+
+/* ----- 1. Main Container ----- */
+/* Z-Index-Struktur: background 0 | content 2 | CTA 3 */
+.start {
   position: relative;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  overflow: clip;
-
+  overflow: hidden;
+  width: 100%;
   background: url("/brand/landing-bg.png") center / cover no-repeat;
-
-  /* ✅ Weiße Ränder weg */
-  margin: 0;
-  padding: 0;
-  padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom, 0px));
 }
 
-.start::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 360px;
-  transform: translate(-50%, var(--baby-shift));
-  width: min(92vw, 900px);
-  aspect-ratio: 3 / 4;
-  background: url("/brand/baby-fade.png") center / contain no-repeat;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Glass-Freistellung: nur hinter Textblock, wenn Text zu tief ins Bild rutscht */
-.start__hero-content {
-  position: relative;
-  transition: padding 250ms ease;
-}
-
-.start__hero-content[data-glass="on"] {
-  padding: 16px 18px;
-}
-
-.start__hero-content[data-glass="off"] {
-  padding: 0;
-}
-
-.start__hero-content[data-glass="off"] .start__hero-glass {
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
-}
-
-/* Hintergrundglas – nur diese Ebene fadet unten aus */
-.start__hero-glass {
+/* ----- 2. Background Layer (z-index: 0) ----- */
+/* DO NOT CHANGE: Baby image positioning – bewusst positioniert, getestet für 320×658, 360×640, 540×720 */
+.start__bg {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-
-  border-radius: 20px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-
-  transition: background 250ms ease, box-shadow 250ms ease;
 }
 
-/* Text immer volle Deckkraft */
-.start__hero-inner {
-  position: relative;
-  z-index: 1;
+.start__bg-image {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(var(--baby-shift, 0));
+  top: 12%;
+  bottom: 6%;
+  width: min(118vw, 500px);
+  max-width: 100%;
+  background: url("/brand/baby-fade.png") center bottom / contain no-repeat;
 }
 
-.start__hero-content[data-glass="on"] .start__hero-inner h1,
-.start__hero-content[data-glass="on"] .start__hero-inner p {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+.start__bg-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--shade-a) 0%,
+    var(--shade-b) 25%,
+    transparent 60%
+  );
 }
 
-/* Soft-Fade: nur Hintergrund läuft weich aus, Text bleibt deckend */
-@media (max-height: 720px) {
-  .start__hero-content[data-glass="on"] .start__hero-glass {
-    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
-  }
-}
-
-.start[data-compact="on"] .start__hero-content[data-glass="on"] .start__hero-glass {
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
-}
-
-.start__header {
-  display: flex;
-  flex-direction: column;   /* ⬅️ wichtig */
-  align-items: center;      /* Logo + Text zentriert untereinander */
-  padding-top: 72px;
+/* ----- 3. Content Layer (z-index: 2) ----- */
+.start__content {
   position: relative;
   z-index: 2;
-  transition: padding-top 250ms ease;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: min(600px, 100%);
+  margin-inline: auto;
+  padding-top: calc(env(safe-area-inset-top, 0px) + clamp(46px, 11vh, 72px));
+  padding-inline: clamp(14px, 4vw, 24px);
+}
+
+/* ----- Hero Content (kein Panel, kein Card-Look) ----- */
+.start__hero-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.start__hero-inner {
+  position: relative;
+  width: 100%;
+  max-width: min(500px, 94vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Lesbarkeit: minimaler Textschatten über dunklen Bildstellen */
+.start__hero-inner h1,
+.start__hero-inner p {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5), 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/* ----- Header: sauberer Stack, keine Transforms ----- */
+/* DO NOT CHANGE: Header spacing – Logo/Text-Rhythmus bewusst abgestimmt */
+.start__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
 }
 
 .start__logo {
-  width: clamp(140px, 36vw, 220px);
+  display: block;
+  width: clamp(125px, 33vw, 200px);
   height: auto;
-  transition: transform 250ms ease;
+  margin: 0 0 clamp(10px, 1.8vh, 18px) 0;
+  vertical-align: top;
 }
 
-/* Titel unter dem Logo */
 .start__title {
-  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
   text-align: center;
-
   font-family: "Georgia", "Times New Roman", serif;
-  color: #4a2e1f;
+  color: var(--start-text);
   line-height: 1.25;
 }
 
 .start__title span:first-child {
   display: block;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2.6vw, 1.05rem);
   letter-spacing: 0.04em;
+  margin-bottom: clamp(5px, 1vh, 12px);
 }
 
 .start__title span:last-child {
   display: block;
-  font-size: 1.3rem;
+  font-size: clamp(1.1rem, 3.2vw, 1.3rem);
   font-weight: 600;
 }
 
+/* ----- Welcome ----- */
 .start__welcome {
-  position: relative;
-  z-index: 2; /* vor dem Babybild */
-  margin-top: 4px;
+  margin-top: clamp(12px, 2.5vh, 20px);
+  padding: 0 clamp(8px, 2vw, 16px) clamp(14px, 2.5vh, 22px);
   text-align: center;
-  color: #4a2f1f;
-  padding: 0 20px;
-  transition: margin-top 250ms ease;
+  color: var(--start-text);
+  width: 100%;
+  max-width: min(460px, 92vw);
+  margin-inline: auto;
 }
 
 .start__welcome h1 {
-  font-size: 28px;
-  margin-bottom: 2px;
-  transition: font-size 250ms ease, line-height 250ms ease, margin-bottom 250ms ease;
+  font-size: clamp(28px, 7.5vw, 36px);
+  margin-bottom: clamp(6px, 1vh, 10px);
+  line-height: 1.2;
 }
 
 .start__welcome-sub {
-  font-size: 16px;
-  margin-bottom: 4px;
+  font-size: clamp(15px, 4vw, 18px);
+  margin-bottom: clamp(6px, 1vh, 10px);
   font-weight: 500;
-  transition: font-size 250ms ease, margin-bottom 250ms ease;
 }
 
 .start__welcome-text {
-  font-size: 15px;
-  line-height: 1.5;
-  max-width: 420px;
-  margin: 0 auto 0;
+  font-size: clamp(15px, 4vw, 18px);
+  line-height: 1.55;
+  max-width: min(440px, 90vw);
+  margin: 0 auto;
   font-weight: 500;
-  transition: font-size 250ms ease, line-height 250ms ease;
 }
 
-.start__header,
-.start__welcome {
-  transform: translateY(var(--hero-shift));
-}
-
-/* Button-Container – darf nicht schrumpfen */
+/* ----- Buttons ----- */
 .start__buttons {
-  flex: 0 0 auto;
-  margin-top: auto;
+  position: relative;
+  z-index: 2;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  position: relative;
-  z-index: 10;
-  padding: 0 16px 16px;
+  gap: clamp(10px, 2.8vw, 18px);
+  padding: clamp(18px, 4vh, 32px) clamp(8px, 2vw, 20px) clamp(14px, 3vh, 24px);
+  width: 100%;
+  max-width: min(500px, 94vw);
 }
 
-/* Compact-Mode: oberen Bereich komprimieren, damit Kacheln sichtbar bleiben */
-.start[data-compact="on"] .start__hero-content {
-  padding: 10px 12px;
-}
-
-.start[data-compact="on"] .start__hero-content[data-glass="on"] {
-  padding: 10px 12px;
-}
-
-.start[data-compact="on"] .start__hero-content .start__hero-glass {
-  border-radius: 16px;
-}
-
-.start[data-compact="on"] .start__hero-content h1 {
-  font-size: clamp(22px, 5.5vw, 28px);
-  line-height: 1.05;
-  margin-bottom: 6px;
-}
-
-.start[data-compact="on"] .start__hero-content .start__welcome-sub {
-  font-size: 15px;
-  margin-bottom: 6px;
-}
-
-.start[data-compact="on"] .start__hero-content .start__welcome-text {
-  font-size: 14px;
-  line-height: 1.25;
-}
-
-.start[data-compact="on"] .start__header {
-  padding-top: 48px;
-}
-
-.start[data-compact="on"] .start__welcome {
-  margin-top: 2px;
-}
-
-.start[data-compact="on"] .start__logo {
-  transform: scale(0.92);
-  transform-origin: top center;
-}
-
-/* Button = keine Box mehr */
 .start__button {
   background-color: transparent;
   border: none;
   padding: 0;
-
   width: 100%;
   height: auto;
   aspect-ratio: 1 / 1;
-
   display: flex;
   align-items: center;
   justify-content: center;
@@ -245,19 +207,17 @@
   opacity: 1;
 }
 
-/* Bild freischwebend skalieren */
 .start__button::before {
   content: "";
   display: block;
-  width: 92%;
-  height: 92%;
+  width: 88%;
+  height: 88%;
   background-color: transparent;
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
 }
 
-/* Grafiken zuweisen (an ::before) */
 .start__button--pregnancy::before {
   background-image: url("/brand/pregnancy-button-FINAL.png");
 }
@@ -270,45 +230,520 @@
   background-image: url("/brand/breastfeeding-button-FINAL.png");
 }
 
-/* CTA-Bereich unter den Hauptbuttons – dezenter, kleiner */
+/* ----- 4. CTA Zone (z-index: 3): immer sichtbar, oberhalb Bottom Nav ----- */
+/* DO NOT CHANGE: CTA positioning – muss sichtbar bleiben, darf nicht vom Footer überlagert werden */
+.start__cta-zone {
+  position: relative;
+  z-index: 3;
+  margin-top: auto;
+  flex-shrink: 0;
+  min-height: 88px;
+  padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom, 0px) + var(--cta-padding-bottom));
+}
+
 .start__cta {
-  margin-top: 8px;
+  min-height: 80px;
+  padding: clamp(14px, 2.8vw, 20px) clamp(16px, 4vw, 28px) clamp(18px, 4vw, 32px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding-bottom: 16px;
+  justify-content: center;
+  gap: 10px;
 }
 
+/* Hinweistext: klar lesbar, präsent, kein Button/Chip-Look */
 .start__cta-hint {
-  font-size: 12px;
-  line-height: 1.3;
-  opacity: 0.8;
+  font-size: clamp(12px, 3.2vw, 14px);
+  line-height: 1.45;
   margin: 0;
+  padding: 0;
+  text-align: center;
+  color: #2d1f16;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
 }
 
+/* CTA-Button: Card-Farbe + ca. 5–8% abdunkeln, leichte Betonung */
 .start__cta-button {
-  font-size: 13px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--pill-bg-top);
-  border: 1px solid var(--pill-border);
-  color: var(--color-text-primary);
+  font-size: clamp(13px, 3.2vw, 14px);
+  padding: 10px 20px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(244, 232, 218, 0.98) 0%, rgba(232, 216, 198, 0.96) 100%);
+  border: 1px solid rgba(140, 110, 85, 0.28);
+  color: #352417;
   cursor: pointer;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
+.start__cta-button:hover {
+  background: linear-gradient(180deg, rgba(238, 224, 208, 0.98) 0%, rgba(226, 208, 188, 0.96) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border-color: rgba(140, 110, 85, 0.35);
+}
+
+/* Link-Variante: dezenter, kein Button-Look */
 .start__cta-link {
-  font-size: 12px;
+  font-size: clamp(12px, 3.2vw, 13px);
   background: none;
   border: none;
   padding: 0;
   text-decoration: underline;
-  color: inherit;
+  text-underline-offset: 3px;
+  color: var(--start-text);
+  opacity: 0.9;
   cursor: pointer;
+  font-weight: 500;
 }
 
-@media (max-height: 700px) {
-  .start::before {
-    top: 210px;
+/* ----- Compact Mode ----- */
+.start[data-compact="on"] .start__hero-content h1 {
+  font-size: clamp(24px, 6.2vw, 30px);
+  margin-bottom: 8px;
+}
+
+.start[data-compact="on"] .start__hero-content .start__welcome-sub {
+  font-size: clamp(14px, 3.6vw, 16px);
+  margin-bottom: 6px;
+}
+
+.start[data-compact="on"] .start__hero-content .start__welcome-text {
+  font-size: clamp(14px, 3.4vw, 16px);
+  line-height: 1.45;
+}
+
+.start[data-compact="on"] .start__content {
+  padding-top: calc(env(safe-area-inset-top, 0px) + clamp(34px, 9vh, 52px));
+}
+
+.start[data-compact="on"] .start__welcome {
+  margin-top: clamp(6px, 1.5vh, 12px);
+}
+
+.start[data-compact="on"] .start__logo {
+  width: clamp(110px, 30vw, 175px);
+}
+
+/* ----- RESPONSIVE: basiert auf real getesteten Größen ----- */
+/* 320×658, 360×640, 540×720, größere Flächen (Tablet/Desktop) */
+/* DO NOT CHANGE: small-height adjustments – CTA-Priorität für enge Viewports */
+
+/* ----- Kleine/enge Höhe: max-height 720px – CTA priorisieren (360×640, 320×658, 540×720) ----- */
+@media (max-height: 720px) {
+  .start {
+    --shade-a: rgba(255, 255, 255, 0.1);
+    --shade-b: rgba(255, 255, 255, 0.04);
+    --cta-padding-bottom: 36px;
+  }
+
+  .start__cta-zone {
+    min-height: 96px;
+    padding-top: 8px;
+  }
+
+  .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(26px, 6vh, 40px));
+  }
+
+  .start__bg-image {
+    top: 20%;
+    bottom: 12%;
+    width: min(105vw, 300px);
+  }
+
+  .start__bg-shade {
+    background: linear-gradient(
+      to bottom,
+      var(--shade-a) 0%,
+      var(--shade-b) 22%,
+      transparent 55%
+    );
+  }
+
+  .start__logo {
+    margin-bottom: clamp(6px, 1vh, 12px);
+  }
+
+  .start__title span:first-child {
+    margin-bottom: clamp(3px, 0.7vh, 6px);
+  }
+
+  .start__welcome {
+    margin-top: clamp(4px, 1vh, 8px);
+    padding-bottom: clamp(4px, 1vh, 10px);
+  }
+
+  .start__welcome h1 {
+    font-size: clamp(20px, 5.5vw, 24px);
+    margin-bottom: clamp(4px, 0.8vh, 6px);
+  }
+
+  .start__welcome-sub {
+    font-size: clamp(13px, 3.4vw, 15px);
+    margin-bottom: clamp(4px, 0.8vh, 6px);
+  }
+
+  .start__welcome-text {
+    font-size: clamp(13px, 3.4vw, 15px);
+    line-height: 1.45;
+  }
+
+  .start__buttons {
+    gap: 4px;
+    padding: 4px 8px 2px;
+  }
+
+  .start__button::before {
+    width: 78%;
+    height: 78%;
+  }
+
+  .start__cta {
+    min-height: 72px;
+    padding: 6px 12px 10px;
+    gap: 5px;
+  }
+}
+
+/* ----- Sehr enge Höhe: max-height 660px – noch kompakter ----- */
+@media (max-height: 660px) {
+  .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(22px, 5.5vh, 36px));
+  }
+
+  .start__bg-image {
+    top: 22%;
+    bottom: 14%;
+    width: min(100vw, 280px);
+  }
+
+  .start__welcome {
+    margin-top: clamp(2px, 0.8vh, 6px);
+    padding-bottom: clamp(2px, 0.8vh, 6px);
+  }
+
+  .start__buttons {
+    gap: 4px;
+    padding: 4px 8px 2px;
+  }
+
+  .start__button::before {
+    width: 80%;
+    height: 80%;
+  }
+
+  .start__cta {
+    min-height: 70px;
+    padding: 6px 10px 10px;
+    gap: 4px;
+  }
+}
+
+/* ----- Kleine Breite: ≤360px ----- */
+@media (max-width: 360px) {
+  .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(36px, 9vh, 48px));
+  }
+
+  .start__logo {
+    margin-bottom: clamp(6px, 1.2vh, 12px);
+  }
+
+  .start__title span:first-child {
+    font-size: 0.9rem;
+    margin-bottom: clamp(3px, 0.8vh, 8px);
+  }
+
+  .start__title span:last-child {
+    font-size: 1.1rem;
+  }
+
+  .start__welcome h1 {
+    font-size: clamp(22px, 6.2vw, 26px);
+  }
+
+  .start__welcome-sub {
+    font-size: 14px;
+  }
+
+  .start__welcome-text {
+    font-size: clamp(14px, 3.8vw, 16px);
+    max-width: min(300px, 92vw);
+  }
+
+  .start__buttons {
+    gap: 6px;
+    padding: 12px 10px 10px;
+  }
+
+  .start__bg-image {
+    width: min(105vw, 280px);
+    top: 18%;
+  }
+
+  .start__button::before {
+    width: 84%;
+    height: 84%;
+  }
+
+  .start__cta {
+    min-height: 74px;
+    padding: 10px 12px 14px;
+  }
+
+  .start[data-compact="on"] .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(28px, 7vh, 42px));
+  }
+}
+
+/* ----- Sehr enge Breite: ≤320px (für 320×658) ----- */
+@media (max-width: 320px) {
+  .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(28px, 7.5vh, 42px));
+  }
+
+  .start__logo {
+    width: clamp(95px, 28vw, 140px);
+    margin-bottom: clamp(4px, 0.9vh, 10px);
+  }
+
+  .start__welcome h1 {
+    font-size: clamp(20px, 6vw, 24px);
+  }
+
+  .start__welcome-text {
+    max-width: min(280px, 92vw);
+  }
+
+  .start__buttons {
+    gap: 4px;
+    padding: 8px 8px 6px;
+  }
+
+  .start__button::before {
+    width: 80%;
+    height: 80%;
+  }
+
+  .start__bg-image {
+    width: min(100vw, 260px);
+    top: 20%;
+  }
+
+  .start__cta {
+    min-height: 70px;
+    padding: 8px 10px 12px;
+  }
+
+  .start[data-compact="on"] .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(24px, 6.5vh, 38px));
+  }
+}
+
+/* ----- Kleine Höhe überschreibt: Compact-Padding bei max-height 720px ----- */
+@media (max-height: 720px) {
+  .start[data-compact="on"] .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(24px, 6vh, 38px));
+  }
+}
+
+/* ----- Eng + kurz: 360×640, 320×658 – maximale CTA-Priorität ----- */
+@media (max-width: 360px) and (max-height: 720px) {
+  .start {
+    --cta-padding-bottom: 40px;
+  }
+
+  .start__cta-zone {
+    min-height: 100px;
+    padding-top: 10px;
+  }
+
+  .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(22px, 5.5vh, 36px));
+  }
+
+  .start__buttons {
+    gap: 3px;
+    padding: 3px 6px 2px;
+  }
+
+  .start__button::before {
+    width: 76%;
+    height: 76%;
+  }
+
+  .start__cta {
+    min-height: 70px;
+    padding: 5px 10px 8px;
+    gap: 4px;
+  }
+
+  .start[data-compact="on"] .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(20px, 5vh, 34px));
+  }
+}
+
+/* ----- Mittlere Breite: 361–430px ----- */
+@media (max-width: 430px) and (min-width: 361px) {
+  .start__logo {
+    width: clamp(120px, 32vw, 180px);
+  }
+
+  .start__welcome {
+    max-width: min(400px, 92vw);
+  }
+
+  .start__welcome-text {
+    max-width: min(380px, 90vw);
+  }
+
+  .start__buttons {
+    gap: clamp(8px, 2.2vw, 14px);
+  }
+}
+
+/* ----- Größere Breite: ≥480px ----- */
+@media (min-width: 480px) {
+  .start__welcome {
+    max-width: min(480px, 88vw);
+  }
+
+  .start__welcome-text {
+    max-width: min(450px, 86vw);
+  }
+
+  .start__buttons {
+    padding: clamp(20px, 4vh, 36px) clamp(18px, 4.5vw, 28px) clamp(16px, 3.5vw, 26px);
+  }
+}
+
+/* ----- Große Breite: ≥600px ----- */
+@media (min-width: 600px) {
+  .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(54px, 10vh, 80px));
+  }
+
+  .start__logo {
+    width: clamp(145px, 24vw, 220px);
+  }
+
+  .start__bg-image {
+    top: 10%;
+    bottom: 5%;
+    width: min(95vw, 480px);
+  }
+
+  .start__buttons {
+    max-width: 480px;
+    padding: clamp(22px, 4.5vh, 40px) 28px clamp(18px, 4vw, 30px);
+  }
+
+  .start__cta {
+    min-height: 80px;
+    padding-bottom: clamp(20px, 4vw, 32px);
+  }
+}
+
+/* ----- Große Höhe: ≥800px ----- */
+@media (min-height: 800px) {
+  .start__content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(58px, 11vh, 84px));
+  }
+
+  .start__logo {
+    margin-bottom: clamp(10px, 1.8vh, 20px);
+  }
+
+  .start__title span:first-child {
+    margin-bottom: clamp(6px, 1.2vh, 14px);
+  }
+
+  .start__welcome {
+    margin-top: clamp(12px, 2.5vh, 22px);
+  }
+
+  .start__bg-image {
+    top: 8%;
+    bottom: 4%;
+    width: min(90vw, 520px);
+  }
+}
+
+/* DO NOT CHANGE: large-screen scaling – bewusst abgestimmt */
+
+/* ----- Große Flächen: (≥540px Breite UND ≥721px Höhe) ODER ≥900px Höhe – sichtbar hochskalieren ----- */
+@media (min-width: 540px) and (min-height: 721px), (min-height: 900px) {
+  .start__content {
+    max-width: min(640px, 100%);
+  }
+
+  .start__logo {
+    width: clamp(155px, 28vw, 240px);
+  }
+
+  .start__welcome h1 {
+    font-size: clamp(30px, 8vw, 42px);
+  }
+
+  .start__welcome-sub {
+    font-size: clamp(16px, 4.2vw, 20px);
+  }
+
+  .start__welcome-text {
+    font-size: clamp(16px, 4.2vw, 20px);
+  }
+
+  .start__buttons {
+    max-width: 520px;
+    gap: clamp(12px, 3vw, 22px);
+    padding: clamp(22px, 4.5vh, 44px) clamp(16px, 3.5vw, 28px) clamp(18px, 4vw, 32px);
+  }
+
+  .start__button::before {
+    width: 90%;
+    height: 90%;
+  }
+
+  .start__cta {
+    min-height: 88px;
+  }
+
+  .start__cta-hint {
+    font-size: clamp(13px, 3.2vw, 16px);
+  }
+
+  .start__cta-button {
+    font-size: clamp(14px, 3.2vw, 16px);
+    padding: 10px 20px;
+  }
+
+  .start__cta-link {
+    font-size: clamp(13px, 3.2vw, 15px);
+  }
+}
+
+/* ----- Sehr große Flächen: ≥900px Breite + Höhe ----- */
+@media (min-width: 900px) and (min-height: 900px) {
+  .start__content {
+    max-width: min(720px, 100%);
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(64px, 12vh, 96px));
+  }
+
+  .start__logo {
+    width: clamp(180px, 22vw, 280px);
+  }
+
+  .start__welcome h1 {
+    font-size: clamp(34px, 4.5vw, 48px);
+  }
+
+  .start__welcome-text {
+    font-size: clamp(17px, 2.2vw, 22px);
+  }
+
+  .start__buttons {
+    max-width: 560px;
   }
 }

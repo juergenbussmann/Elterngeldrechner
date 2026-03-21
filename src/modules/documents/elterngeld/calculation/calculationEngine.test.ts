@@ -208,4 +208,94 @@ describe('calculatePlan', () => {
     expect(result.validation.errors.length).toBeGreaterThan(0);
     expect(result.validation.errors.some((e) => e.includes('Geburtsdatum'))).toBe(true);
   });
+
+  describe('Einkommensgrenze (zvE)', () => {
+    it('Paar >175.000 € geschätztes Jahreseinkommen → kein Anspruch', () => {
+      const plan: ElterngeldCalculationPlan = {
+        childBirthDate: '2025-01-15',
+        parents: [
+          {
+            id: 'p1',
+            label: 'Sie',
+            incomeBeforeNet: 10_000,
+            months: [{ month: 1, mode: 'basis', incomeDuringNet: 0, hoursPerWeek: 0 }],
+          },
+          {
+            id: 'p2',
+            label: 'Partner',
+            incomeBeforeNet: 5_500,
+            months: [{ month: 1, mode: 'basis', incomeDuringNet: 0, hoursPerWeek: 0 }],
+          },
+        ],
+        hasSiblingBonus: false,
+        additionalChildren: 0,
+      };
+      const result = calculatePlan(plan);
+      expect(result.validation.isValid).toBe(false);
+      expect(result.validation.errors.some((e) => e.includes('zulässigen Grenze'))).toBe(true);
+      expect(result.validation.errors.some((e) => e.includes('Paaren'))).toBe(true);
+      expect(result.householdTotal).toBe(0);
+    });
+
+    it('Alleinerziehende/r >150.000 € geschätztes Jahreseinkommen → kein Anspruch', () => {
+      const plan: ElterngeldCalculationPlan = {
+        childBirthDate: '2025-01-15',
+        parents: [
+          {
+            id: 'p1',
+            label: 'Sie',
+            incomeBeforeNet: 13_000,
+            months: [{ month: 1, mode: 'basis', incomeDuringNet: 0, hoursPerWeek: 0 }],
+          },
+        ],
+        hasSiblingBonus: false,
+        additionalChildren: 0,
+      };
+      const result = calculatePlan(plan);
+      expect(result.validation.isValid).toBe(false);
+      expect(result.validation.errors.some((e) => e.includes('zulässigen Grenze'))).toBe(true);
+      expect(result.validation.errors.some((e) => e.includes('Alleinerziehenden'))).toBe(true);
+      expect(result.householdTotal).toBe(0);
+    });
+
+    it('Paar genau 175.000 € → Berechnung erfolgt (Grenze exklusiv)', () => {
+      const plan: ElterngeldCalculationPlan = {
+        childBirthDate: '2025-01-15',
+        parents: [
+          {
+            id: 'p1',
+            label: 'Sie',
+            incomeBeforeNet: 7_291,
+            months: [{ month: 1, mode: 'basis', incomeDuringNet: 0, hoursPerWeek: 0 }],
+          },
+          {
+            id: 'p2',
+            label: 'Partner',
+            incomeBeforeNet: 7_292,
+            months: [{ month: 1, mode: 'basis', incomeDuringNet: 0, hoursPerWeek: 0 }],
+          },
+        ],
+        hasSiblingBonus: false,
+        additionalChildren: 0,
+      };
+      const result = calculatePlan(plan);
+      expect(result.validation.isValid).toBe(true);
+      expect(result.householdTotal).toBeGreaterThan(0);
+    });
+
+    it('transparencyHints enthalten Jahresgrenze und Schätzungshinweis', () => {
+      const plan: ElterngeldCalculationPlan = {
+        childBirthDate: '2025-01-15',
+        parents: [
+          { id: 'p1', label: 'Sie', incomeBeforeNet: 2500, months: [{ month: 1, mode: 'basis', incomeDuringNet: 0, hoursPerWeek: 0 }] },
+        ],
+        hasSiblingBonus: false,
+        additionalChildren: 0,
+      };
+      const result = calculatePlan(plan);
+      expect(result.meta.transparencyHints).toBeDefined();
+      expect(result.meta.transparencyHints!.some((h) => h.includes('175.000') && h.includes('150.000'))).toBe(true);
+      expect(result.meta.transparencyHints!.some((h) => h.includes('Monatsangaben'))).toBe(true);
+    });
+  });
 });

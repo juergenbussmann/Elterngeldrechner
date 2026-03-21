@@ -70,14 +70,14 @@ function getHintActionFromWarning(warning: string, result: CalculationResult): {
     const m = getFirstRelevantMonth(result);
     return { label: 'Arbeitszeit anpassen', action: m != null ? 'focusMonth' : 'focusMonatsplan', month: m ?? undefined };
   }
-  if (warning.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  if (warning.includes('Einkommen')) return { label: 'Einkommen anpassen', action: 'focusEinkommen' };
   if (warning.includes('Geburtsdatum') || warning.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
   return { label: '', action: null };
 }
 
 function getErrorActionFromError(error: string): { label: string; action: 'focusGrunddaten' | 'focusEinkommen' | null } {
   if (error.includes('Geburtsdatum') || error.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
-  if (error.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  if (error.includes('Einkommen')) return { label: 'Einkommen anpassen', action: 'focusEinkommen' };
   return { label: '', action: null };
 }
 
@@ -428,23 +428,9 @@ export const StepPlan: React.FC<Props> = ({
         </div>
       )}
 
-      {hasPartner && partnerBonusValidation.isValid && optimizationSummary.hasAnySuggestions && !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
-        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
-          <p className="elterngeld-plan__status-text">Dein Plan ist grundsätzlich stimmig.</p>
-          <Button
-            type="button"
-            variant="secondary"
-            className="btn--softpill elterngeld-plan__status-btn"
-            onClick={() => onShowOptimizationOverlay?.(true)}
-          >
-            Optimierung jetzt anwenden
-          </Button>
-        </div>
-      )}
-
       {(!hasPartner || (partnerBonusValidation.isValid && !optimizationSummary.hasAnySuggestions)) && !(mainHint && mainHint.action) && (
         <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
-          <p className="elterngeld-plan__status-text">Dein Plan ist grundsätzlich stimmig.</p>
+          <p className="elterngeld-plan__status-text">Dein Plan funktioniert.</p>
         </div>
       )}
 
@@ -540,6 +526,20 @@ export const StepPlan: React.FC<Props> = ({
           </p>
         </div>
       </div>
+
+      {hasPartner && partnerBonusValidation.isValid && optimizationSummary.hasAnySuggestions && !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
+        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
+          <p className="elterngeld-plan__status-text">Dein Plan funktioniert. Du kannst ihn jetzt noch optimieren.</p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill elterngeld-plan__status-btn"
+            onClick={() => onShowOptimizationOverlay?.(true)}
+          >
+            Optimierung ansehen
+          </Button>
+        </div>
+      )}
 
       {activeMonth !== null && (
         <div

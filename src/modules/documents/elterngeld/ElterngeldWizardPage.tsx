@@ -387,6 +387,16 @@ export const ElterngeldWizardPage: React.FC = () => {
                 setValues((prev) => mergePlanIntoPreparation(prev, plan));
                 setShowOptimizationOverlay(false);
               }}
+              onNavigateToMonthEditing={() => {
+                setShowOptimizationOverlay(false);
+                const planIdx = WIZARD_STEPS.findIndex((s) => s.id === 'plan');
+                if (stepIndex !== planIdx) setStepIndex(planIdx);
+                setTimeout(() => {
+                  document.getElementById('elterngeld-plan-month-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+              }}
+              originalPlanForOptimization={planForOptimization}
+              originalResultForOptimization={liveResult}
             />
           )}
       </section>

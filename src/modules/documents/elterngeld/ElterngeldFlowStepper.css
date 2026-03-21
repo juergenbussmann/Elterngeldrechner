@@ -70,6 +70,11 @@
   border-color: var(--color-border, #e4e4e7);
   background: var(--color-surface, #fff);
   color: var(--color-text-secondary, #505050);
+  opacity: 0.85;
+}
+
+.elterngeld-flow-stepper__item--upcoming .elterngeld-flow-stepper__label {
+  opacity: 0.9;
 }
 
 .elterngeld-flow-stepper__check {

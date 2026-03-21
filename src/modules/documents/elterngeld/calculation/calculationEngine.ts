@@ -58,10 +58,21 @@ export function calculateSiblingBonus(amount: number): number {
 const MEHRLINGSZUSCHLAG_PER_CHILD = 300;
 
 /**
- * Grobe Einkommensgrenze (Haushalt, Monatsnetto × 12 ≈ Jahresäquivalent).
- * 175.000 € / 12 ≈ 14.583 €. Guard bei 15.000 €/Monat Summe beider Elternteile.
+ * Gesetzliche Einkommensgrenzen (zvE, Jahreswert).
+ * Entscheidungsgrundlage: keine Berechnung bei Überschreitung.
  */
-const INCOME_GUARD_MONTHLY_HOUSEHOLD = 15_000;
+export const THRESHOLD_COUPLE_ANNUAL = 175_000;
+export const THRESHOLD_SINGLE_ANNUAL = 150_000;
+
+/**
+ * Monatliche Näherungswerte (nur zur Orientierung, keine harte Grenze).
+ * 175.000 / 12 ≈ 14.583 €, 150.000 / 12 = 12.500 €
+ */
+export const MONTHLY_APPROX_COUPLE = 14_583;
+export const MONTHLY_APPROX_SINGLE = 12_500;
+
+/** @deprecated Nutze THRESHOLD_* und estimatedAnnualIncome. Nur für Tests/Abwärtskompatibilität. */
+export const INCOME_GUARD_MONTHLY_HOUSEHOLD = 15_000;
 
 export interface MonthlyCalculationInput {
   type: 'basis' | 'plus' | 'partnerBonus';
@@ -171,9 +182,15 @@ export function calculatePlan(plan: ElterngeldCalculationPlan): CalculationResul
   }
 
   const householdMonthlyIncome = plan.parents.reduce((sum, p) => sum + (p.incomeBeforeNet || 0), 0);
-  if (householdMonthlyIncome > INCOME_GUARD_MONTHLY_HOUSEHOLD) {
+  const estimatedAnnualIncome = householdMonthlyIncome * 12;
+  const parentsWithIncome = plan.parents.filter((p) => (p.incomeBeforeNet ?? 0) > 0);
+  const isCouple = parentsWithIncome.length >= 2;
+
+  const threshold = isCouple ? THRESHOLD_COUPLE_ANNUAL : THRESHOLD_SINGLE_ANNUAL;
+
+  if (estimatedAnnualIncome > threshold) {
     errors.push(
-      `Einkommensgrenze: Bei einem geschätzten Haushaltseinkommen von über ${INCOME_GUARD_MONTHLY_HOUSEHOLD.toLocaleString('de-DE')} € monatlich (ca. 180.000 € jährlich) entfällt in der Regel der Elterngeld-Anspruch. Diese Berechnung wird nicht durchgeführt. Bitte prüfen Sie die offizielle Einkommensgrenze (z. B. Familienportal).`
+      `Dein geschätztes Einkommen liegt über der zulässigen Grenze (ca. ${isCouple ? '14.500' : '12.500'} € monatlich bei ${isCouple ? 'Paaren' : 'Alleinerziehenden'}). Deshalb kann kein Elterngeld berechnet werden.`
     );
   }
 
@@ -198,7 +215,8 @@ export function calculatePlan(plan: ElterngeldCalculationPlan): CalculationResul
         disclaimer:
           'Unverbindliche Schätzung. Die endgültige Entscheidung trifft die zuständige Elterngeldstelle. Diese Berechnung dient der Orientierung und ersetzt keine amtliche Prüfung.',
         transparencyHints: [
-          'Einkommensgrenze (175.000 €): grobe Prüfung bei Überschreitung',
+          'Kein Anspruch auf Elterngeld besteht, wenn das zu versteuernde Einkommen im letzten Jahr über 175.000 € (Paare) bzw. 150.000 € (Alleinerziehende) liegt.',
+          'Wir schätzen dein Einkommen aktuell auf Basis deiner Monatsangaben.',
           'Mutterschaftsleistungen: vereinfachte Berücksichtigung',
           'Parallelbezug Basis: maximal 1 Monat gleichzeitig erlaubt (wird geprüft)',
         ],
@@ -285,7 +303,8 @@ export function calculatePlan(plan: ElterngeldCalculationPlan): CalculationResul
       disclaimer:
         'Unverbindliche Schätzung. Die endgültige Entscheidung trifft die zuständige Elterngeldstelle. Diese Berechnung dient der Orientierung und ersetzt keine amtliche Prüfung.',
       transparencyHints: [
-        'Einkommensgrenze (175.000 €): grobe Prüfung bei Überschreitung',
+        'Kein Anspruch auf Elterngeld besteht, wenn das zu versteuernde Einkommen im letzten Jahr über 175.000 € (Paare) bzw. 150.000 € (Alleinerziehende) liegt.',
+        'Wir schätzen dein Einkommen aktuell auf Basis deiner Monatsangaben.',
         'Mutterschaftsleistungen: vereinfachte Berücksichtigung',
         'Parallelbezug Basis: maximal 1 Monat gleichzeitig erlaubt (wird geprüft)',
       ],

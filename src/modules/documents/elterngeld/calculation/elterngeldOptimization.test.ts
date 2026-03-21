@@ -199,6 +199,60 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
     });
   });
 
+  describe('H) bothBalanced – gemeinsame Aufteilung', () => {
+    it('H1: bothBalanced wird nicht angeboten wenn nur ein Elternteil Monate hat', () => {
+      const plan = createPlan({});
+      plan.parents[0].incomeBeforeNet = 2500;
+      plan.parents[1].incomeBeforeNet = 2500;
+      setMonth(plan, 0, 1, 'basis');
+      setMonth(plan, 0, 2, 'basis');
+      setMonth(plan, 0, 3, 'basis');
+      setMonth(plan, 0, 4, 'basis');
+
+      const result = calculatePlan(plan);
+      const outcome = buildOptimizationResult(plan, result, 'maxMoney');
+      expect(outcome).not.toBeNull();
+      if ('suggestions' in outcome) {
+        const balanced = outcome.suggestions.find((s) => s.strategyType === 'bothBalanced');
+        expect(balanced).toBeUndefined();
+      }
+    });
+
+    it('H2: bothBalanced wird erzeugt bei sinnvollem Anteil (≥25% oder 2 zusammenhängende Monate)', () => {
+      const plan = createPlan({});
+      plan.parents[0].incomeBeforeNet = 2500;
+      plan.parents[1].incomeBeforeNet = 2500;
+      setMonth(plan, 0, 1, 'basis');
+      setMonth(plan, 0, 3, 'basis');
+      setMonth(plan, 0, 5, 'basis');
+      setMonth(plan, 1, 2, 'basis');
+      setMonth(plan, 1, 4, 'basis');
+      setMonth(plan, 1, 6, 'basis');
+
+      const result = calculatePlan(plan);
+      const outcome = buildOptimizationResult(plan, result, 'maxMoney');
+      expect(outcome).not.toBeNull();
+      if ('suggestions' in outcome) {
+        const balanced = outcome.suggestions.find((s) => s.strategyType === 'bothBalanced');
+        if (balanced) {
+          const monthsA = balanced.result.parents[0].monthlyResults.filter((r) => r.mode !== 'none' || r.amount > 0).map((r) => r.month);
+          const monthsB = balanced.result.parents[1].monthlyResults.filter((r) => r.mode !== 'none' || r.amount > 0).map((r) => r.month);
+          expect(monthsA.length).toBeGreaterThan(0);
+          expect(monthsB.length).toBeGreaterThan(0);
+          const [countA, countB] = [monthsA.length, monthsB.length];
+          expect(Math.abs(countA - countB)).toBeLessThanOrEqual(1);
+          const isContiguous = (arr: number[]) => {
+            if (arr.length <= 1) return true;
+            for (let i = 1; i < arr.length; i++) if (arr[i] !== arr[i - 1] + 1) return false;
+            return true;
+          };
+          expect(isContiguous(monthsA)).toBe(true);
+          expect(isContiguous(monthsB)).toBe(true);
+        }
+      }
+    });
+  });
+
   describe('G) longerDuration – Basis->Plus', () => {
     it('G1: Mutter 2 Basis (1–2) – longerDuration', () => {
       const plan = createPlan({});

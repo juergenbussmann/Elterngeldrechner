@@ -65,7 +65,7 @@ function parseMonthCount(value: string): number {
 
 function getErrorActionFromError(error: string): { label: string; action: 'focusGrunddaten' | 'focusEinkommen' | null } {
   if (error.includes('Geburtsdatum') || error.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
-  if (error.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  if (error.includes('Einkommen')) return { label: 'Einkommen anpassen', action: 'focusEinkommen' };
   return { label: '', action: null };
 }
 
@@ -80,7 +80,7 @@ function getHintActionFromWarning(warning: string, result: CalculationResult): {
     }
     return { label: 'Arbeitszeit anpassen', action: 'focusMonatsplan' };
   }
-  if (warning.includes('Einkommen')) return { label: 'Einkommen prüfen', action: 'focusEinkommen' };
+  if (warning.includes('Einkommen')) return { label: 'Einkommen anpassen', action: 'focusEinkommen' };
   if (warning.includes('Geburtsdatum') || warning.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
   return { label: '', action: null };
 }
@@ -196,7 +196,7 @@ export const StepSummary: React.FC<Props> = ({
 
       {displayHint && displayHint.type === 'optimization' && (
         <div className="elterngeld-summary__optimization-hint elterngeld-step__notice elterngeld-step__notice--tip">
-          <p className="elterngeld-summary__hint-text">Optimierung möglich – mehr Geld oder bessere Verteilung.</p>
+          <p className="elterngeld-summary__hint-text">Dein Plan funktioniert. Du kannst ihn noch optimieren – mehr Geld oder bessere Verteilung.</p>
           <Button
             type="button"
             variant="secondary"

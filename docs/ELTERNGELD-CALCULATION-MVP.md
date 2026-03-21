@@ -31,6 +31,12 @@ Die Elterngeld-Berechnung ist eine **unverbindliche Schätzung** zur Orientierun
 ### Steuerliche Netto-Berechnung
 - **NICHT** umgesetzt: Elterngeld ist steuerfrei, aber Progressionsvorbehalt wird nicht berücksichtigt
 
+### Einkommensgrenze (zvE)
+- **Paare:** 175.000 € zu versteuerndes Einkommen (Jahreswert) – einzige harte Entscheidungsgrundlage
+- **Alleinerziehende:** 150.000 € zvE (Jahreswert)
+- Monatswerte (≈ 14.583 € / 12.500 €) nur als Orientierung, nicht als harte Grenze
+- Schätzung: `monthlyIncome × 12` aus Monatsangaben; keine Berechnung bei Überschreitung
+
 ## Nächste Ausbauschritte
 
 1. Mutterschutz in die Monatsberechnung integrieren

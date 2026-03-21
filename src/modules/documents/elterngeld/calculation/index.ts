@@ -6,6 +6,7 @@ export * from './types';
 export * from './calculationEngine';
 export * from './partnerBonusValidation';
 export * from './elterngeldOptimization';
+export * from './decisionContext';
 export * from './monthCombinedState';
 export { createDefaultPlan } from './defaultPlan';
 import type { ElterngeldCalculationPlan } from './types';

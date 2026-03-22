@@ -116,14 +116,11 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
   });
 
   describe('C) Bereits gut verteilter Ausgangsplan', () => {
-    it('C1: Höherer Elternteil hat bereits alle Monate – maxMoney keine Verbesserung', () => {
+    it('C1: Höherer Elternteil hat bereits alle Monate (12) – maxMoney keine Verbesserung', () => {
       const plan = createPlan({});
       plan.parents[0].incomeBeforeNet = 1200;
       plan.parents[1].incomeBeforeNet = 3500;
-      setMonth(plan, 1, 1, 'basis');
-      setMonth(plan, 1, 2, 'basis');
-      setMonth(plan, 1, 3, 'basis');
-      setMonth(plan, 1, 4, 'basis');
+      for (let m = 1; m <= 12; m++) setMonth(plan, 1, m, 'basis');
 
       const result = calculatePlan(plan);
       const outcome = buildOptimizationResult(plan, result, 'maxMoney');
@@ -200,7 +197,7 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
   });
 
   describe('H) bothBalanced – gemeinsame Aufteilung', () => {
-    it('H1: bothBalanced wird nicht angeboten wenn nur ein Elternteil Monate hat', () => {
+    it('H1: bothBalanced wird angeboten wenn nur ein Elternteil Monate hat (Beide Plus aus Single-Parent)', () => {
       const plan = createPlan({});
       plan.parents[0].incomeBeforeNet = 2500;
       plan.parents[1].incomeBeforeNet = 2500;
@@ -214,7 +211,9 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
       expect(outcome).not.toBeNull();
       if ('suggestions' in outcome) {
         const balanced = outcome.suggestions.find((s) => s.strategyType === 'bothBalanced');
-        expect(balanced).toBeUndefined();
+        expect(balanced).toBeDefined();
+        const monthsB = balanced!.result.parents[1].monthlyResults.filter((r) => r.mode !== 'none' || r.amount > 0).map((r) => r.month);
+        expect(monthsB.length).toBeGreaterThan(0);
       }
     });
 

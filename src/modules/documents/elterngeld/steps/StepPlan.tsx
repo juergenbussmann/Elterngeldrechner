@@ -7,6 +7,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import { MonthGrid } from '../ui/MonthGrid';
+import { MonthSummary } from '../ui/MonthSummary';
 import { getMonthGridItemsFromCounts } from '../monthGridMappings';
 import { ElterngeldSelectButton } from '../ui/ElterngeldSelectButton';
 import { applicationToCalculationPlan } from '../applicationToCalculationPlan';
@@ -428,7 +429,7 @@ export const StepPlan: React.FC<Props> = ({
         </div>
       )}
 
-      {(!hasPartner || (partnerBonusValidation.isValid && !optimizationSummary.hasAnySuggestions)) && !(mainHint && mainHint.action) && (
+      {(!hasPartner || (partnerBonusValidation.isValid && !optimizationSummary.hasAnySuggestions)) && !(mainHint && mainHint.action) && !(planResult && planResult.validation.errors.length === 0 && onShowOptimizationOverlay) && (
         <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
           <p className="elterngeld-plan__status-text">Dein Plan funktioniert.</p>
         </div>
@@ -506,32 +507,16 @@ export const StepPlan: React.FC<Props> = ({
       </div>
 
       <div className="elterngeld-plan__counts elterngeld-plan__counts--secondary">
-        <div className="elterngeld-plan__summary-card">
-          <h4 className="elterngeld-plan__summary-title">Monatsübersicht</h4>
-          <div className="elterngeld-plan__summary-rows">
-            <div className="elterngeld-plan__summary-row">
-              <span className="elterngeld-plan__summary-label">Mutter:</span>
-              <span className="elterngeld-plan__summary-value">{countA} Monate</span>
-            </div>
-            {hasPartner && (
-              <div className="elterngeld-plan__summary-row">
-                <span className="elterngeld-plan__summary-label">Partner:</span>
-                <span className="elterngeld-plan__summary-value">{countB} Monate</span>
-              </div>
-            )}
-          </div>
-          <p className="elterngeld-plan__summary-hint">
-            Die Monatszahlen werden automatisch aus dem Plan oben berechnet.
-            Monate mit gleichzeitigem Bezug werden bei beiden Eltern gezählt.
-          </p>
-        </div>
+        <MonthSummary items={items} />
       </div>
 
-      {optimizationSummary.hasAnySuggestions && onShowOptimizationOverlay && (
+      {planResult && planResult.validation.errors.length === 0 && onShowOptimizationOverlay && (
         <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
           <p className="elterngeld-plan__status-text">
-            {hasPartner && partnerBonusValidation.isValid
-              ? 'Dein Plan funktioniert. Du kannst ihn jetzt noch optimieren.'
+            {optimizationSummary.hasAnySuggestions
+              ? hasPartner && partnerBonusValidation.isValid
+                ? 'Dein Plan funktioniert. Du kannst ihn jetzt noch optimieren.'
+                : 'Du kannst prüfen, ob eine andere Aufteilung vorteilhafter wäre.'
               : 'Du kannst prüfen, ob eine andere Aufteilung vorteilhafter wäre.'}
           </p>
           <Button

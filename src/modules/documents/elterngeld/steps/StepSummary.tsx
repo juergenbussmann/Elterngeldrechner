@@ -194,7 +194,7 @@ export const StepSummary: React.FC<Props> = ({
         </div>
       )}
 
-      {displayHint && displayHint.type === 'optimization' && (
+      {displayHint && displayHint.type === 'optimization' && onOpenOptimization && (
         <div className="elterngeld-summary__optimization-hint elterngeld-step__notice elterngeld-step__notice--tip">
           <p className="elterngeld-summary__hint-text">Dein Plan funktioniert. Du kannst ihn noch optimieren – mehr Geld oder bessere Verteilung.</p>
           <Button
@@ -236,7 +236,7 @@ export const StepSummary: React.FC<Props> = ({
       )}
 
       <div className="elterngeld-summary__actions elterngeld-summary__actions--secondary">
-        {optimizationSummary.hasAnySuggestions && onOpenOptimization && (
+        {result && result.validation.errors.length === 0 && onOpenOptimization && (
           <Button
             type="button"
             variant="secondary"

@@ -53,7 +53,7 @@ export const ElterngeldWizardPage: React.FC = () => {
   const { profile, actions } = usePhase();
   const { goTo } = useNavigation();
   const { showToast } = useNotifications();
-  const [wizardStarted, setWizardStarted] = useState(() => !isPreparationEmpty(loadPreparation()));
+  const [wizardStarted, setWizardStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<ElterngeldApplication>(() => {
     const persisted = loadPreparation();
@@ -376,13 +376,13 @@ export const ElterngeldWizardPage: React.FC = () => {
 
         {(step.id === 'plan' || step.id === 'summary') &&
           liveResult &&
-          optimizationSummary.hasAnySuggestions && (
+          liveResult.validation.errors.length === 0 && (
             <OptimizationOverlay
               isOpen={showOptimizationOverlay}
               onClose={() => setShowOptimizationOverlay(false)}
               plan={planForOptimization}
               result={liveResult}
-              hasAnySuggestions={optimizationSummary.hasAnySuggestions}
+              hasAnySuggestions={optimizationSummary.hasAnySuggestions ?? false}
               onAdoptOptimization={(plan) => {
                 setValues((prev) => mergePlanIntoPreparation(prev, plan));
                 setShowOptimizationOverlay(false);

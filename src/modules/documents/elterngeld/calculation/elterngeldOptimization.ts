@@ -324,6 +324,210 @@ function getSuggestionTitleAndExplanation(
 }
 
 const MAX_CANDIDATES = 20;
+const DEFAULT_MONTH_COUNT = 14;
+
+/** BEEG §4 – Bezugsdauer: Basis bis LM 14, Plus bis 24, Mindestbezug 2 */
+const BEEG_BASIS_MAX = 14;
+const BEEG_PLUS_MAX = 24;
+
+/** Fachliche Dauer-Kandidaten je Modell: alle zulässigen Monatszahlen 2–14 (Basis), 2–24 (Plus). */
+const DURATIONS_BASIS: readonly number[] = Array.from({ length: BEEG_BASIS_MAX - 1 }, (_, i) => i + 2);
+const DURATIONS_PLUS: readonly number[] = Array.from({ length: BEEG_PLUS_MAX - 1 }, (_, i) => i + 2);
+
+function getDurationsForConfig(config: ReferenceConfigType): readonly number[] {
+  if (config === 'motherOnlyBasis' || config === 'bothBasis') return DURATIONS_BASIS;
+  if (config === 'bothPlusWithBonus') {
+    return DURATIONS_PLUS.filter((d) => d >= 4);
+  }
+  return DURATIONS_PLUS;
+}
+
+/** Referenz-Konfigurationen: Plans aus Metadaten, ohne duplicatePlan – unabhängig vom Ist-Zustand */
+type ReferenceConfigType =
+  | 'motherOnlyBasis'
+  | 'motherOnlyPlus'
+  | 'bothBasis'
+  | 'bothPlus'
+  | 'bothPlusWithBonus';
+
+/**
+ * Erzeugt einen Plan aus Plan-Metadaten – NICHT aus duplicatePlan.
+ * Ermöglicht Suchraum unabhängig vom aktuellen Plan (R1, R4).
+ */
+function createReferencePlan(
+  plan: ElterngeldCalculationPlan,
+  config: ReferenceConfigType,
+  totalMonths: number
+): ElterngeldCalculationPlan | null {
+  const parentA = plan.parents[0];
+  if (!parentA || parentA.incomeBeforeNet <= 0) return null;
+  const parentB = plan.parents[1];
+
+  const months = Array.from({ length: totalMonths }, (_, i) => i + 1);
+  const mode =
+    config === 'motherOnlyBasis' || config === 'bothBasis' ? 'basis' : 'plus';
+  const hoursForBonus = 28;
+
+  if (config === 'motherOnlyBasis' || config === 'motherOnlyPlus') {
+    const pAMonths = months.map((month) => ({
+      month,
+      mode: mode as MonthMode,
+      incomeDuringNet: 0,
+      hoursPerWeek: mode === 'plus' ? hoursForBonus : undefined,
+    }));
+    const parents: CalculationParentInput[] = [
+      { ...parentA, months: pAMonths },
+    ];
+    if (parentB) {
+      const pBMonthsNone = Array.from({ length: DEFAULT_MONTH_COUNT }, (_, i) => ({
+        month: i + 1,
+        mode: 'none' as MonthMode,
+        incomeDuringNet: 0,
+      }));
+      parents.push({ ...parentB, months: pBMonthsNone });
+    }
+    return {
+      childBirthDate: plan.childBirthDate,
+      parents,
+      hasSiblingBonus: plan.hasSiblingBonus,
+      additionalChildren: plan.additionalChildren,
+    };
+  }
+
+  if (!parentB || parentB.incomeBeforeNet <= 0) return null;
+
+  if (config === 'bothBasis' || config === 'bothPlus') {
+    const targetPerParent = Math.ceil(totalMonths / 2);
+    const toA = months.slice(0, targetPerParent);
+    const toB = months.slice(targetPerParent);
+    const pAMonths = toA.map((month) => ({
+      month,
+      mode: mode as MonthMode,
+      incomeDuringNet: 0,
+      hoursPerWeek: mode === 'plus' ? hoursForBonus : undefined,
+    }));
+    const pBMonths = toB.map((month) => ({
+      month,
+      mode: mode as MonthMode,
+      incomeDuringNet: 0,
+      hoursPerWeek: mode === 'plus' ? hoursForBonus : undefined,
+    }));
+    return {
+      childBirthDate: plan.childBirthDate,
+      parents: [
+        { ...parentA, months: pAMonths },
+        { ...parentB, months: pBMonths },
+      ],
+      hasSiblingBonus: plan.hasSiblingBonus,
+      additionalChildren: plan.additionalChildren,
+    };
+  }
+
+  if (config === 'bothPlusWithBonus' && totalMonths >= 4) {
+    const overlapCount = Math.min(4, Math.floor(totalMonths / 2));
+    const overlapMonths = months.slice(0, overlapCount);
+    const restA = months.slice(overlapCount, totalMonths);
+    const pAMonths = [
+      ...overlapMonths.map((month) => ({
+        month,
+        mode: 'partnerBonus' as MonthMode,
+        incomeDuringNet: 0,
+        hoursPerWeek: hoursForBonus,
+      })),
+      ...restA.map((month) => ({
+        month,
+        mode: 'plus' as MonthMode,
+        incomeDuringNet: 0,
+        hoursPerWeek: hoursForBonus,
+      })),
+    ].sort((a, b) => a.month - b.month);
+    const pBMonths = overlapMonths
+      .map((month) => ({
+        month,
+        mode: 'partnerBonus' as MonthMode,
+        incomeDuringNet: 0,
+        hoursPerWeek: hoursForBonus,
+      }))
+      .sort((a, b) => a.month - b.month);
+    return {
+      childBirthDate: plan.childBirthDate,
+      parents: [
+        { ...parentA, months: pAMonths },
+        { ...parentB, months: pBMonths },
+      ],
+      hasSiblingBonus: plan.hasSiblingBonus,
+      additionalChildren: plan.additionalChildren,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Fügt Referenz-Konfigurationen hinzu – unabhängig vom aktuellen Plan.
+ * Suchraum wird nicht mehr ausschließlich durch duplicatePlan begrenzt (R1, R4).
+ * Nur Kandidaten, die das Ziel verbessern, werden hinzugefügt (R2, R5).
+ */
+function addReferenceConfigCandidates(
+  plan: ElterngeldCalculationPlan,
+  currentResult: CalculationResult,
+  candidates: Candidate[],
+  goal: OptimizationGoal,
+  addIfNew: AddCandidateFn
+): void {
+  const currentDuration = countBezugMonths(currentResult);
+  const currentTotal = currentResult.householdTotal;
+  const currentBonus = countPartnerBonusMonths(currentResult);
+  const currentFrontLoad = goal === 'frontLoad' ? computeFrontLoadScore(currentResult) : 0;
+
+  const configs: ReferenceConfigType[] = ['motherOnlyBasis', 'motherOnlyPlus'];
+  if (plan.parents[1] && plan.parents[1].incomeBeforeNet > 0) {
+    configs.push('bothBasis', 'bothPlus', 'bothPlusWithBonus');
+  }
+
+  const addIfImproved = (c: Candidate) => {
+    const total = c.result.householdTotal;
+    const duration = countBezugMonths(c.result);
+    const bonus = countPartnerBonusMonths(c.result);
+    const improved =
+      goal === 'maxMoney'
+        ? total > currentTotal
+        : goal === 'longerDuration'
+          ? duration > currentDuration
+          : goal === 'partnerBonus'
+            ? bonus > currentBonus
+            : goal === 'frontLoad'
+              ? computeFrontLoadScore(c.result) > currentFrontLoad && total >= currentTotal * 0.95
+              : total > currentTotal;
+    if (improved) addIfNew(c);
+  };
+
+  /** Round-robin über Dauer-Index. Bei longerDuration: längste Dauern zuerst, damit 24-Monats-Varianten sichtbar werden. */
+  const maxLen = Math.max(...configs.map((c) => getDurationsForConfig(c).length));
+  const indices = goal === 'longerDuration' ? [...Array(maxLen).keys()].reverse() : [...Array(maxLen).keys()];
+  for (const i of indices) {
+    if (candidates.length >= MAX_CANDIDATES) break;
+    for (const config of configs) {
+      if (candidates.length >= MAX_CANDIDATES) return;
+      const durations = getDurationsForConfig(config);
+      const totalMonths = durations[i];
+      if (totalMonths === undefined) continue;
+
+      const refPlan = createReferencePlan(plan, config, totalMonths);
+      if (!refPlan) continue;
+      const res = calculatePlan(refPlan);
+      if (!res.validation.isValid) continue;
+
+      const strategyType: Candidate['strategyType'] =
+        config === 'motherOnlyBasis' || config === 'motherOnlyPlus'
+          ? 'motherOnly'
+          : config === 'bothPlusWithBonus'
+            ? 'withPartTime'
+            : 'bothBalanced';
+      addIfImproved({ plan: refPlan, result: res, strategyType });
+    }
+  }
+}
 
 /** Zählt überlappende Plus-Monate (beide Eltern haben Plus im selben Monat) */
 function countOverlappingPlusMonths(plan: ElterngeldCalculationPlan): number {
@@ -417,6 +621,14 @@ function addAlternativeCandidates(
     }
   }
 
+  if (!hasBoth && monthsA.length > 0 && candidates.length < MAX_CANDIDATES) {
+    const balanced = createBothBalancedPlan(plan);
+    if (balanced) {
+      const res = calculatePlan(balanced);
+      addIfNew({ plan: balanced, result: res, strategyType: 'bothBalanced' });
+    }
+  }
+
   if (hasPartnerBonusOrPlus(plan) && candidates.length < MAX_CANDIDATES) {
     const withoutPartTime = createWithoutPartTimePlan(plan);
     if (withoutPartTime) {
@@ -441,6 +653,66 @@ function hasPartnerBonusOrPlus(plan: ElterngeldCalculationPlan): boolean {
   return plan.parents.some((p) =>
     p.months.some((m) => m.mode === 'partnerBonus' || m.mode === 'plus')
   );
+}
+
+/**
+ * Erzeugt eine „Beide Plus“-Variante, wenn bisher nur Elternteil A Monate hat.
+ * B „steigt ein“: Ein Teil der Bezugsmonate von A wird auf B übertragen (Split).
+ * Kein Partnerschaftsbonus – nur reguläre Beide-Plus-Aufteilung.
+ */
+function createBothFromSingleParentPlan(
+  plan: ElterngeldCalculationPlan,
+  parentA: CalculationParentInput,
+  parentB: CalculationParentInput
+): ElterngeldCalculationPlan | null {
+  const bezugMonths = parentA.months
+    .filter((m) => m.mode !== 'none')
+    .map((m) => ({ ...m, mode: (m.mode === 'partnerBonus' ? 'plus' : m.mode) as MonthMode }))
+    .sort((a, b) => a.month - b.month);
+  if (bezugMonths.length < 2) return null;
+
+  const total = bezugMonths.length;
+  const targetB = Math.max(1, Math.ceil(total * 0.25));
+  const toB = bezugMonths.slice(-targetB);
+  const toA = bezugMonths.slice(0, -targetB);
+
+  const copy = duplicatePlan(plan);
+  const pA = copy.parents[0];
+  const pB = copy.parents[1];
+
+  pA.months = pA.months.filter((m) => m.mode === 'none' || toA.some((t) => t.month === m.month));
+  for (const t of toA) {
+    const idx = pA.months.findIndex((x) => x.month === t.month);
+    const entry = { month: t.month, mode: t.mode, incomeDuringNet: t.incomeDuringNet, hoursPerWeek: t.hoursPerWeek };
+    if (idx < 0) pA.months.push(entry);
+    else pA.months[idx] = { ...pA.months[idx], ...entry };
+  }
+  pA.months = pA.months.filter((m) => m.mode !== 'none').sort((a, b) => a.month - b.month);
+
+  for (const t of toB) {
+    pB.months = pB.months.filter((m) => m.month !== t.month);
+    pB.months.push({
+      month: t.month,
+      mode: t.mode,
+      incomeDuringNet: 0,
+      hoursPerWeek: t.hoursPerWeek ?? 28,
+    });
+    pB.months.sort((a, b) => a.month - b.month);
+  }
+  pB.months = pB.months.filter((m) => m.mode !== 'none').sort((a, b) => a.month - b.month);
+
+  const countB = pB.months.length;
+  if (countB === 0) return null;
+  const hasTwoConsecutive = (() => {
+    const months = pB.months.map((m) => m.month).sort((a, b) => a - b);
+    for (let i = 1; i < months.length; i++) {
+      if (months[i] === months[i - 1] + 1) return true;
+    }
+    return false;
+  })();
+  const meetsMinShare = countB >= Math.ceil((pA.months.length + countB) * 0.25);
+  if (!meetsMinShare && !hasTwoConsecutive) return null;
+  return copy;
 }
 
 function createMotherOnlyPlan(plan: ElterngeldCalculationPlan): ElterngeldCalculationPlan | null {
@@ -480,6 +752,8 @@ function createMotherOnlyPlan(plan: ElterngeldCalculationPlan): ElterngeldCalcul
  * Erzeugt eine sinnvolle gemeinsame Aufteilung (beide Eltern).
  * Bevorzugt zusammenhängende Blöcke statt Zickzack-Verteilung.
  * Nutzt vorhandene Planstruktur als Ausgangspunkt, wenn beide bereits sinnvoll beteiligt sind.
+ * Erweitert: Wenn nur Elternteil A Monate hat, wird B in eine sinnvolle Anzahl Bezugsmonate
+ * „eingesetzt“ (Split), sodass „Beide Plus“ als reguläre Variante erzeugt werden kann.
  */
 function createBothBalancedPlan(plan: ElterngeldCalculationPlan): ElterngeldCalculationPlan | null {
   const parentA = plan.parents[0];
@@ -489,7 +763,12 @@ function createBothBalancedPlan(plan: ElterngeldCalculationPlan): ElterngeldCalc
   const monthsA = getBezugMonths(parentA);
   const monthsB = getBezugMonths(parentB);
   if (monthsA.length === 0 && monthsB.length === 0) return null;
-  if (monthsA.length === 0 || monthsB.length === 0) return null;
+  if (monthsA.length === 0) return null;
+
+  const onlyAHasMonths = monthsB.length === 0;
+  if (onlyAHasMonths) {
+    return createBothFromSingleParentPlan(plan, parentA, parentB);
+  }
 
   const allMonths: { month: number; mode: MonthMode; income: number; hours?: number }[] = [];
   for (const p of [parentA, parentB]) {
@@ -640,10 +919,11 @@ function resultFingerprint(c: Candidate, goal?: OptimizationGoal): string {
   const total = c.result.householdTotal;
   const duration = countBezugMonths(c.result);
   const bonus = countPartnerBonusMonths(c.result);
+  const strategy = c.strategyType;
   if (goal === 'frontLoad') {
-    return `${total}-${duration}-${bonus}-${computeFrontLoadScore(c.result)}`;
+    return `${total}-${duration}-${bonus}-${strategy}-${computeFrontLoadScore(c.result)}`;
   }
-  return `${total}-${duration}-${bonus}`;
+  return `${total}-${duration}-${bonus}-${strategy}`;
 }
 
 /** Sortiert nach Ziel und wählt maximal 3 unterschiedliche Kandidaten (ohne Duplikate) */
@@ -715,6 +995,7 @@ function generateMutationCandidates(
     if (candidates.length < MAX_CANDIDATES) candidates.push(c);
   };
 
+  addReferenceConfigCandidates(plan, currentResult, candidates, goal, addIfNew);
   addAlternativeCandidates(plan, currentResult, candidates, goal, addIfNew);
 
   if (goal === 'maxMoney') {

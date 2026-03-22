@@ -42,24 +42,24 @@ export const MonthSummary: React.FC<MonthSummaryProps> = ({ items, compact }) =>
     <div className={`elterngeld-month-summary ${compact ? 'elterngeld-month-summary--compact' : ''}`}>
       <h4 className="elterngeld-month-summary__title">Monatsübersicht</h4>
       <p className="elterngeld-month-summary__hint">
-        Oben: sichtbare Lebensmonate im aktuellen Ausschnitt. Unten: berechnete Zuordnungen im Gesamtplan.
+        Entspricht exakt den sichtbaren Kacheln. Jeder Lebensmonat wird nur einmal gezählt.
       </p>
       <div className="elterngeld-month-summary__grid">
-        <span className="elterngeld-month-summary__row">
-          <span className="elterngeld-month-summary__label">Zuordnungen Mutter:</span>
-          <span className="elterngeld-month-summary__value">{mother} Monate</span>
-        </span>
-        <span className="elterngeld-month-summary__row">
-          <span className="elterngeld-month-summary__label">Zuordnungen Partner:</span>
-          <span className="elterngeld-month-summary__value">{partner} Monate</span>
-        </span>
-        <span className="elterngeld-month-summary__row">
-          <span className="elterngeld-month-summary__label">Bonus:</span>
-          <span className="elterngeld-month-summary__value">{bonus} Monate</span>
-        </span>
         <span className="elterngeld-month-summary__row elterngeld-month-summary__row--total">
           <span className="elterngeld-month-summary__label">Gesamt:</span>
           <span className="elterngeld-month-summary__value">{total} Monate</span>
+        </span>
+        <span className="elterngeld-month-summary__row">
+          <span className="elterngeld-month-summary__label">Nur Mutter:</span>
+          <span className="elterngeld-month-summary__value">{mother} Monate</span>
+        </span>
+        <span className="elterngeld-month-summary__row">
+          <span className="elterngeld-month-summary__label">Nur Partner:</span>
+          <span className="elterngeld-month-summary__value">{partner} Monate</span>
+        </span>
+        <span className="elterngeld-month-summary__row">
+          <span className="elterngeld-month-summary__label">Gemeinsam:</span>
+          <span className="elterngeld-month-summary__value">{bonus} Monate</span>
         </span>
       </div>
     </div>

@@ -35,11 +35,8 @@ import { buildElterngeldCalculationPdf } from './pdf/buildElterngeldCalculationP
 import { StepCalculationInput } from './steps/StepCalculationInput';
 import { StepCalculationResult } from './steps/StepCalculationResult';
 import { StepCalculationComparison } from './steps/StepCalculationComparison';
-import {
-  OptimizationGoalDialog,
-  MAIN_GOAL_OPTIONS,
-  type OptimizationGoal,
-} from './steps/OptimizationGoalDialog';
+import { MAIN_GOAL_OPTIONS } from './steps/OptimizationGoalDialog';
+import type { OptimizationGoal } from './calculation/elterngeldOptimization';
 import { ElterngeldFlowStepper } from './ElterngeldFlowStepper';
 import { ElterngeldSelectButton } from './ui/ElterngeldSelectButton';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
@@ -125,7 +122,6 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const [planUsedForResult, setPlanUsedForResult] = useState<ElterngeldCalculationPlan | null>(null);
   const [optimizationGoal, setOptimizationGoal] = useState<OptimizationGoal | undefined>();
   const [optimizationStatus, setOptimizationStatus] = useState<'idle' | 'proposed' | 'adopted'>('idle');
-  const [showOptimizationGoalDialog, setShowOptimizationGoalDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [variantBIsOutdated, setVariantBIsOutdated] = useState(false);
   const [optimizationAdoptedInSession, setOptimizationAdoptedInSession] = useState(false);
@@ -163,21 +159,6 @@ export const ElterngeldCalculationPage: React.FC = () => {
     setResult(res);
     setView('result');
   }, [currentPlan]);
-
-  const handleRunOptimization = useCallback(
-    (goal: OptimizationGoal) => {
-      setNavigateTarget(null);
-      const res = calculatePlan(currentPlan);
-      setOptimizationGoal(goal);
-      setOptimizationStatus('proposed');
-      setPlanUsedForResult(currentPlan);
-      setResult(res);
-      setOriginalPlanForOptimization(currentPlan);
-      setOriginalResultForOptimization(res);
-      setView('result');
-    },
-    [currentPlan]
-  );
 
   const handleDiscardOptimization = useCallback(() => {
     setOptimizationGoal(undefined);
@@ -353,7 +334,6 @@ export const ElterngeldCalculationPage: React.FC = () => {
     setOriginalResultForOptimization(null);
     setLastAdoptedPlan(null);
     setLastAdoptedResult(null);
-    setShowOptimizationGoalDialog(false);
     setOptimizationAdoptedInSession(false);
     setVariantBIsOutdated(false);
     setResult(null);
@@ -665,14 +645,6 @@ export const ElterngeldCalculationPage: React.FC = () => {
               >
                 Ergebnis prüfen
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="next-steps__button btn--softpill"
-                onClick={() => handleRunOptimization('maxMoney')}
-              >
-                Aufteilung prüfen
-              </Button>
               {planB && (
                 <Button
                   type="button"
@@ -746,12 +718,6 @@ export const ElterngeldCalculationPage: React.FC = () => {
           </>
         )}
 
-        <OptimizationGoalDialog
-          isOpen={showOptimizationGoalDialog}
-          onClose={() => setShowOptimizationGoalDialog(false)}
-          onConfirm={handleRunOptimization}
-        />
-
         <EditOriginDialog
           isOpen={showEditOriginDialog}
           onUpdatePreparation={handleUpdatePreparation}
@@ -775,7 +741,6 @@ export const ElterngeldCalculationPage: React.FC = () => {
               onShowCompareOriginal={planB ? handleShowComparison : undefined}
               onCreatePdf={handleCreatePdf}
               isSubmitting={isSubmitting}
-              onOpenOptimizationGoal={() => setShowOptimizationGoalDialog(true)}
               onBackFromOptimization={handleBack}
               onNavigateToInput={usingPreparationFlow ? undefined : handleNavigateToInput}
               onApplyPartnerBonusFix={handleApplyPartnerBonusFix}

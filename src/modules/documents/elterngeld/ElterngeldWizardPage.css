@@ -2383,6 +2383,13 @@
   font-weight: 700;
 }
 
+.elterngeld-calculation__adoption-hint {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #505050);
+}
+
 .elterngeld-calculation__baseline-hint {
   margin: 0 0 0.25rem 0;
   font-size: 0.85rem;

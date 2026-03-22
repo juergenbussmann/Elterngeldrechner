@@ -3,7 +3,7 @@
  * Klarer Optimierungsblock mit zielabhängiger Darstellung.
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import { Modal } from '../../../../shared/ui/Modal';
@@ -460,10 +460,20 @@ type StepOptimizationBlockProps = {
   onBackToOptimization?: () => void;
   /** Schließt Overlay/Ansicht und führt sichtbar in die Monatsaufteilungs-Bearbeitung. */
   onNavigateToMonthEditing?: () => void;
+  /** Startet direkt bei der Strategie-/Ziel-Auswahl (Step 3). */
+  skipToStrategyStep?: boolean;
+  /** Blendet „Aktuellen Plan beibehalten“ aus. */
+  hideDiscardButton?: boolean;
+  /** Blendet Zurück-Button (Monatsaufteilung bearbeiten) aus. */
+  hideBackButton?: boolean;
   originalPlanForOptimization?: ElterngeldCalculationPlan | null;
   originalResultForOptimization?: CalculationResult | null;
   lastAdoptedPlan?: ElterngeldCalculationPlan | null;
   lastAdoptedResult?: CalculationResult | null;
+  /** Wird aufgerufen, wenn sich die angezeigte Variante ändert – für Monatsübersicht-Sync */
+  onResolvedResultChange?: (result: CalculationResult) => void;
+  /** Optional: Plan der gewählten Variante (für direkte Übernahme ohne Overlay) */
+  onResolvedPlanChange?: (plan: ElterngeldCalculationPlan) => void;
 };
 
 type OptimizationComparisonBlockProps = {
@@ -608,13 +618,22 @@ export function StepOptimizationBlock({
   onDiscardOptimization,
   onBackToOptimization,
   onNavigateToMonthEditing,
+  skipToStrategyStep,
+  hideDiscardButton,
+  hideBackButton,
   originalPlanForOptimization,
   originalResultForOptimization,
   lastAdoptedPlan,
   lastAdoptedResult,
+  onResolvedResultChange,
+  onResolvedPlanChange,
 }: StepOptimizationBlockProps) {
   const [selectedOptionPerStep, setSelectedOptionPerStep] = useState<number[]>([]);
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
+  const [fall2Viewed, setFall2Viewed] = useState(false);
+  const [fall2OptionToAdopt, setFall2OptionToAdopt] = useState<{ plan: ElterngeldCalculationPlan; result: CalculationResult } | null>(null);
+  /** Beim Öffnen des Confirm-Dialogs gespeichert – exakt derselbe Delta-Wert wie in der OptionCard (R2, R4) */
+  const [adoptDialogOption, setAdoptDialogOption] = useState<{ plan: ElterngeldCalculationPlan; result: CalculationResult; financialDelta: number; durationDelta: number } | null>(null);
 
   const stepContext = useMemo(() => {
     const opts =
@@ -625,16 +644,55 @@ export function StepOptimizationBlock({
             lastAdoptedPlan: lastAdoptedPlan ?? null,
             lastAdoptedResult: lastAdoptedResult ?? null,
             selectedOptionPerStep,
+            strategyStepRequireExplicitSelection: skipToStrategyStep,
           }
-        : { selectedOptionPerStep };
+        : { selectedOptionPerStep, strategyStepRequireExplicitSelection: skipToStrategyStep };
     return buildStepDecisionContext(plan, result, opts);
-  }, [plan, result, originalPlanForOptimization, originalResultForOptimization, lastAdoptedPlan, lastAdoptedResult, selectedOptionPerStep]);
+  }, [plan, result, originalPlanForOptimization, originalResultForOptimization, lastAdoptedPlan, lastAdoptedResult, selectedOptionPerStep, skipToStrategyStep]);
 
   const { decisionSteps, finalResolvedPlan, finalResolvedResult, baselineLabel, baselineExplanation } = stepContext;
+
+  useEffect(() => {
+    if (!skipToStrategyStep || !decisionSteps.length) return;
+    const targetLen = decisionSteps.length - 1;
+    if (targetLen <= 0) return;
+    setSelectedOptionPerStep((prev) => {
+      if (prev.length >= targetLen) return prev;
+      return Array(targetLen).fill(0);
+    });
+  }, [skipToStrategyStep, decisionSteps.length]);
+
   const currentStepIndex = Math.min(selectedOptionPerStep.length, decisionSteps.length - 1);
   const hasAnyAlternatives = decisionSteps.some((s) => s.stepOptions.length > 1);
   const isFinalDifferent = !resultsAreEqual(result, finalResolvedResult);
   const canAdopt = isFinalDifferent && onAdoptOptimization;
+
+  const currentStep = decisionSteps[currentStepIndex];
+  const selectedOption = fall2OptionToAdopt
+    ? currentStep?.stepOptions[0]
+    : currentStep?.stepOptions[Math.max(0, Math.min(currentStep?.selectedOptionIndex ?? 0, (currentStep?.stepOptions.length ?? 1) - 1))];
+
+  const openAdoptDialog = useCallback(() => {
+    if (!selectedOption?.impact) return;
+    setAdoptDialogOption({
+      plan: selectedOption.plan,
+      result: selectedOption.result,
+      financialDelta: selectedOption.impact.financialDelta,
+      durationDelta: selectedOption.impact.durationDelta,
+    });
+    setShowAdoptConfirm(true);
+  }, [selectedOption]);
+
+  const closeAdoptDialog = useCallback(() => {
+    setShowAdoptConfirm(false);
+    setFall2OptionToAdopt(null);
+    setAdoptDialogOption(null);
+  }, []);
+
+  useEffect(() => {
+    onResolvedResultChange?.(finalResolvedResult);
+    onResolvedPlanChange?.(finalResolvedPlan);
+  }, [finalResolvedResult, finalResolvedPlan, onResolvedResultChange, onResolvedPlanChange]);
 
   const handleSelectOption = (stepIdx: number, optionIdx: number) => {
     setSelectedOptionPerStep((prev) => {
@@ -652,14 +710,23 @@ export function StepOptimizationBlock({
     <>
       <AdoptConfirmDialog
         isOpen={showAdoptConfirm}
-        onClose={() => setShowAdoptConfirm(false)}
-        onConfirm={() => onAdoptOptimization?.(finalResolvedPlan)}
-        currentResult={result}
-        optimizedResult={finalResolvedResult}
+        onClose={closeAdoptDialog}
+        onConfirm={() => {
+          const plan = adoptDialogOption?.plan ?? fall2OptionToAdopt?.plan ?? finalResolvedPlan;
+          onAdoptOptimization?.(plan);
+        }}
+        currentResult={(() => {
+          for (let i = currentStepIndex - 1; i >= 0; i--) {
+            const d = stepContext.derivedPlanAfterStep[i];
+            if (d?.result) return d.result;
+          }
+          return result;
+        })()}
+        optimizedResult={adoptDialogOption?.result ?? finalResolvedResult}
         formatCurrency={formatCurrency}
         formatCurrencySigned={formatCurrencySigned}
-        deltaTotal={finalResolvedResult.householdTotal - result.householdTotal}
-        deltaDuration={countBezugMonths(finalResolvedResult) - countBezugMonths(result)}
+        deltaTotal={adoptDialogOption?.financialDelta ?? 0}
+        deltaDuration={adoptDialogOption?.durationDelta ?? 0}
       />
       <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--comparison">
         {!hasAnyAlternatives ? (
@@ -675,6 +742,9 @@ export function StepOptimizationBlock({
         <div className="elterngeld-step-flow">
           <p className="elterngeld-calculation__data-basis-hint">
             Die Optimierung basiert auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
+          </p>
+          <p className="elterngeld-calculation__adoption-hint">
+            Vergleich zum aktuellen Plan. Änderungen gelten erst nach Übernahme – dein Plan bleibt unverändert.
           </p>
           <p className="elterngeld-calculation__baseline-hint">
             Vergleich zu: <strong>{baselineLabel}</strong>
@@ -702,6 +772,54 @@ export function StepOptimizationBlock({
           {(() => {
             const step = decisionSteps[currentStepIndex];
             if (!step) return null;
+            const isStrategyStepSingleOption = step.kind === 'optimization' && step.stepOptions.length === 1;
+            if (isStrategyStepSingleOption) {
+              const opt = step.stepOptions[0];
+              return (
+                <div key={step.id} className="elterngeld-step-flow__step elterngeld-step-flow__step--active">
+                  <h3 className="elterngeld-step__title">Für eure Situation gibt es aktuell nur eine sinnvolle Variante.</h3>
+                  <p className="elterngeld-calculation__decision-reason">{step.stepDescription}</p>
+                  {!fall2Viewed ? (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="btn--softpill elterngeld-calculation__optimization-action-primary"
+                      onClick={() => {
+                        setFall2Viewed(true);
+                        setFall2OptionToAdopt({ plan: opt.plan, result: opt.result });
+                      }}
+                    >
+                      Variante ansehen
+                    </Button>
+                  ) : (
+                    <>
+                      <div className="elterngeld-plan__summary-rows">
+                        <div className="elterngeld-plan__summary-row">
+                          <span className="elterngeld-plan__summary-label">Gesamtbetrag</span>
+                          <span className="elterngeld-plan__summary-value">{formatCurrency(opt.result.householdTotal)}</span>
+                        </div>
+                        <div className="elterngeld-plan__summary-row">
+                          <span className="elterngeld-plan__summary-label">Dauer</span>
+                          <span className="elterngeld-plan__summary-value">{countBezugMonths(opt.result)} Monate</span>
+                        </div>
+                      </div>
+                      <div className="elterngeld-calculation__optimization-actions">
+                        {onAdoptOptimization && opt.strategyType !== 'current' && (
+                          <Button
+                            type="button"
+                            variant="primary"
+                            className="btn--softpill elterngeld-calculation__optimization-action-primary"
+                            onClick={openAdoptDialog}
+                          >
+                            Diese Variante übernehmen
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            }
             const allSameTotal =
               step.stepOptions.length > 1 &&
               step.stepOptions.every((o) => o.result.householdTotal === step.stepOptions[0].result.householdTotal);
@@ -715,7 +833,7 @@ export function StepOptimizationBlock({
                   </p>
                 )}
                 {step.stepOptions.length > 1 && (
-                  <p className="elterngeld-calculation__option-hint">Klicke auf eine Option zum Auswählen:</p>
+                  <p className="elterngeld-calculation__option-hint">Klicke auf eine Option zum Vergleichen (Auswahl ist noch keine Übernahme):</p>
                 )}
                 <div className="elterngeld-calculation__suggestion-list" role="list">
                   {step.stepOptions.map((opt, optIdx) => (
@@ -731,7 +849,7 @@ export function StepOptimizationBlock({
                     />
                   ))}
                 </div>
-                {currentStepIndex > 0 && (
+                {currentStepIndex > 0 && !hideBackButton && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -761,20 +879,25 @@ export function StepOptimizationBlock({
             );
           })()}
           <div className="elterngeld-calculation__optimization-actions">
-            {canAdopt && (
+            {canAdopt && !(decisionSteps[currentStepIndex]?.kind === 'optimization' && decisionSteps[currentStepIndex]?.stepOptions.length === 1) && (
               <Button
                 type="button"
                 variant="primary"
                 className="btn--softpill elterngeld-calculation__optimization-action-primary"
-                onClick={() => setShowAdoptConfirm(true)}
+                onClick={openAdoptDialog}
               >
                 Diese Variante übernehmen
               </Button>
             )}
             <div className="elterngeld-calculation__optimization-actions-secondary">
-              {onDiscardOptimization && (
+              {onDiscardOptimization && !hideDiscardButton && (
                 <Button type="button" variant="secondary" className="btn--softpill" onClick={onDiscardOptimization}>
                   Aktuellen Plan beibehalten
+                </Button>
+              )}
+              {onNavigateToMonthEditing && (
+                <Button type="button" variant="secondary" className="btn--softpill" onClick={onNavigateToMonthEditing}>
+                  Zur Monatsübersicht (zeigt aktuellen Plan)
                 </Button>
               )}
               {onBackToOptimization && (
@@ -865,9 +988,12 @@ function OptimizationComparisonBlock({
             <p className="elterngeld-calculation__data-basis-hint">
               Die Optimierung basiert auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
             </p>
+            <p className="elterngeld-calculation__adoption-hint">
+              Vergleich zum aktuellen Plan. Änderungen gelten erst nach Übernahme – dein Plan bleibt unverändert.
+            </p>
             <h3 className="elterngeld-step__title elterngeld-calculation__decision-question">{decisionQuestion}</h3>
             <p className="elterngeld-calculation__decision-reason">
-              Klicke auf eine Option zum Auswählen. Du kannst jederzeit zum aktuellen Plan zurückkehren.
+              Klicke auf eine Option zum Vergleichen (Auswahl ist noch keine Übernahme).
             </p>
             <p className="elterngeld-calculation__baseline-hint">
               Vergleich zu: <strong>{baselineLabel}</strong>
@@ -1013,19 +1139,6 @@ function OptionCard({
           <span className="elterngeld-calculation__option-badge">empfohlen</span>
         )}
       </span>
-      <span className="elterngeld-calculation__suggestion-description">{opt.description}</span>
-      {planChangeLines.length > 0 && (
-        <div className="elterngeld-calculation__suggestion-plan-changes elterngeld-calculation__suggestion-plan-changes--primary">
-          <span className="elterngeld-calculation__suggestion-plan-changes-title">
-            {hasStructuralOnly ? 'Geänderte Monate und Verteilung' : 'Was wird geändert'}
-          </span>
-          {planChangeLines.map((line, i) => (
-            <span key={i} className="elterngeld-calculation__suggestion-plan-changes-line" title={line}>
-              {line}
-            </span>
-          ))}
-        </div>
-      )}
       {(impactLines.length > 0 || hasStructuralOnly) && (
         <span className="elterngeld-calculation__suggestion-delta">
           {hasStructuralOnly && (
@@ -1049,6 +1162,23 @@ function OptionCard({
           })}
         </span>
       )}
+      {planChangeLines.length > 0 && (
+        <div className={`elterngeld-calculation__suggestion-plan-changes ${hasStructuralOnly ? 'elterngeld-calculation__suggestion-plan-changes--primary' : ''}`}>
+          <span className={`elterngeld-calculation__suggestion-plan-changes-title ${hasStructuralOnly ? 'elterngeld-calculation__suggestion-delta-line--positive' : ''}`}>
+            Das würde sich ändern
+          </span>
+          {planChangeLines.map((line, i) => (
+            <span
+              key={i}
+              className={`elterngeld-calculation__suggestion-plan-changes-line ${hasStructuralOnly ? 'elterngeld-calculation__suggestion-delta-line--positive' : ''}`}
+              title={line}
+            >
+              {line}
+            </span>
+          ))}
+        </div>
+      )}
+      <span className="elterngeld-calculation__suggestion-description">{opt.description}</span>
       {isSelected && opt.strategyType !== 'current' && (() => {
         const full = opt.impact.fullSummary;
         const optBreakdown = getOptimizationBreakdown(currentResult, opt.result);
@@ -1222,7 +1352,6 @@ type Props = {
   onShowCompareOriginal?: () => void;
   onCreatePdf?: () => void;
   isSubmitting?: boolean;
-  onOpenOptimizationGoal?: () => void;
   /** Zurück zur Eingabe (wird an Step-Flow übergeben) */
   onBackFromOptimization?: () => void;
   /** Springt zur Eingabe und fokussiert Monat/ Bereich */
@@ -1252,7 +1381,6 @@ export const StepCalculationResult: React.FC<Props> = ({
   onShowCompareOriginal,
   onCreatePdf,
   isSubmitting = false,
-  onOpenOptimizationGoal,
   onBackFromOptimization,
   onNavigateToInput,
   onNavigateToMonthEditing,
@@ -1271,6 +1399,7 @@ export const StepCalculationResult: React.FC<Props> = ({
 
   const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
   const [showPartnerBonusCheck, setShowPartnerBonusCheck] = useState(false);
+  const [displayResultForMonths, setDisplayResultForMonths] = useState<CalculationResult | null>(null);
 
   useEffect(() => {
     if (!optimizationResultSet) return;
@@ -1318,6 +1447,15 @@ export const StepCalculationResult: React.FC<Props> = ({
   );
 
   const isOptimizationAdopted = adoptionStatus.kind === 'adopted_active';
+
+  useEffect(() => {
+    if (!optimizationGoal || isOptimizationAdopted) setDisplayResultForMonths(null);
+  }, [optimizationGoal, isOptimizationAdopted]);
+
+  const resultForMonths = optimizationGoal && !isOptimizationAdopted && displayResultForMonths
+    ? displayResultForMonths
+    : result;
+  const parentsForMonths = resultForMonths.parents;
 
   return (
     <div className="elterngeld-calculation-result">
@@ -1382,16 +1520,6 @@ export const StepCalculationResult: React.FC<Props> = ({
                         onNavigateToInput({ focusSection: 'monatsplan' });
                       }
                     }}
-                  >
-                    {action.label}
-                  </Button>
-                )}
-                {action.action === 'openOptimization' && onOpenOptimizationGoal && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
-                    onClick={onOpenOptimizationGoal}
                   >
                     {action.label}
                   </Button>
@@ -1476,12 +1604,13 @@ export const StepCalculationResult: React.FC<Props> = ({
                   hasPartnerBonus={hasPartnerBonus}
                   onAdoptOptimization={onAdoptOptimization}
                   onDiscardOptimization={onDiscardOptimization}
-                  onBackToOptimization={onBackFromOptimization ?? onOpenOptimizationGoal}
+                  onBackToOptimization={onBackFromOptimization}
                   onNavigateToMonthEditing={onNavigateToMonthEditing ?? (onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined)}
                   originalPlanForOptimization={originalPlanForOptimization}
                   originalResultForOptimization={originalResultForOptimization}
                   lastAdoptedPlan={lastAdoptedPlan}
                   lastAdoptedResult={lastAdoptedResult}
+                  onResolvedResultChange={setDisplayResultForMonths}
                 />
               </>
             )}
@@ -1541,8 +1670,8 @@ export const StepCalculationResult: React.FC<Props> = ({
         <h3 className="elterngeld-step__title">Monatsplan</h3>
         {(() => {
           const monthItems = getMonthGridItemsFromResults(
-            parents,
-            Math.max(14, ...parents.flatMap((p) => p.monthlyResults.map((r) => r.month)), 0)
+            parentsForMonths,
+            Math.max(14, ...parentsForMonths.flatMap((p) => p.monthlyResults.map((r) => r.month)), 0)
           );
           return (
             <>
@@ -1554,7 +1683,7 @@ export const StepCalculationResult: React.FC<Props> = ({
         })()}
       </Card>
 
-      {parents.map((parent) => (
+      {parentsForMonths.map((parent) => (
         <Card key={parent.id} className="still-daily-checklist__card">
           <h3 className="elterngeld-step__title">{parent.label}</h3>
           <div className="elterngeld-calculation__parent-result">
@@ -1614,16 +1743,6 @@ export const StepCalculationResult: React.FC<Props> = ({
                               onNavigateToInput({ focusSection: 'monatsplan' });
                             }
                           }}
-                        >
-                          {action.label}
-                        </Button>
-                      )}
-                      {action.action === 'openOptimization' && onOpenOptimizationGoal && (
-                        <Button
-                          type="button"
-                    variant="secondary"
-                    className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
-                    onClick={onOpenOptimizationGoal}
                         >
                           {action.label}
                         </Button>
@@ -1711,22 +1830,6 @@ export const StepCalculationResult: React.FC<Props> = ({
           Die endgültige Entscheidung über deinen Anspruch und die Auszahlung trifft immer die zuständige Elterngeldstelle. Diese Planung dient zur Orientierung und ersetzt keine offizielle Prüfung.
         </p>
       </Card>
-      )}
-
-      {!optimizationGoal && onOpenOptimizationGoal && (
-        <div className="elterngeld-calculation__optimization-hint-block">
-          <p className="elterngeld-calculation__optimization-hint-text">
-            Du kannst jetzt prüfen, ob eine andere Aufteilung vorteilhafter wäre.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            className="btn--softpill"
-            onClick={onOpenOptimizationGoal}
-          >
-            Aufteilung prüfen
-          </Button>
-        </div>
       )}
 
       {plan && (

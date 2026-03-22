@@ -16,7 +16,7 @@ import type { OptimizationSuggestion } from '../calculation/elterngeldOptimizati
 
 type OptimizationSummary = { hasAnySuggestions: boolean; partnerBonusSuggestion: OptimizationSuggestion | null };
 import type { ElterngeldApplication, BenefitModel } from '../types/elterngeldTypes';
-import type { ElterngeldCalculationPlan, CalculationResult } from '../calculation';
+import type { CalculationResult } from '../calculation';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -527,14 +527,18 @@ export const StepPlan: React.FC<Props> = ({
         </div>
       </div>
 
-      {hasPartner && partnerBonusValidation.isValid && optimizationSummary.hasAnySuggestions && !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
+      {optimizationSummary.hasAnySuggestions && onShowOptimizationOverlay && (
         <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip">
-          <p className="elterngeld-plan__status-text">Dein Plan funktioniert. Du kannst ihn jetzt noch optimieren.</p>
+          <p className="elterngeld-plan__status-text">
+            {hasPartner && partnerBonusValidation.isValid
+              ? 'Dein Plan funktioniert. Du kannst ihn jetzt noch optimieren.'
+              : 'Du kannst prüfen, ob eine andere Aufteilung vorteilhafter wäre.'}
+          </p>
           <Button
             type="button"
             variant="secondary"
             className="btn--softpill elterngeld-plan__status-btn"
-            onClick={() => onShowOptimizationOverlay?.(true)}
+            onClick={() => onShowOptimizationOverlay(true)}
           >
             Optimierung ansehen
           </Button>

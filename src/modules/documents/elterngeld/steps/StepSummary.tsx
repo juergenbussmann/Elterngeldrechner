@@ -236,6 +236,17 @@ export const StepSummary: React.FC<Props> = ({
       )}
 
       <div className="elterngeld-summary__actions elterngeld-summary__actions--secondary">
+        {optimizationSummary.hasAnySuggestions && onOpenOptimization && (
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            className="next-steps__button btn--softpill elterngeld-summary__action-secondary"
+            onClick={onOpenOptimization}
+          >
+            Optimierung ansehen
+          </Button>
+        )}
         {onNavigateToCalculation && result && result.validation.errors.length === 0 && (
           <Button
             type="button"

@@ -66,6 +66,8 @@ export interface BuildStepDecisionContextOptions extends BuildDecisionContextOpt
   selectedOptionPerStep?: number[];
   /** Vergleichsbasis für Deltas und Summaries */
   comparisonMode?: 'vsCurrent' | 'vsOriginal' | 'vsLastAdopted';
+  /** Im Strategie-Step keine Vorauswahl – Nutzer muss explizit wählen (R5) */
+  strategyStepRequireExplicitSelection?: boolean;
 }
 
 function countBezugMonths(result: CalculationResult): number {
@@ -391,7 +393,7 @@ export function buildStepDecisionContext(
       });
   }
 
-  // Schritt 3: Optimierungsziel innerhalb des gewählten Modells
+  // Schritt 3: Optimierungsziel innerhalb des gewählten Modells – nur beste Variante pro Ziel (R1, R2, R5)
   const step3ResultSet: OptimizationResultSet = {
     goal: 'maxMoney',
     status: 'improved',
@@ -400,25 +402,49 @@ export function buildStepDecisionContext(
     suggestions: [],
   };
 
-  const goalsForStep3 = ['maxMoney', 'longerDuration', 'frontLoad'] as const;
-  const seenStep3 = new Set<string>();
+  const hasPartner = currentPlan.parents[1] != null;
+  const goalsForStep3: readonly string[] =
+    step1Choice?.strategyType === 'motherOnly'
+      ? (['maxMoney', 'longerDuration', 'frontLoad'] as const)
+      : (['maxMoney', 'longerDuration', 'frontLoad', ...(hasPartner ? ['partnerBonus'] : [])] as const);
+  const bestPerGoal = new Map<string, OptimizationSuggestion>();
+
+  function addIfBestForGoal(s: OptimizationSuggestion, goal: string): void {
+    const key = goal;
+    const existing = bestPerGoal.get(key);
+    if (existing) {
+      if (goal === 'maxMoney' && s.result.householdTotal <= existing.result.householdTotal) return;
+      if (goal === 'longerDuration' && countBezugMonths(s.result) <= countBezugMonths(existing.result)) return;
+      if (goal === 'frontLoad') {
+        const sScore = s.deltaValue ?? 0;
+        const exScore = existing.deltaValue ?? 0;
+        if (sScore <= exScore) return;
+      }
+      if (goal === 'partnerBonus') {
+        const sBonus = countPartnerBonusMonths(s.result);
+        const exBonus = countPartnerBonusMonths(existing.result);
+        if (s.result.householdTotal < existing.result.householdTotal) return;
+        if (s.result.householdTotal === existing.result.householdTotal && sBonus <= exBonus) return;
+      }
+    }
+    bestPerGoal.set(key, s);
+  }
 
   for (const goal of goalsForStep3) {
     const outcome = buildOptimizationResult(currentPlan, currentResult, goal);
     if ('status' in outcome && outcome.status === 'unsupported') continue;
     const ors = outcome as OptimizationResultSet;
     for (const s of ors.suggestions) {
-      const fp = planFingerprint(s.plan);
-      if (seenStep3.has(fp)) continue;
       if (resultsAreEqual(currentResult, s.result)) continue;
       if (!shouldShowVariant(s, currentResult, goal)) continue;
       const [optA, optB] = getBezugMonthsPerParent(s.result);
       if (step1Choice?.strategyType === 'motherOnly' && optB > 0) continue;
       if (step1Choice?.strategyType === 'bothBalanced' && (optA === 0 || optB === 0)) continue;
-      seenStep3.add(fp);
-      step3ResultSet.suggestions.push(s);
+      addIfBestForGoal(s, goal);
     }
   }
+
+  step3ResultSet.suggestions = [...bestPerGoal.values()];
 
   const step3Ctx = buildDecisionContext(step3ResultSet, 0, {
     ...opts,
@@ -434,16 +460,18 @@ export function buildStepDecisionContext(
     : [{ ...step3Ctx.options[0], strategyType: 'current' as const, label: 'Aktueller Plan', id: 'current' }].concat(step3Options.slice(1));
 
   const step3OptionsFinal = step3Options.length > 0 ? step3Ctx.options : [step3Ctx.options[0]];
-  const step3Selected = Math.max(0, Math.min(preSelected[2] ?? 0, step3OptionsFinal.length - 1));
+  const step3HasRealChoice = step3OptionsFinal.length > 1;
+  const step3Selected =
+    opts?.strategyStepRequireExplicitSelection && step3HasRealChoice
+      ? -1
+      : Math.max(0, Math.min(preSelected[2] ?? 0, step3OptionsFinal.length - 1));
   selectedOptionPerStep[2] = step3Selected;
-  const step3Choice = step3OptionsFinal[step3Selected];
+  const step3Choice = step3Selected >= 0 ? step3OptionsFinal[step3Selected] : undefined;
   if (step3Choice) {
     currentPlan = step3Choice.plan;
     currentResult = step3Choice.result;
     derivedPlanAfterStep[2] = { plan: currentPlan, result: currentResult, stepIndex: 2 };
   }
-
-  const step3HasRealChoice = step3OptionsFinal.length > 1;
 
   steps.push({
     id: 'step-optimization',
@@ -453,13 +481,13 @@ export function buildStepDecisionContext(
       : 'Deine Variante',
     stepDescription: step3HasRealChoice
       ? 'Optimiere innerhalb deiner gewählten Aufteilung.'
-      : 'Dein aktueller Plan ist bereits gut zu deinem gewählten Modell. Du kannst ihn übernehmen oder die Monatsaufteilung anpassen.',
+      : 'Für eure Situation gibt es aktuell nur eine sinnvolle Variante.',
     stepOptions: step3OptionsFinal,
     selectedOptionIndex: step3Selected,
     feedbackAfterSelection: getFeedbackForStep3(step3Choice?.strategyType),
     nextStepHint: step3HasRealChoice
       ? 'Du hast eine Variante ausgewählt. Du kannst sie jetzt übernehmen oder weiter anpassen.'
-      : 'Du kannst diese Variante übernehmen oder die Monatsaufteilung anpassen.',
+      : 'Du kannst diese Variante ansehen und übernehmen.',
   });
 
   const currentStepIndex = steps.findIndex((s) => s.selectedOptionIndex < 0) >= 0

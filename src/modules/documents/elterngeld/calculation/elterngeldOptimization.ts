@@ -141,7 +141,14 @@ export function buildOptimizationResult(
   }
 
   const top3 = selectTop3(candidates, goal);
-  const suggestions = top3.map((c) => candidateToSuggestion(c, goal, currentDuration, currentTotal, currentResult));
+  let suggestions = top3.map((c) => candidateToSuggestion(c, goal, currentDuration, currentTotal, currentResult));
+
+  /** Bei maxMoney/partnerBonus: Vorschläge mit vernachlässigbarem Zuwachs ausfiltern – verhindert Drift bei wiederholter Optimierung. */
+  if (goal === 'maxMoney' || goal === 'partnerBonus') {
+    suggestions = suggestions.filter(
+      (s) => s.optimizedTotal <= currentTotal || s.optimizedTotal - currentTotal > MIN_IMPROVEMENT_EUR
+    );
+  }
 
   const status: OptimizationStatus =
     suggestions.length === 0
@@ -228,7 +235,7 @@ function candidateToSuggestion(
     case 'maxMoney':
       metricLabel = 'Gesamtsumme';
       deltaValue = optimizedTotal - currentTotal;
-      improved = deltaValue > 0;
+      improved = deltaValue > MIN_IMPROVEMENT_EUR;
       currentMetricValue = currentTotal;
       optimizedMetricValue = optimizedTotal;
       break;
@@ -252,7 +259,7 @@ function candidateToSuggestion(
     case 'partnerBonus':
       metricLabel = 'Gesamtsumme';
       deltaValue = optimizedTotal - currentTotal;
-      improved = deltaValue > 0;
+      improved = deltaValue > MIN_IMPROVEMENT_EUR;
       currentMetricValue = currentTotal;
       optimizedMetricValue = optimizedTotal;
       break;
@@ -314,6 +321,9 @@ function getSuggestionTitleAndExplanation(
 
 const MAX_CANDIDATES = 20;
 const DEFAULT_MONTH_COUNT = 14;
+
+/** Mindestverbesserung (EUR) für maxMoney/partnerBonus – verhindert Drift bei wiederholter Optimierung (Rundung, Darstellungsabweichungen). */
+const MIN_IMPROVEMENT_EUR = 1;
 
 /** BEEG §4 – Bezugsdauer: Basis bis LM 14, Plus bis 24, Mindestbezug 2 */
 const BEEG_BASIS_MAX = 14;
@@ -963,6 +973,7 @@ function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[
 
   for (const scenario of scenarioOrder) {
     if (result.length >= MAX_SUGGESTIONS) break;
+    if (goal === 'maxMoney' && scenario === 'frontLoad') continue;
     const best = bestForScenario(deduped, scenario);
     if (best && !added.has(best)) {
       result.push(best);
@@ -995,6 +1006,7 @@ function generateMutationCandidates(
   goal: OptimizationGoal
 ): void {
   const seen = new Set<string>();
+  seen.add(planFingerprint(plan));
   const addIfNew = (c: Candidate) => {
     const fp = planFingerprint(c.plan);
     if (seen.has(fp)) return;
@@ -1093,7 +1105,7 @@ function addBasisToPlusCandidates(
     const res = calculatePlan(copy);
     const duration = countBezugMonths(res);
     if (duration > currentDuration) durationImproved++;
-    if (duration >= currentDuration) {
+    if (duration > currentDuration) {
       addIfNew({ plan: copy, result: res, strategyType: 'longerDuration' });
     }
   }
@@ -1111,7 +1123,7 @@ function addBasisToPlusCandidates(
       const res = calculatePlan(copy);
       const duration = countBezugMonths(res);
       if (duration > currentDuration) durationImproved++;
-      if (duration >= currentDuration) {
+      if (duration > currentDuration) {
         addIfNew({ plan: copy, result: res, strategyType: 'longerDuration' });
       }
     }

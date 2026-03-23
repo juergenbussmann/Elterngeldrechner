@@ -294,7 +294,7 @@ export function calculatePlan(plan: ElterngeldCalculationPlan): CalculationResul
     parents,
     householdTotal,
     validation: {
-      isValid: errors.length === 0,
+      isValid: errors.length === 0 && partnerBonusValidation.isValid,
       errors,
       warnings: globalWarnings,
     },

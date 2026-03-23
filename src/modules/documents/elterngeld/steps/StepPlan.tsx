@@ -88,6 +88,13 @@ const MODEL_OPTIONS: { value: BenefitModel; label: string }[] = [
   { value: 'mixed', label: 'Gemischt' },
 ];
 
+/** Explizite Startvorbelegung beim Modellwechsel – nur UI-Startzustand, keine Ableitung aus Berechnungslogik. */
+const MODEL_START_PREFILL: Record<BenefitModel, { parentAMonths: string; parentBMonths: string }> = {
+  basis: { parentAMonths: '14', parentBMonths: '0' },
+  plus: { parentAMonths: '24', parentBMonths: '0' },
+  mixed: { parentAMonths: '14', parentBMonths: '0' },
+};
+
 /** Nur Basis und Plus für den Monatsdialog – für schnelle Umstellung beim Bonus-Planen */
 const DIALOG_LEISTUNG_OPTIONS: { value: 'basis' | 'plus'; label: string }[] = [
   { value: 'basis', label: 'Basiselterngeld' },
@@ -106,6 +113,11 @@ const APPLY_RANGE_OPTIONS = [
   { id: 'next3' as const, label: 'nächste 3 Monate', count: 3 },
   { id: 'toEnd' as const, label: 'alle folgenden Monate', count: -1 },
 ] as const;
+
+/** 24–32 h inkl.; fehlend/außerhalb → Partnerschaftsbonus-Kontext nicht erfüllt. */
+function isPartnerBonusHourBandOk(h: number | undefined | null): boolean {
+  return h != null && !Number.isNaN(h) && h >= 24 && h <= 32;
+}
 
 /** Formatiert Monatsnummern für Anzeige (z. B. "3–6" oder "3, 5, 7"). Nur Darstellung, keine Logik. */
 function formatBothMonthRange(months: number[]): string {
@@ -185,9 +197,17 @@ export const StepPlan: React.FC<Props> = ({
 
   const update = useCallback(
     (field: string, value: string | boolean) => {
+      const base = { ...values.benefitPlan, [field]: value };
+      let benefitPlan = field === 'model' ? { ...base, concreteMonthDistribution: undefined } : base;
+      if (field === 'model') {
+        const prefill = MODEL_START_PREFILL[value as BenefitModel];
+        if (prefill) {
+          benefitPlan = { ...benefitPlan, ...prefill };
+        }
+      }
       onChange({
         ...values,
-        benefitPlan: { ...values.benefitPlan, [field]: value },
+        benefitPlan,
       });
     },
     [values, onChange]
@@ -208,6 +228,13 @@ export const StepPlan: React.FC<Props> = ({
       ? parseMonthCount(values.benefitPlan.parentBMonths)
       : 0;
   const hasPartner = values.applicantMode === 'both_parents';
+
+  const partnerBonusNotAllowed = useMemo(() => {
+    if (!hasPartner) return false;
+    const hA = values.parentA.hoursPerWeek;
+    const hB = values.parentB?.hoursPerWeek;
+    return !isPartnerBonusHourBandOk(hA) || !isPartnerBonusHourBandOk(hB);
+  }, [hasPartner, values.parentA.hoursPerWeek, values.parentB?.hoursPerWeek]);
 
   const assignMonth = useCallback(
     (month: number, who: 'mother' | 'partner' | 'both' | 'none') => {
@@ -472,6 +499,22 @@ export const StepPlan: React.FC<Props> = ({
             );
           })}
         </div>
+        {values.benefitPlan.model === 'plus' && partnerBonusNotAllowed && (
+          <div className="elterngeld-hint elterngeld-hint--model">
+            <p className="elterngeld-hint__text">
+              Partnerschaftsbonus nur möglich bei 24–32 Stunden pro Woche.
+            </p>
+            {onNavigateToStep && (
+              <button
+                type="button"
+                className="elterngeld-hint__toggle"
+                onClick={() => onNavigateToStep('elternArbeit', 'elterngeld-step-eltern-arbeit-teilzeit')}
+              >
+                Teilzeitstunden anpassen
+              </button>
+            )}
+          </div>
+        )}
         <div className="elterngeld-hint elterngeld-hint--model">
           <p className="elterngeld-hint__text">
             Basiselterngeld = mehr Geld pro Monat, kürzere Dauer

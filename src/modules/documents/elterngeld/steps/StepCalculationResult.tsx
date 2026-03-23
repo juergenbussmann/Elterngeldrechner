@@ -895,16 +895,6 @@ export function StepOptimizationBlock({
             );
           })()}
           <div className="elterngeld-calculation__optimization-actions">
-            {canAdopt && (
-              <Button
-                type="button"
-                variant="primary"
-                className="btn--softpill elterngeld-calculation__optimization-action-primary"
-                onClick={openAdoptDialog}
-              >
-                Diese Variante übernehmen
-              </Button>
-            )}
             <div className="elterngeld-calculation__optimization-actions-secondary">
               {onBackToGoalSelection && (
                 <Button type="button" variant="secondary" className="btn--softpill" onClick={onBackToGoalSelection}>

@@ -4,7 +4,7 @@
  */
 
 import { clearItems, getValue, setValue } from '../../../../shared/lib/storage';
-import type { ElterngeldApplication } from '../types/elterngeldTypes';
+import type { ElterngeldApplication, MonthDistributionEntry } from '../types/elterngeldTypes';
 import { INITIAL_ELTERNGELD_APPLICATION, EMPTY_ELTERNGELD_PARENT } from '../types/elterngeldTypes';
 
 const STORAGE_KEY = 'elterngeld.preparation.v1';
@@ -58,17 +58,37 @@ function normalizeParent(raw: unknown): ElterngeldApplication['parentA'] | null 
   };
 }
 
+function isValidMode(v: unknown): v is MonthDistributionEntry['modeA'] {
+  return v === 'none' || v === 'basis' || v === 'plus' || v === 'partnerBonus';
+}
+
+function normalizeMonthDistributionEntry(raw: unknown): MonthDistributionEntry | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const month = typeof o.month === 'number' ? o.month : parseInt(String(o.month ?? 0), 10);
+  if (Number.isNaN(month) || month < 1 || month > 36) return null;
+  const modeA = isValidMode(o.modeA) ? o.modeA : 'none';
+  const modeB = isValidMode(o.modeB) ? o.modeB : 'none';
+  return { month, modeA, modeB };
+}
+
 function normalizeBenefitPlan(raw: unknown): ElterngeldApplication['benefitPlan'] {
   if (!raw || typeof raw !== 'object') {
     return INITIAL_ELTERNGELD_APPLICATION.benefitPlan;
   }
   const o = raw as Record<string, unknown>;
   const validModel = ['basis', 'plus', 'mixed'].includes(String(o.model ?? ''));
+  const distRaw = Array.isArray(o.concreteMonthDistribution) ? o.concreteMonthDistribution : [];
+  const concreteMonthDistribution = distRaw
+    .map(normalizeMonthDistributionEntry)
+    .filter((x): x is NonNullable<typeof x> => x != null)
+    .sort((a, b) => a.month - b.month);
   return {
     model: validModel ? (o.model as ElterngeldApplication['benefitPlan']['model']) : 'basis',
     parentAMonths: normalizeString(o.parentAMonths ?? ''),
     parentBMonths: normalizeString(o.parentBMonths ?? ''),
     partnershipBonus: normalizeBoolean(o.partnershipBonus),
+    ...(concreteMonthDistribution.length > 0 && { concreteMonthDistribution }),
   };
 }
 

@@ -68,6 +68,8 @@ export interface BuildStepDecisionContextOptions extends BuildDecisionContextOpt
   comparisonMode?: 'vsCurrent' | 'vsOriginal' | 'vsLastAdopted';
   /** Im Strategie-Step keine Vorauswahl – Nutzer muss explizit wählen (R5) */
   strategyStepRequireExplicitSelection?: boolean;
+  /** Nutzerpriorität (wenn bekannt), für Kennzeichnung in der UI */
+  userPriorityGoal?: import('./elterngeldOptimization').OptimizationGoal;
 }
 
 function countBezugMonths(result: CalculationResult): number {
@@ -407,59 +409,200 @@ export function buildStepDecisionContext(
     step1Choice?.strategyType === 'motherOnly'
       ? (['maxMoney', 'longerDuration', 'frontLoad'] as const)
       : (['maxMoney', 'longerDuration', 'frontLoad', ...(hasPartner ? ['partnerBonus'] : [])] as const);
-  const bestPerGoal = new Map<string, OptimizationSuggestion>();
 
-  function addIfBestForGoal(s: OptimizationSuggestion, goal: string): void {
-    const key = goal;
-    const existing = bestPerGoal.get(key);
-    if (existing) {
-      if (goal === 'maxMoney' && s.result.householdTotal <= existing.result.householdTotal) return;
-      if (goal === 'longerDuration' && countBezugMonths(s.result) <= countBezugMonths(existing.result)) return;
-      if (goal === 'frontLoad') {
-        const sScore = s.deltaValue ?? 0;
-        const exScore = existing.deltaValue ?? 0;
-        if (sScore <= exScore) return;
-      }
-      if (goal === 'partnerBonus') {
-        const sBonus = countPartnerBonusMonths(s.result);
-        const exBonus = countPartnerBonusMonths(existing.result);
-        if (s.result.householdTotal < existing.result.householdTotal) return;
-        if (s.result.householdTotal === existing.result.householdTotal && sBonus <= exBonus) return;
-      }
-    }
-    bestPerGoal.set(key, s);
-  }
-
+  /** Alle validen Suggestions pro Ziel sammeln (sortiert nach Ziel-Metrik, beste zuerst). */
+  const candidatesPerGoal = new Map<string, OptimizationSuggestion[]>();
   for (const goal of goalsForStep3) {
     const outcome = buildOptimizationResult(currentPlan, currentResult, goal);
     if ('status' in outcome && outcome.status === 'unsupported') continue;
     const ors = outcome as OptimizationResultSet;
+    const valid: OptimizationSuggestion[] = [];
     for (const s of ors.suggestions) {
       if (resultsAreEqual(currentResult, s.result)) continue;
       if (!shouldShowVariant(s, currentResult, goal)) continue;
       const [optA, optB] = getBezugMonthsPerParent(s.result);
       if (step1Choice?.strategyType === 'motherOnly' && optB > 0) continue;
       if (step1Choice?.strategyType === 'bothBalanced' && (optA === 0 || optB === 0)) continue;
-      addIfBestForGoal(s, goal);
+      valid.push(s);
+    }
+    valid.sort((a, b) => {
+      if (goal === 'maxMoney') return b.result.householdTotal - a.result.householdTotal;
+      if (goal === 'longerDuration') return countBezugMonths(b.result) - countBezugMonths(a.result);
+      if (goal === 'frontLoad') return (b.deltaValue ?? 0) - (a.deltaValue ?? 0);
+      if (goal === 'partnerBonus') {
+        const diffTotal = b.result.householdTotal - a.result.householdTotal;
+        if (diffTotal !== 0) return diffTotal;
+        return countPartnerBonusMonths(b.result) - countPartnerBonusMonths(a.result);
+      }
+      return 0;
+    });
+    candidatesPerGoal.set(goal, valid);
+  }
+
+  /** [DEV] Diagnose: Kandidaten pro Ziel für Variantenanzahl-Analyse */
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    const diagnose: Record<string, { count: number; items: { strategyType: string; total: number; duration: number; fp: string }[] }> = {};
+    for (const goal of goalsForStep3) {
+      const candidates = candidatesPerGoal.get(goal) ?? [];
+      diagnose[goal] = {
+        count: candidates.length,
+        items: candidates.slice(0, 5).map((s) => ({
+          strategyType: String(s.strategyType ?? s.goal),
+          total: Math.round(s.result.householdTotal),
+          duration: countBezugMonths(s.result),
+          fp: planFingerprint(s.plan).slice(0, 40) + (planFingerprint(s.plan).length > 40 ? '…' : ''),
+        })),
+      };
+    }
+    console.log('[stepDecisionFlow] Kandidaten pro Ziel', diagnose);
+  }
+
+  /** Sichtbar unterschiedliche Szenarien: pro Ziel bis zu zwei Varianten (beste + zweitbeste).
+   * Strategie-Vielfalt (unterschiedliche strategyType) bevorzugen; unterschiedliche Pläne (planFingerprint) erhalten,
+   * damit Ziele nicht auf denselben Plan kollabieren. */
+  const step3Suggestions: OptimizationSuggestion[] = [];
+  const seenPlanFp = new Set<string>();
+  const userPriorityGoal = opts?.userPriorityGoal;
+  const goalsOrdered =
+    userPriorityGoal && goalsForStep3.includes(userPriorityGoal)
+      ? [userPriorityGoal, ...goalsForStep3.filter((g) => g !== userPriorityGoal)]
+      : [...goalsForStep3];
+
+  const getRepresentedStrategyTypes = (): Set<string> =>
+    new Set(step3Suggestions.map((s) => s.strategyType ?? s.goal).filter(Boolean));
+
+  const maxSuggestions = 6;
+  const currentDuration = countBezugMonths(currentResult);
+
+  /** longerDuration reservieren: Wenn valide Variante mit deutlich längerer Bezugsdauer existiert, einen Slot sichern. */
+  const longerDurationCandidates = candidatesPerGoal.get('longerDuration') ?? [];
+  const bestLonger =
+    longerDurationCandidates.length > 0
+      ? longerDurationCandidates.reduce((best, s) =>
+          countBezugMonths(s.result) > countBezugMonths(best.result) ? s : best
+        )
+      : null;
+  if (
+    bestLonger &&
+    countBezugMonths(bestLonger.result) > currentDuration &&
+    !seenPlanFp.has(planFingerprint(bestLonger.plan))
+  ) {
+    seenPlanFp.add(planFingerprint(bestLonger.plan));
+    step3Suggestions.push(bestLonger);
+  }
+
+  /** Erster Durchlauf: pro Ziel bis zu zwei Kandidaten – bevorzugt mit unterschiedlichen strategyTypes. */
+  for (const goal of goalsOrdered) {
+    if (step3Suggestions.length >= maxSuggestions) break;
+    const candidates = candidatesPerGoal.get(goal) ?? [];
+    let addedThisGoal = 0;
+    const maxPerGoal = 2;
+
+    /** 1. Kandidat mit neuem strategyType (noch nicht vertreten). */
+    const represented = getRepresentedStrategyTypes();
+    for (const s of candidates) {
+      if (addedThisGoal >= maxPerGoal) break;
+      const fp = planFingerprint(s.plan);
+      if (seenPlanFp.has(fp)) continue;
+      const strat = s.strategyType ?? s.goal;
+      if (represented.size > 0 && represented.has(strat)) continue;
+      seenPlanFp.add(fp);
+      step3Suggestions.push(s);
+      addedThisGoal++;
+      break;
+    }
+
+    /** 2. Zweitbester: beliebiger Kandidat mit anderem planFingerprint (klar unterscheidbar). */
+    if (addedThisGoal < maxPerGoal) {
+      for (const s of candidates) {
+        if (addedThisGoal >= maxPerGoal || step3Suggestions.length >= maxSuggestions) break;
+        const fp = planFingerprint(s.plan);
+        if (seenPlanFp.has(fp)) continue;
+        seenPlanFp.add(fp);
+        step3Suggestions.push(s);
+        addedThisGoal++;
+        break;
+      }
     }
   }
 
-  step3ResultSet.suggestions = [...bestPerGoal.values()];
+  /** Zweiter Durchlauf: bis 6 auffüllen – bevorzugt neue strategyTypes, sonst weitere distincte Pläne. */
+  if (step3Suggestions.length < maxSuggestions) {
+    for (const goal of goalsOrdered) {
+      if (step3Suggestions.length >= maxSuggestions) break;
+      const candidates = candidatesPerGoal.get(goal) ?? [];
+      let addedFromThisGoal = 0;
+      const represented = getRepresentedStrategyTypes();
+      for (const s of candidates) {
+        if (step3Suggestions.length >= maxSuggestions || addedFromThisGoal >= 2) break;
+        const fp = planFingerprint(s.plan);
+        if (seenPlanFp.has(fp)) continue;
+        const strat = s.strategyType ?? s.goal;
+        if (represented.size > 0 && !represented.has(strat)) {
+          seenPlanFp.add(fp);
+          step3Suggestions.push(s);
+          addedFromThisGoal++;
+          break;
+        }
+      }
+      if (addedFromThisGoal < 2) {
+        for (const s of candidates) {
+          if (step3Suggestions.length >= maxSuggestions || addedFromThisGoal >= 2) break;
+          const fp = planFingerprint(s.plan);
+          if (seenPlanFp.has(fp)) continue;
+          seenPlanFp.add(fp);
+          step3Suggestions.push(s);
+          addedFromThisGoal++;
+        }
+      }
+    }
+  }
+
+  step3ResultSet.suggestions = step3Suggestions;
+
+  /** [DEV] Diagnose: step3Suggestions nach Deduplizierung, vor buildDecisionContext */
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    console.log('[stepDecisionFlow] step3Suggestions', {
+      count: step3Suggestions.length,
+      items: step3Suggestions.map((s) => ({
+        goal: s.goal,
+        strategyType: String(s.strategyType ?? s.goal),
+        total: Math.round(s.result.householdTotal),
+        duration: countBezugMonths(s.result),
+      })),
+    });
+  }
 
   const step3Ctx = buildDecisionContext(step3ResultSet, 0, {
     ...opts,
     originalPlan: currentPlan,
     originalResult: currentResult,
     comparisonMode,
+    userPriorityGoal: opts?.userPriorityGoal,
   });
 
   const step3Options = step3Ctx.options.filter((o) => o.strategyType !== 'current');
   const hasCurrentInStep3 = step3Ctx.options.some((o) => o.strategyType === 'current');
-  const step3OptionsWithCurrent = hasCurrentInStep3
-    ? step3Ctx.options
-    : [{ ...step3Ctx.options[0], strategyType: 'current' as const, label: 'Aktueller Plan', id: 'current' }].concat(step3Options.slice(1));
+  const currentOpt = step3Ctx.options.find((o) => o.strategyType === 'current');
 
-  const step3OptionsFinal = step3Options.length > 0 ? step3Ctx.options : [step3Ctx.options[0]];
+  /** Varianten sortieren: Nutzerpriorität zuerst, dann nach householdTotal absteigend (höchste Auszahlung oben). */
+  const sortedRest = [...step3Options].sort((a, b) => {
+    const aPrio = a.matchesUserPriority ? 1 : 0;
+    const bPrio = b.matchesUserPriority ? 1 : 0;
+    if (bPrio !== aPrio) return bPrio - aPrio;
+    return b.result.householdTotal - a.result.householdTotal;
+  });
+
+  const step3OptionsFinal =
+    step3Options.length > 0
+      ? (hasCurrentInStep3 && currentOpt ? [currentOpt, ...sortedRest] : sortedRest)
+      : [step3Ctx.options[0]];
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    console.log('[stepDecisionFlow] step3Ctx.options (nach buildDecisionContext)', {
+      count: step3Ctx.options.length,
+      step3OptionsFinalCount: step3OptionsFinal.length,
+    });
+  }
   const step3HasRealChoice = step3OptionsFinal.length > 1;
   const step3Selected =
     opts?.strategyStepRequireExplicitSelection && step3HasRealChoice

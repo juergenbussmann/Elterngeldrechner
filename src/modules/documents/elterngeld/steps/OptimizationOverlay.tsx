@@ -7,8 +7,11 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../../shared/ui/Modal';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
+import { ElterngeldSelectButton } from '../ui/ElterngeldSelectButton';
+import { MAIN_GOAL_OPTIONS } from './OptimizationGoalDialog';
 import { StepOptimizationBlock } from './StepCalculationResult';
 import type { ElterngeldCalculationPlan, CalculationResult } from '../calculation';
+import type { OptimizationGoal } from '../calculation/elterngeldOptimization';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -71,9 +74,14 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
   lastAdoptedResult,
 }) => {
   const [view, setView] = useState<'entry' | 'strategy'>('entry');
+  const [selectedGoal, setSelectedGoal] = useState<'maxMoney' | 'longerDuration' | 'frontLoad'>('maxMoney');
 
   useEffect(() => {
-    if (!isOpen) setView('entry');
+    if (!isOpen) {
+      setView('entry');
+    } else {
+      setSelectedGoal('maxMoney');
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -107,6 +115,8 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
             skipToStrategyStep
             hideDiscardButton
             hideBackButton
+            onBackToGoalSelection={() => setView('entry')}
+            optimizationGoal={selectedGoal as OptimizationGoal}
           />
         </div>
       </Modal>
@@ -144,6 +154,25 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
             )}
           </div>
         </Card>
+        <div className="elterngeld-optimization-goal__section">
+          <p className="elterngeld-optimization-goal__intro">Was ist dir wichtiger?</p>
+          <div
+            className="elterngeld-optimization-goal__options elterngeld-select-btn-group"
+            role="radiogroup"
+            aria-label="Ziel"
+          >
+            {MAIN_GOAL_OPTIONS.map((opt) => (
+              <ElterngeldSelectButton
+                key={opt.value}
+                label={opt.label}
+                description={opt.description}
+                selected={selectedGoal === opt.value}
+                onClick={() => setSelectedGoal(opt.value)}
+                ariaPressed={selectedGoal === opt.value}
+              />
+            ))}
+          </div>
+        </div>
         <div className="next-steps__stack elterngeld-optimization-goal__actions">
           <Button
             type="button"

@@ -8,7 +8,7 @@ import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import { MonthGrid } from '../ui/MonthGrid';
 import { MonthSummary } from '../ui/MonthSummary';
-import { getMonthGridItemsFromCounts } from '../monthGridMappings';
+import { getMonthGridItemsFromValues } from '../monthGridMappings';
 import { ElterngeldSelectButton } from '../ui/ElterngeldSelectButton';
 import { applicationToCalculationPlan } from '../applicationToCalculationPlan';
 import { mergePlanIntoPreparation } from '../planToApplicationMerge';
@@ -214,11 +214,12 @@ export const StepPlan: React.FC<Props> = ({
       const capped = Math.min(Math.max(month, 0), maxMonths);
       const bp = values.benefitPlan;
 
+      const clearDistribution = { ...bp, concreteMonthDistribution: undefined };
       if (who === 'mother') {
         onChange({
           ...values,
           benefitPlan: {
-            ...bp,
+            ...clearDistribution,
             parentAMonths: String(capped),
             parentBMonths: String(Math.min(countB, capped - 1)),
             partnershipBonus: false,
@@ -228,7 +229,7 @@ export const StepPlan: React.FC<Props> = ({
         onChange({
           ...values,
           benefitPlan: {
-            ...bp,
+            ...clearDistribution,
             parentAMonths: String(Math.min(countA, capped - 1)),
             parentBMonths: String(capped),
             partnershipBonus: false,
@@ -238,7 +239,7 @@ export const StepPlan: React.FC<Props> = ({
         onChange({
           ...values,
           benefitPlan: {
-            ...bp,
+            ...clearDistribution,
             parentAMonths: String(Math.max(countA, capped)),
             parentBMonths: String(Math.max(countB, capped)),
             partnershipBonus: true,
@@ -248,7 +249,7 @@ export const StepPlan: React.FC<Props> = ({
         onChange({
           ...values,
           benefitPlan: {
-            ...bp,
+            ...clearDistribution,
             parentAMonths: String(Math.min(countA, capped - 1)),
             parentBMonths: hasPartner ? String(Math.min(countB, capped - 1)) : bp.parentBMonths,
           },
@@ -259,20 +260,47 @@ export const StepPlan: React.FC<Props> = ({
     [values, onChange, maxMonths, countA, countB, hasPartner]
   );
 
+  const items = useMemo(() => {
+    if (import.meta.env.DEV) {
+      const bp = values.benefitPlan;
+      const dist = bp.concreteMonthDistribution;
+      console.log('[StepPlan DIAG] values vor getMonthGridItemsFromValues:', {
+        model: bp.model,
+        parentAMonths: bp.parentAMonths,
+        parentBMonths: bp.parentBMonths,
+        applicantMode: values.applicantMode,
+        concreteMonthDistribution: {
+          length: dist?.length ?? 0,
+          content: dist ?? [],
+        },
+      });
+    }
+    const result = getMonthGridItemsFromValues(values, maxMonths);
+    if (import.meta.env.DEV) {
+      console.log('[StepPlan DIAG] nach getMonthGridItemsFromValues:', {
+        maxMonths,
+        itemCount: result.length,
+        items: result.map((i) => ({ month: i.month, state: i.state, label: i.label, subLabel: i.subLabel })),
+      });
+    }
+    return result;
+  }, [values, maxMonths]);
+
   const currentState =
     activeMonth !== null
-      ? getCurrentMonthState(
-          activeMonth,
-          countA,
-          countB,
-          values.benefitPlan.partnershipBonus,
-          hasPartner
-        )
+      ? (items.find((i) => i.month === activeMonth)?.state ??
+          getCurrentMonthState(
+            activeMonth,
+            countA,
+            countB,
+            values.benefitPlan.partnershipBonus,
+            hasPartner
+          ))
       : null;
 
   const handleConfirm = useCallback(() => {
     const bp = values.benefitPlan;
-    let newBp = { ...bp, model: selectedModelInDialog };
+    let newBp = { ...bp, model: selectedModelInDialog, concreteMonthDistribution: undefined };
 
     if (selectedApplyRange !== null && activeMonth !== null && currentState) {
       const opt = APPLY_RANGE_OPTIONS.find((o) => o.id === selectedApplyRange);
@@ -352,19 +380,6 @@ export const StepPlan: React.FC<Props> = ({
     }
     return null;
   }, [planResult]);
-
-  const items = useMemo(
-    () =>
-      getMonthGridItemsFromCounts(
-        countA,
-        countB,
-        values.benefitPlan.model,
-        values.benefitPlan.partnershipBonus,
-        hasPartner,
-        maxMonths
-      ),
-    [countA, countB, values.benefitPlan.model, values.benefitPlan.partnershipBonus, hasPartner, maxMonths]
-  );
 
   return (
     <Card id="elterngeld-plan-card" className="still-daily-checklist__card elterngeld-plan-card">

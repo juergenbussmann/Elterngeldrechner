@@ -82,18 +82,96 @@ function ensureSharedHorizon(
   return result;
 }
 
+/** Erstellt ParentMonthInput-Arrays aus konkreter Monatsverteilung. */
+function createMonthsFromDistribution(
+  distribution: { month: number; modeA: string; modeB: string }[],
+  hasSecondParent: boolean,
+  hoursA?: number,
+  hoursB?: number
+): { parentAMonths: ParentMonthInput[]; parentBMonths: ParentMonthInput[] } {
+  const parentAMonths: ParentMonthInput[] = distribution.map((d) => ({
+    month: d.month,
+    mode: (d.modeA === 'none' || d.modeA === 'basis' || d.modeA === 'plus' || d.modeA === 'partnerBonus' ? d.modeA : 'none') as MonthMode,
+    incomeDuringNet: 0,
+    ...(hoursA != null && hoursA > 0 && d.modeA !== 'none' && { hoursPerWeek: hoursA }),
+  }));
+  const parentBMonths: ParentMonthInput[] = distribution.map((d) => ({
+    month: d.month,
+    mode: hasSecondParent && (d.modeB === 'none' || d.modeB === 'basis' || d.modeB === 'plus' || d.modeB === 'partnerBonus')
+      ? (d.modeB as MonthMode)
+      : ('none' as MonthMode),
+    incomeDuringNet: 0,
+    ...(hoursB != null && hoursB > 0 && d.modeB !== 'none' && { hoursPerWeek: hoursB }),
+  }));
+  return { parentAMonths, parentBMonths };
+}
+
 export function applicationToCalculationPlan(app: ElterngeldApplication): ElterngeldCalculationPlan {
   const hasActualBirthDate = !!app.child.birthDate?.trim();
   const childBirthDate =
     app.child.birthDate?.trim() || app.child.expectedBirthDate?.trim() || '';
   const model = app.benefitPlan.model;
   const defaultMode = getDefaultMode(model);
+  const hasSecondParent = app.applicantMode === 'both_parents' && app.parentB != null;
+
+  const dist = app.benefitPlan.concreteMonthDistribution;
+  if (dist && dist.length > 0) {
+    const hoursA = app.parentA.plannedPartTime ? app.parentA.hoursPerWeek : undefined;
+    const hoursB = app.parentB?.plannedPartTime ? app.parentB.hoursPerWeek : undefined;
+    const { parentAMonths: rawAMonths, parentBMonths: rawBMonths } = createMonthsFromDistribution(
+      dist,
+      hasSecondParent,
+      hoursA,
+      hoursB
+    );
+    let parentAMonths = rawAMonths;
+    if (hasActualBirthDate) {
+      parentAMonths = parentAMonths.map((m) =>
+        m.month <= MATERNITY_MONTHS_COUNT ? { ...m, hasMaternityBenefit: true } : m
+      );
+    }
+    const sharedHorizon = Math.max(
+      parentAMonths.length,
+      rawBMonths.length,
+      MIN_HORIZONT
+    );
+    parentAMonths = ensureSharedHorizon(parentAMonths, sharedHorizon);
+    const parentBMonths = ensureSharedHorizon(rawBMonths, sharedHorizon);
+
+    const parentA: CalculationParentInput = {
+      id: 'parentA',
+      label: 'Sie',
+      incomeBeforeNet: parseIncome(app.parentA.incomeBeforeBirth),
+      employmentType: app.parentA.employmentType,
+      months: parentAMonths,
+    };
+    const parents: CalculationParentInput[] = [parentA];
+    if (hasSecondParent && app.parentB) {
+      parents.push({
+        id: 'parentB',
+        label: 'Partner',
+        incomeBeforeNet: parseIncome(app.parentB.incomeBeforeBirth),
+        employmentType: app.parentB.employmentType,
+        months: parentBMonths,
+      });
+    } else {
+      parents.push({
+        id: 'parentB',
+        label: 'Partner',
+        incomeBeforeNet: 0,
+        months: createMonths(0, 'none', model),
+      });
+    }
+    return {
+      childBirthDate,
+      parents,
+      hasSiblingBonus: false,
+      additionalChildren: app.child.multipleBirth ? 1 : 0,
+    };
+  }
 
   const countA = parseMonthCount(app.benefitPlan.parentAMonths);
-  const countB =
-    app.applicantMode === 'both_parents' && app.parentB
-      ? parseMonthCount(app.benefitPlan.parentBMonths)
-      : 0;
+  const countB = hasSecondParent ? parseMonthCount(app.benefitPlan.parentBMonths) : 0;
 
   let parentAMonths = createMonths(
     countA,
@@ -125,9 +203,6 @@ export function applicationToCalculationPlan(app: ElterngeldApplication): Eltern
   };
 
   const parents: CalculationParentInput[] = [parentA];
-
-  const hasSecondParent =
-    app.applicantMode === 'both_parents' && app.parentB != null;
 
   if (hasSecondParent && app.parentB) {
     const partnerMode = app.benefitPlan.partnershipBonus ? 'partnerBonus' : defaultMode;

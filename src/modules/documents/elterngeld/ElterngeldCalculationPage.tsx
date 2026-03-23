@@ -245,6 +245,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
 
   const handleGoalToPlan = useCallback(() => {
     if (usingPreparationFlow) {
+      setOptimizationGoal(selectedGoal);
       const res = calculatePlan(plan);
       setPlanUsedForResult(plan);
       setResult(res);
@@ -252,7 +253,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
     } else {
       setView('input');
     }
-  }, [usingPreparationFlow, plan]);
+  }, [usingPreparationFlow, plan, selectedGoal]);
 
   const handleNavigateToInput = useCallback((target: NavigateToInputTarget) => {
     setNavigateTarget(target);

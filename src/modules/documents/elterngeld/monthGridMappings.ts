@@ -13,6 +13,7 @@ import type { ElterngeldCalculationPlan } from './calculation';
 import { getCombinedMonthState } from './calculation';
 import type { ParentCalculationResult } from './calculation';
 import type { MonthGridItem } from './ui/MonthGrid';
+import type { ElterngeldApplication, MonthDistributionEntry } from './types/elterngeldTypes';
 
 const MODE_LABELS: Record<string, string> = {
   none: '–',
@@ -21,7 +22,85 @@ const MODE_LABELS: Record<string, string> = {
   partnerBonus: 'Bonus',
 };
 
-/** Vorbereitung: count-basiertes Modell → MonthGrid-Items */
+/** Erstellt MonthGrid-Items aus konkreter Monatsverteilung. */
+function getMonthGridItemsFromDistribution(
+  distribution: MonthDistributionEntry[],
+  model: string,
+  hasPartner: boolean,
+  maxMonths: number
+): MonthGridItem[] {
+  const byMonth = new Map(distribution.map((d) => [d.month, d]));
+  const result: MonthGridItem[] = [];
+  for (let m = 1; m <= maxMonths; m++) {
+    const entry = byMonth.get(m) ?? { month: m, modeA: 'none' as const, modeB: 'none' as const };
+    const modeA = entry.modeA ?? 'none';
+    const modeB = entry.modeB ?? 'none';
+    const hasA = modeA !== 'none';
+    const hasB = hasPartner && modeB !== 'none';
+
+    let state: MonthGridItem['state'];
+    let label: string;
+    let subLabel: string;
+
+    if (hasA && hasB) {
+      state = 'both';
+      label = 'Beide';
+      subLabel = modeA === 'partnerBonus' || modeB === 'partnerBonus' ? 'Bonus' : model === 'plus' ? 'Plus' : 'Basis';
+    } else if (hasA) {
+      state = 'mother';
+      label = 'Mutter';
+      subLabel = MODE_LABELS[modeA] ?? modeA;
+    } else if (hasB) {
+      state = 'partner';
+      label = 'Partner';
+      subLabel = MODE_LABELS[modeB] ?? modeB;
+    } else {
+      state = 'none';
+      label = 'Kein Bezug';
+      subLabel = '–';
+    }
+
+    result.push({
+      month: m,
+      state,
+      label,
+      subLabel: subLabel !== '–' ? subLabel : undefined,
+    });
+  }
+  return result;
+}
+
+/**
+ * Vorbereitung: Ermittelt MonthGrid-Items aus values.
+ * Verwendet primär concreteMonthDistribution (übernommene Variante), Fallback: Count-Logik.
+ */
+export function getMonthGridItemsFromValues(
+  values: ElterngeldApplication,
+  maxMonths: number
+): MonthGridItem[] {
+  const dist = values.benefitPlan.concreteMonthDistribution;
+  const hasPartner = values.applicantMode === 'both_parents';
+  if (dist && dist.length > 0) {
+    return getMonthGridItemsFromDistribution(
+      dist,
+      values.benefitPlan.model,
+      hasPartner,
+      maxMonths
+    );
+  }
+  const countA = parseInt(String(values.benefitPlan.parentAMonths || ''), 10) || 0;
+  const countB = hasPartner ? parseInt(String(values.benefitPlan.parentBMonths || ''), 10) || 0 : 0;
+  return getMonthGridItemsFromCounts(
+    countA,
+    countB,
+    values.benefitPlan.model,
+    values.benefitPlan.partnershipBonus,
+    hasPartner,
+    maxMonths
+  );
+}
+
+/** Vorbereitung: count-basiertes Modell → MonthGrid-Items (Fallback) */
 export function getMonthGridItemsFromCounts(
   parentAMonths: number,
   parentBMonths: number,

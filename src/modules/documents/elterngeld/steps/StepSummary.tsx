@@ -7,7 +7,7 @@
 import React, { useMemo } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
-import { getMonthGridItemsFromCounts } from '../monthGridMappings';
+import { getMonthGridItemsFromValues } from '../monthGridMappings';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
 import type { CalculationResult } from '../calculation';
 import type { OptimizationSuggestion } from '../calculation/elterngeldOptimization';
@@ -109,21 +109,11 @@ export const StepSummary: React.FC<Props> = ({
   const result = liveResult ?? null;
 
   const maxMonths = values.benefitPlan.model === 'plus' ? 24 : 14;
-  const countA = parseMonthCount(values.benefitPlan.parentAMonths);
-  const countB = values.applicantMode === 'both_parents' ? parseMonthCount(values.benefitPlan.parentBMonths) : 0;
   const hasPartner = values.applicantMode === 'both_parents';
 
   const items = useMemo(
-    () =>
-      getMonthGridItemsFromCounts(
-        countA,
-        countB,
-        values.benefitPlan.model,
-        values.benefitPlan.partnershipBonus,
-        hasPartner,
-        maxMonths
-      ),
-    [countA, countB, values.benefitPlan.model, values.benefitPlan.partnershipBonus, hasPartner, maxMonths]
+    () => getMonthGridItemsFromValues(values, maxMonths),
+    [values, maxMonths]
   );
 
   const displayHint = useMemo(() => {

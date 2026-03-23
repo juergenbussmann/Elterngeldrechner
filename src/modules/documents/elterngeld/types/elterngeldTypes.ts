@@ -27,11 +27,23 @@ export interface ElterngeldParent {
   hoursPerWeek?: number;
 }
 
+/** Pro-Monat-Modus für konkrete Verteilung (aus übernommener Variante). */
+export type MonthModeForDistribution = 'none' | 'basis' | 'plus' | 'partnerBonus';
+
+/** Konkrete Monatsverteilung pro Lebensmonat (überschreibt Count-Logik wenn gesetzt). */
+export interface MonthDistributionEntry {
+  month: number;
+  modeA: MonthModeForDistribution;
+  modeB: MonthModeForDistribution;
+}
+
 export interface ElterngeldBenefitPlan {
   model: BenefitModel;
   parentAMonths: string;
   parentBMonths: string;
   partnershipBonus: boolean;
+  /** Optionale konkrete Verteilung aus übernommener Variante. Hat Vorrang vor Count-Logik. */
+  concreteMonthDistribution?: MonthDistributionEntry[];
 }
 
 export interface ElterngeldApplication {

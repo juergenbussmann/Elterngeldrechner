@@ -129,7 +129,6 @@ export function buildOptimizationResult(
   const { candidates, candidateCount, uniqueCount } = findCandidates(plan, currentResult, goal);
   const durationMs = import.meta.env.DEV ? Math.round(performance.now() - t0) : 0;
 
-  const improvedCount = filterImprovedCandidates(candidates, currentResult, goal).length;
   const afterUniquenessFilter = new Set(candidates.map((c) => planFingerprint(c.plan))).size;
 
   if (import.meta.env.DEV) {
@@ -138,17 +137,7 @@ export function buildOptimizationResult(
       generatedRaw: candidates.length,
       afterGoalSpecificGeneration: candidates.length,
       afterUniquenessFilter,
-      improved: improvedCount,
     });
-    if (goal === 'maxMoney') {
-      const improvedCandidates = filterImprovedCandidates(candidates, currentResult, goal);
-      const improvedByShift = improvedCandidates.filter((c) => c.maxMoneySource === 'shift').length;
-      const improvedByPlusToBasis = improvedCandidates.filter((c) => c.maxMoneySource === 'plusToBasis').length;
-      console.log('[elterngeld-optimization] maxMoney improvement sources', {
-        improvedByShift,
-        improvedByPlusToBasis,
-      });
-    }
   }
 
   const top3 = selectTop3(candidates, goal);
@@ -200,7 +189,7 @@ export function buildOptimizationResult(
         countPartnerBonusMonths(top.result) - countPartnerBonusMonths(currentResult);
       console.log('[elterngeld-optimization] summary', {
         goal,
-        improvedCandidates: improvedCount,
+        candidateCount,
         topDeltaTotal,
         topDeltaDuration,
         topDeltaPartnerBonus,
@@ -463,50 +452,87 @@ function createReferencePlan(
   return null;
 }
 
+/** Szenario-Typ für die Zuordnung von Kandidaten (Trade-off-Darstellung). */
+type ScenarioType = 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus';
+
 /**
- * Fügt Referenz-Konfigurationen hinzu – unabhängig vom aktuellen Plan.
- * Suchraum wird nicht mehr ausschließlich durch duplicatePlan begrenzt (R1, R4).
- * Nur Kandidaten, die das Ziel verbessern, werden hinzugefügt (R2, R5).
+ * Fügt Referenz-Konfigurationen als Szenarien hinzu – unabhängig vom aktuellen Plan.
+ * Erzeugt für jede Zielrichtung (maxMoney, longerDuration, frontLoad, partnerBonus)
+ * eigenständige Szenarien, ohne Ausschluss wegen anderer Dimensionen (z. B. längere Dauer bei geringerer Summe).
  */
 function addReferenceConfigCandidates(
   plan: ElterngeldCalculationPlan,
-  currentResult: CalculationResult,
+  _currentResult: CalculationResult,
   candidates: Candidate[],
-  goal: OptimizationGoal,
+  _goal: OptimizationGoal,
   addIfNew: AddCandidateFn
 ): void {
-  const currentDuration = countBezugMonths(currentResult);
-  const currentTotal = currentResult.householdTotal;
-  const currentBonus = countPartnerBonusMonths(currentResult);
-  const currentFrontLoad = goal === 'frontLoad' ? computeFrontLoadScore(currentResult) : 0;
-
   const configs: ReferenceConfigType[] = ['motherOnlyBasis', 'motherOnlyPlus'];
   if (plan.parents[1] && plan.parents[1].incomeBeforeNet > 0) {
     configs.push('bothBasis', 'bothPlus', 'bothPlusWithBonus');
   }
 
-  const addIfImproved = (c: Candidate) => {
+  const allRefCandidates: Candidate[] = [];
+  const maxLen = Math.max(...configs.map((c) => getDurationsForConfig(c).length));
+
+  for (let i = 0; i < maxLen; i++) {
+    for (const config of configs) {
+      const durations = getDurationsForConfig(config);
+      const totalMonths = durations[i];
+      if (totalMonths === undefined) continue;
+
+      const refPlan = createReferencePlan(plan, config, totalMonths);
+      if (!refPlan) continue;
+      const res = calculatePlan(refPlan);
+      if (!res.validation.isValid) continue;
+
+      const strategyType: Candidate['strategyType'] =
+        config === 'motherOnlyBasis' || config === 'motherOnlyPlus'
+          ? 'motherOnly'
+          : config === 'bothPlusWithBonus'
+            ? 'withPartTime'
+            : 'bothBalanced';
+      allRefCandidates.push({ plan: refPlan, result: res, strategyType });
+    }
+  }
+
+  /** Beste pro Szenario – auch wenn in anderer Dimension schlechter. */
+  const bestByScenario = new Map<ScenarioType, Candidate>();
+  for (const c of allRefCandidates) {
     const total = c.result.householdTotal;
     const duration = countBezugMonths(c.result);
+    const frontLoad = computeFrontLoadScore(c.result);
     const bonus = countPartnerBonusMonths(c.result);
-    const improved =
-      goal === 'maxMoney'
-        ? total > currentTotal
-        : goal === 'longerDuration'
-          ? duration > currentDuration
-          : goal === 'partnerBonus'
-            ? bonus > currentBonus
-            : goal === 'frontLoad'
-              ? computeFrontLoadScore(c.result) > currentFrontLoad && total >= currentTotal * 0.95
-              : total > currentTotal;
-    if (improved) addIfNew(c);
-  };
 
-  /** Round-robin über Dauer-Index. Bei longerDuration: längste Dauern zuerst, damit 24-Monats-Varianten sichtbar werden. */
-  const maxLen = Math.max(...configs.map((c) => getDurationsForConfig(c).length));
-  const indices = goal === 'longerDuration' ? [...Array(maxLen).keys()].reverse() : [...Array(maxLen).keys()];
+    const updateIfBetter = (scenario: ScenarioType, isBetter: boolean) => {
+      if (!isBetter) return;
+      const existing = bestByScenario.get(scenario);
+      if (
+        !existing ||
+        (scenario === 'maxMoney' && total > existing.result.householdTotal) ||
+        (scenario === 'longerDuration' && duration > countBezugMonths(existing.result)) ||
+        (scenario === 'frontLoad' && frontLoad > computeFrontLoadScore(existing.result)) ||
+        (scenario === 'partnerBonus' && bonus > countPartnerBonusMonths(existing.result))
+      ) {
+        bestByScenario.set(scenario, c);
+      }
+    };
+
+    updateIfBetter('maxMoney', total > 0);
+    updateIfBetter('longerDuration', duration > 0);
+    updateIfBetter('frontLoad', frontLoad > 0);
+    updateIfBetter('partnerBonus', bonus > 0);
+  }
+
+  for (const c of bestByScenario.values()) {
+    addIfNew(c);
+    if (candidates.length >= MAX_CANDIDATES) return;
+  }
+
+  /** Round-robin: weitere Varianten für Diversität, bis Limit. */
+  const indices = [0, Math.floor(maxLen / 2), maxLen - 1];
   for (const i of indices) {
-    if (candidates.length >= MAX_CANDIDATES) break;
+    if (candidates.length >= MAX_CANDIDATES) return;
     for (const config of configs) {
       if (candidates.length >= MAX_CANDIDATES) return;
       const durations = getDurationsForConfig(config);
@@ -524,7 +550,7 @@ function addReferenceConfigCandidates(
           : config === 'bothPlusWithBonus'
             ? 'withPartTime'
             : 'bothBalanced';
-      addIfImproved({ plan: refPlan, result: res, strategyType });
+      addIfNew({ plan: refPlan, result: res, strategyType });
     }
   }
 }
@@ -580,12 +606,12 @@ function findCandidates(
   return { candidates, candidateCount: candidates.length, uniqueCount };
 }
 
-/** Echte Grundalternativen: nur Mutter, beide balanced, ohne/mit Teilzeit. Nur wenn fachlich sinnvoll. */
+/** Echte Grundalternativen: nur Mutter, beide balanced, ohne/mit Teilzeit. Als Szenarien, ohne Ausschluss nach anderen Dimensionen. */
 function addAlternativeCandidates(
   plan: ElterngeldCalculationPlan,
-  currentResult: CalculationResult,
+  _currentResult: CalculationResult,
   candidates: Candidate[],
-  goal: OptimizationGoal,
+  _goal: OptimizationGoal,
   addIfNew: AddCandidateFn
 ): void {
   const parentB = plan.parents[1];
@@ -595,13 +621,6 @@ function addAlternativeCandidates(
   const monthsA = getBezugMonths(plan.parents[0]);
   const hasFatherMonths = monthsB.length > 0;
   const hasBoth = monthsA.length > 0 && monthsB.length > 0;
-  const currentTotal = currentResult.householdTotal;
-
-  const addIfSensible = (c: Candidate) => {
-    if (goal === 'maxMoney' && c.result.householdTotal < currentTotal) return;
-    if (goal === 'longerDuration' && countBezugMonths(c.result) <= countBezugMonths(currentResult)) return;
-    addIfNew(c);
-  };
 
   if (candidates.length >= MAX_CANDIDATES) return;
 
@@ -609,7 +628,7 @@ function addAlternativeCandidates(
     const motherOnly = createMotherOnlyPlan(plan);
     if (motherOnly) {
       const res = calculatePlan(motherOnly);
-      addIfSensible({ plan: motherOnly, result: res, strategyType: 'motherOnly' });
+      addIfNew({ plan: motherOnly, result: res, strategyType: 'motherOnly' });
     }
   }
 
@@ -617,7 +636,7 @@ function addAlternativeCandidates(
     const balanced = createBothBalancedPlan(plan);
     if (balanced) {
       const res = calculatePlan(balanced);
-      addIfSensible({ plan: balanced, result: res, strategyType: 'bothBalanced' });
+      addIfNew({ plan: balanced, result: res, strategyType: 'bothBalanced' });
     }
   }
 
@@ -633,7 +652,7 @@ function addAlternativeCandidates(
     const withoutPartTime = createWithoutPartTimePlan(plan);
     if (withoutPartTime) {
       const res = calculatePlan(withoutPartTime);
-      addIfSensible({ plan: withoutPartTime, result: res, strategyType: 'withoutPartTime' });
+      addIfNew({ plan: withoutPartTime, result: res, strategyType: 'withoutPartTime' });
     }
   }
 
@@ -643,7 +662,7 @@ function addAlternativeCandidates(
       const res = calculatePlan(withPartTime);
       const bonusMonths = countPartnerBonusMonths(res);
       if (bonusMonths > 0) {
-        addIfSensible({ plan: withPartTime, result: res, strategyType: 'withPartTime' });
+        addIfNew({ plan: withPartTime, result: res, strategyType: 'withPartTime' });
       }
     }
   }
@@ -859,32 +878,6 @@ function createWithoutPartTimePlan(plan: ElterngeldCalculationPlan): ElterngeldC
   return changed ? copy : null;
 }
 
-/** Filtert Kandidaten: nur solche behalten, die das Ziel tatsächlich verbessern */
-function filterImprovedCandidates(
-  candidates: Candidate[],
-  currentResult: CalculationResult,
-  goal: OptimizationGoal
-): Candidate[] {
-  const baseTotal = currentResult.householdTotal;
-  const baseDuration = countBezugMonths(currentResult);
-  const basePartnerBonusMonths = countPartnerBonusMonths(currentResult);
-
-  const baseFrontLoadScore = goal === 'frontLoad' ? computeFrontLoadScore(currentResult) : 0;
-  const MIN_TOTAL_RATIO = 0.95;
-
-  return candidates.filter((c) => {
-    if (goal === 'maxMoney') return c.result.householdTotal > baseTotal;
-    if (goal === 'longerDuration') return countBezugMonths(c.result) > baseDuration;
-    if (goal === 'partnerBonus') return countPartnerBonusMonths(c.result) > basePartnerBonusMonths;
-    if (goal === 'frontLoad') {
-      const flScore = computeFrontLoadScore(c.result);
-      const total = c.result.householdTotal;
-      return flScore > baseFrontLoadScore && total >= baseTotal * MIN_TOTAL_RATIO;
-    }
-    return false;
-  });
-}
-
 /** Zählt Monate mit Partnerschaftsbonus im Ergebnis */
 function countPartnerBonusMonths(result: CalculationResult): number {
   const months = new Set<number>();
@@ -914,19 +907,36 @@ function computeFrontLoadScore(result: CalculationResult): number {
   return score;
 }
 
-/** Ergebnis-Fingerprint für Duplikaterkennung (identische Ausgaben) */
-function resultFingerprint(c: Candidate, goal?: OptimizationGoal): string {
+/** Ergebnis-Fingerprint für Duplikaterkennung (identische Ausgaben inkl. FrontLoad-Verteilung) */
+function resultFingerprint(c: Candidate): string {
   const total = c.result.householdTotal;
   const duration = countBezugMonths(c.result);
   const bonus = countPartnerBonusMonths(c.result);
   const strategy = c.strategyType;
-  if (goal === 'frontLoad') {
-    return `${total}-${duration}-${bonus}-${strategy}-${computeFrontLoadScore(c.result)}`;
-  }
-  return `${total}-${duration}-${bonus}-${strategy}`;
+  const frontLoad = computeFrontLoadScore(c.result);
+  return `${total}-${duration}-${bonus}-${strategy}-${frontLoad}`;
 }
 
-/** Sortiert nach Ziel und wählt maximal 3 unterschiedliche Kandidaten (ohne Duplikate) */
+const SCENARIO_TYPES: ScenarioType[] = ['maxMoney', 'longerDuration', 'frontLoad', 'partnerBonus'];
+
+/** Ermittelt den besten Kandidaten für ein Szenario aus der Liste. */
+function bestForScenario(candidates: Candidate[], scenario: ScenarioType): Candidate | null {
+  if (candidates.length === 0) return null;
+  return candidates.reduce((best, c) => {
+    const total = c.result.householdTotal;
+    const duration = countBezugMonths(c.result);
+    const frontLoad = computeFrontLoadScore(c.result);
+    const bonus = countPartnerBonusMonths(c.result);
+    if (!best) return c;
+    if (scenario === 'maxMoney') return total > best.result.householdTotal ? c : best;
+    if (scenario === 'longerDuration') return duration > countBezugMonths(best.result) ? c : best;
+    if (scenario === 'frontLoad') return frontLoad > computeFrontLoadScore(best.result) ? c : best;
+    if (scenario === 'partnerBonus') return bonus > countPartnerBonusMonths(best.result) ? c : best;
+    return best;
+  }, null as Candidate | null);
+}
+
+/** Szenariobasierte Auswahl: gewähltes Ziel priorisiert, andere sinnvolle Trade-off-Szenarien bleiben erhalten. Max 3, keine Duplikate. */
 function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[] {
   if (candidates.length === 0) return [];
 
@@ -935,45 +945,42 @@ function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[
   const deduped: Candidate[] = [];
   for (const c of candidates) {
     const fp = planFingerprint(c.plan);
-    const rf = resultFingerprint(c, goal);
+    const rf = resultFingerprint(c);
     if (seenPlan.has(fp) || seenResult.has(rf)) continue;
     seenPlan.add(fp);
     seenResult.add(rf);
     deduped.push(c);
   }
 
-  const sorted =
-    goal === 'maxMoney'
-      ? [...deduped].sort((a, b) => {
-          const diff = b.result.householdTotal - a.result.householdTotal;
-          if (diff !== 0) return diff;
-          return countBezugMonths(b.result) - countBezugMonths(a.result);
-        })
-      : goal === 'longerDuration'
-        ? [...deduped].sort((a, b) => {
-            const diff = countBezugMonths(b.result) - countBezugMonths(a.result);
-            if (diff !== 0) return diff;
-            return b.result.householdTotal - a.result.householdTotal;
-          })
-        : goal === 'partnerBonus'
-          ? [...deduped].sort((a, b) => {
-              const bonusA = countPartnerBonusMonths(a.result);
-              const bonusB = countPartnerBonusMonths(b.result);
-              if (bonusB !== bonusA) return bonusB - bonusA;
-              const diff = b.result.householdTotal - a.result.householdTotal;
-              if (diff !== 0) return diff;
-              return countBezugMonths(b.result) - countBezugMonths(a.result);
-            })
-          : goal === 'frontLoad'
-            ? [...deduped].sort((a, b) => {
-                const flA = computeFrontLoadScore(a.result);
-                const flB = computeFrontLoadScore(b.result);
-                if (flB !== flA) return flB - flA;
-                return b.result.householdTotal - a.result.householdTotal;
-              })
-            : [...deduped];
+  const goalScenario = goal as ScenarioType;
+  const scenarioOrder: ScenarioType[] =
+    goalScenario === 'balanced'
+      ? [...SCENARIO_TYPES]
+      : [goalScenario, ...SCENARIO_TYPES.filter((s) => s !== goalScenario)];
 
-  return sorted.slice(0, MAX_SUGGESTIONS);
+  const result: Candidate[] = [];
+  const added = new Set<Candidate>();
+
+  for (const scenario of scenarioOrder) {
+    if (result.length >= MAX_SUGGESTIONS) break;
+    const best = bestForScenario(deduped, scenario);
+    if (best && !added.has(best)) {
+      result.push(best);
+      added.add(best);
+    }
+  }
+
+  /** Strategie-Vielfalt: bothBalanced explizit einbeziehen, wenn noch keiner in result und Platz (gemeinsame Aufteilung = sinnvolles Szenario) */
+  const hasBothBalanced = result.some((c) => c.strategyType === 'bothBalanced');
+  if (result.length < MAX_SUGGESTIONS && !hasBothBalanced) {
+    const bothBalanced = deduped.find((c) => c.strategyType === 'bothBalanced' && !added.has(c));
+    if (bothBalanced) {
+      result.push(bothBalanced);
+      added.add(bothBalanced);
+    }
+  }
+
+  return result;
 }
 
 /**

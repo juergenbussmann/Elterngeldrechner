@@ -29,7 +29,7 @@ import {
   type OptimizationResultSet,
   type OptimizationSuggestion,
 } from '../calculation/elterngeldOptimization';
-import { buildDecisionContext, type DecisionContext, type DecisionOption } from '../calculation/decisionContext';
+import { buildDecisionContext, SCENARIO_SHORT_LABELS, type DecisionContext, type DecisionOption } from '../calculation/decisionContext';
 import { buildStepDecisionContext, type StepDecisionContext } from '../calculation/stepDecisionFlow';
 import {
   getExplainableAdvantageWhenSameDurationLessTotal,
@@ -466,6 +466,8 @@ type StepOptimizationBlockProps = {
   hideDiscardButton?: boolean;
   /** Blendet Zurück-Button (Monatsaufteilung bearbeiten) aus. */
   hideBackButton?: boolean;
+  /** Führt zurück zur Zielauswahl (Overlay-Einstiegsview). Nur im Overlay-Pfad. */
+  onBackToGoalSelection?: () => void;
   originalPlanForOptimization?: ElterngeldCalculationPlan | null;
   originalResultForOptimization?: CalculationResult | null;
   lastAdoptedPlan?: ElterngeldCalculationPlan | null;
@@ -474,6 +476,8 @@ type StepOptimizationBlockProps = {
   onResolvedResultChange?: (result: CalculationResult) => void;
   /** Optional: Plan der gewählten Variante (für direkte Übernahme ohne Overlay) */
   onResolvedPlanChange?: (plan: ElterngeldCalculationPlan) => void;
+  /** Nutzerpriorität für Kennzeichnung in der UI (z. B. aus Zielauswahl) */
+  optimizationGoal?: OptimizationGoal;
 };
 
 type OptimizationComparisonBlockProps = {
@@ -621,12 +625,14 @@ export function StepOptimizationBlock({
   skipToStrategyStep,
   hideDiscardButton,
   hideBackButton,
+  onBackToGoalSelection,
   originalPlanForOptimization,
   originalResultForOptimization,
   lastAdoptedPlan,
   lastAdoptedResult,
   onResolvedResultChange,
   onResolvedPlanChange,
+  optimizationGoal,
 }: StepOptimizationBlockProps) {
   const [selectedOptionPerStep, setSelectedOptionPerStep] = useState<number[]>([]);
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
@@ -643,10 +649,15 @@ export function StepOptimizationBlock({
             lastAdoptedResult: lastAdoptedResult ?? null,
             selectedOptionPerStep,
             strategyStepRequireExplicitSelection: skipToStrategyStep,
+            userPriorityGoal: optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) ? optimizationGoal : undefined,
           }
-        : { selectedOptionPerStep, strategyStepRequireExplicitSelection: skipToStrategyStep };
+        : {
+            selectedOptionPerStep,
+            strategyStepRequireExplicitSelection: skipToStrategyStep,
+            userPriorityGoal: optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) ? optimizationGoal : undefined,
+          };
     return buildStepDecisionContext(plan, result, opts);
-  }, [plan, result, originalPlanForOptimization, originalResultForOptimization, lastAdoptedPlan, lastAdoptedResult, selectedOptionPerStep, skipToStrategyStep]);
+  }, [plan, result, originalPlanForOptimization, originalResultForOptimization, lastAdoptedPlan, lastAdoptedResult, selectedOptionPerStep, skipToStrategyStep, optimizationGoal]);
 
   const { decisionSteps, finalResolvedPlan, finalResolvedResult, baselineLabel, baselineExplanation } = stepContext;
 
@@ -761,6 +772,11 @@ export function StepOptimizationBlock({
             Vergleich zu: <strong>{baselineLabel}</strong>
           </p>
           <p className="elterngeld-calculation__baseline-explanation">{baselineExplanation}</p>
+          {optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) && (
+            <p className="elterngeld-step__hint" role="status">
+              Dein gewähltes Ziel: <strong>{SCENARIO_SHORT_LABELS[optimizationGoal] ?? optimizationGoal}</strong>
+            </p>
+          )}
           <div className="elterngeld-step-flow__progress" role="progressbar" aria-valuenow={currentStepIndex + 1} aria-valuemin={1} aria-valuemax={decisionSteps.length}>
             <span className="elterngeld-step-flow__progress-label">
               Schritt {currentStepIndex + 1} von {decisionSteps.length}
@@ -820,8 +836,12 @@ export function StepOptimizationBlock({
               step.stepOptions.every((o) => o.result.householdTotal === step.stepOptions[0].result.householdTotal);
             return (
               <div key={step.id} className="elterngeld-step-flow__step elterngeld-step-flow__step--active">
-                <h3 className="elterngeld-step__title">{step.stepQuestion}</h3>
-                <p className="elterngeld-calculation__decision-reason">{step.stepDescription}</p>
+                {!skipToStrategyStep && (
+                  <>
+                    <h3 className="elterngeld-step__title">{step.stepQuestion}</h3>
+                    <p className="elterngeld-calculation__decision-reason">{step.stepDescription}</p>
+                  </>
+                )}
                 {allSameTotal && (
                   <p className="elterngeld-calculation__gleichstand-hint">
                     Diese Varianten führen zur gleichen Gesamtauszahlung – sie unterscheiden sich in der Aufteilung.
@@ -886,6 +906,11 @@ export function StepOptimizationBlock({
               </Button>
             )}
             <div className="elterngeld-calculation__optimization-actions-secondary">
+              {onBackToGoalSelection && (
+                <Button type="button" variant="secondary" className="btn--softpill" onClick={onBackToGoalSelection}>
+                  Zurück zur Zielauswahl
+                </Button>
+              )}
               {onDiscardOptimization && !hideDiscardButton && (
                 <Button type="button" variant="secondary" className="btn--softpill" onClick={onDiscardOptimization}>
                   Aktuellen Plan beibehalten
@@ -1132,12 +1157,7 @@ function OptionCard({
 
   const cardContent = (
     <>
-      <span className="elterngeld-calculation__suggestion-title">
-        {opt.label}
-        {opt.recommended && (
-          <span className="elterngeld-calculation__option-badge">empfohlen</span>
-        )}
-      </span>
+      <span className="elterngeld-calculation__suggestion-title">{opt.label}</span>
       {(impactLines.length > 0 || hasStructuralOnly) && (
         <span className="elterngeld-calculation__suggestion-delta">
           {hasStructuralOnly && (
@@ -1247,6 +1267,9 @@ function OptionCard({
         {opt.strategyType !== 'current' && hasPartnerBonus(opt.result) && (
           <> · Partnerschaftsbonus</>
         )}
+        {opt.matchesUserPriority && <> · Dein Ziel</>}
+        {opt.recommended && !opt.matchesUserPriority && <> · empfohlen</>}
+        {opt.scenarioLabel && !opt.matchesUserPriority && !opt.recommended && <> · {opt.scenarioLabel}</>}
       </span>
       {!isCurrent && onAdoptOption && (
         <span
@@ -1654,6 +1677,7 @@ export const StepCalculationResult: React.FC<Props> = ({
                   lastAdoptedPlan={lastAdoptedPlan}
                   lastAdoptedResult={lastAdoptedResult}
                   onResolvedResultChange={setDisplayResultForMonths}
+                  optimizationGoal={optimizationGoal}
                 />
               </>
             )}

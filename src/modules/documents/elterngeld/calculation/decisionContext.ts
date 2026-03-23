@@ -49,6 +49,19 @@ export interface OptionImpact {
   fullSummary?: ChangeSummaryFull;
 }
 
+/** Kurzlabel pro Szenario für Kennzeichnung in der UI */
+export const SCENARIO_SHORT_LABELS: Record<string, string> = {
+  maxMoney: 'Mehr Geld insgesamt',
+  maxMoneyNotHighest: 'Fokus auf Gesamtauszahlung',
+  longerDuration: 'Längere Bezugsdauer',
+  frontLoad: 'Mehr Geld am Anfang',
+  partnerBonus: 'Partnerschaftsbonus',
+  motherOnly: 'Nur Mutter',
+  bothBalanced: 'Ausgewogenere Aufteilung',
+  withoutPartTime: 'Ohne Teilzeit',
+  withPartTime: 'Mit Partnerschaftsbonus',
+};
+
 /** Eine wählbare Option im Entscheidungskontext */
 export interface DecisionOption {
   id: string;
@@ -60,10 +73,14 @@ export interface DecisionOption {
   description: string;
   /** Strategietyp für Kategorisierung */
   strategyType: 'current' | 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus' | 'motherOnly' | 'bothBalanced' | 'withoutPartTime' | 'withPartTime' | 'bothParents' | 'simplePlanning';
+  /** Szenario-Kurzlabel für UI-Kennzeichnung (z. B. "Mehr Geld insgesamt") */
+  scenarioLabel?: string;
   /** Ist diese Option empfohlen? */
   recommended: boolean;
   /** Warum empfohlen (nur wenn recommended) */
   recommendedReason: string | null;
+  /** Entspricht der Nutzerpriorität (wenn Nutzerziel bekannt) */
+  matchesUserPriority?: boolean;
   /** Auswirkung gegenüber der Basis */
   impact: OptionImpact;
   plan: ElterngeldCalculationPlan;
@@ -98,6 +115,8 @@ export interface BuildDecisionContextOptions {
   lastAdoptedPlan?: ElterngeldCalculationPlan | null;
   lastAdoptedResult?: CalculationResult | null;
   comparisonMode?: ComparisonMode;
+  /** Nutzerpriorität (wenn bekannt), für Kennzeichnung in der UI */
+  userPriorityGoal?: OptimizationGoal;
 }
 
 /** Konsequenzbeschreibung für Schritt-3-Optionen (Nutzerverständlich) */
@@ -430,6 +449,7 @@ function getDecisionQuestion(goal: OptimizationGoal): string {
 /** Nutzer-Labels für Strategietypen (Schritt 3: Zielentscheidungen in Nutzersprache) */
 const STRATEGY_LABELS: Record<string, string> = {
   maxMoney: 'Ich möchte insgesamt möglichst viel Elterngeld bekommen',
+  maxMoneyNotHighest: 'Fokus auf Gesamtauszahlung',
   longerDuration: 'Ich möchte den Bezug möglichst lange strecken',
   frontLoad: 'Ich möchte am Anfang mehr Geld haben',
   partnerBonus: 'Partnerschaftsbonus nutzen',
@@ -484,27 +504,52 @@ export function buildDecisionContext(
     result: currentResult,
   });
 
+  const filteredReasons: { idx: number; goal: string; strategyType: string; reason: string }[] =
+    typeof import.meta !== 'undefined' && import.meta.env?.DEV ? [] : (null as unknown as { idx: number; goal: string; strategyType: string; reason: string }[]);
+
   for (let i = 0; i < suggestions.length; i++) {
     const s = suggestions[i];
     const key = getDistinctnessKey(s.plan, s.result);
-    if (seenKeys.has(key)) continue;
-    if (resultsAreEqual(currentResult, s.result)) continue;
-    if (resultsAreSemanticallyEquivalent(currentResult, s.result)) continue;
-    if (!shouldShowVariant(s, currentResult, goal)) continue;
+    if (seenKeys.has(key)) {
+      if (filteredReasons) filteredReasons.push({ idx: i, goal: s.goal, strategyType: String(s.strategyType ?? s.goal), reason: 'seenKeys' });
+      continue;
+    }
+    if (resultsAreEqual(currentResult, s.result)) {
+      if (filteredReasons) filteredReasons.push({ idx: i, goal: s.goal, strategyType: String(s.strategyType ?? s.goal), reason: 'resultsAreEqual' });
+      continue;
+    }
+    if (resultsAreSemanticallyEquivalent(currentResult, s.result)) {
+      if (filteredReasons) filteredReasons.push({ idx: i, goal: s.goal, strategyType: String(s.strategyType ?? s.goal), reason: 'resultsAreSemanticallyEquivalent' });
+      continue;
+    }
+    /** Jede Suggestion wird nach ihrem eigenen Ziel (s.goal) bewertet – nicht nach resultSet.goal. */
+    if (!shouldShowVariant(s, currentResult, s.goal)) {
+      if (filteredReasons) filteredReasons.push({ idx: i, goal: s.goal, strategyType: String(s.strategyType ?? s.goal), reason: 'shouldShowVariant' });
+      continue;
+    }
 
-    const isDuplicateOfExisting = options.some(
-      (o) => o.strategyType !== 'current' && resultsAreSemanticallyEquivalent(o.result, s.result)
+    /** Nur echte Dubletten entfernen (identisches Ergebnis), nicht Varianten mit nachvollziehbar anderem Trade-off. */
+    const isTrueDuplicate = options.some(
+      (o) => o.strategyType !== 'current' && resultsAreEqual(o.result, s.result)
     );
-    if (isDuplicateOfExisting) continue;
+    if (isTrueDuplicate) {
+      if (filteredReasons) filteredReasons.push({ idx: i, goal: s.goal, strategyType: String(s.strategyType ?? s.goal), reason: 'isTrueDuplicate' });
+      continue;
+    }
     seenKeys.add(key);
 
-    const { advantage, tradeoff } = getAdvantageTradeoff(s, baseResult, goal);
+    const { advantage, tradeoff } = getAdvantageTradeoff(s, baseResult, s.goal as OptimizationGoal);
     const changeSummary = getChangeSummary(baseResult, s.result);
     const coreChanges = getCoreChanges(baseResult, s.result);
     const concrete = getConcreteChangeSummary(basePlan, s.plan, baseResult, s.result);
 
     const strategyType = mapStrategyType(s.strategyType);
     const label = STRATEGY_LABELS[strategyType] ?? s.title;
+    let scenarioLabel = SCENARIO_SHORT_LABELS[s.goal] ?? SCENARIO_SHORT_LABELS[strategyType] ?? null;
+    const userPriorityGoal = opts?.userPriorityGoal;
+    const matchesUserPriority = Boolean(
+      userPriorityGoal && (s.goal === userPriorityGoal || strategyType === userPriorityGoal)
+    );
     const isStep3Strategy = ['maxMoney', 'longerDuration', 'frontLoad'].includes(strategyType);
     const description = isStep3Strategy
       ? (STEP3_STRATEGY_CONSEQUENCES[strategyType] ?? s.explanation)
@@ -518,6 +563,8 @@ export function buildDecisionContext(
       label,
       description,
       strategyType,
+      scenarioLabel: scenarioLabel ?? undefined,
+      matchesUserPriority: matchesUserPriority || undefined,
       recommended: s.status === 'improved' && isFirstNonCurrent,
       recommendedReason: s.status === 'improved' && isFirstNonCurrent ? recommendedReasonText : null,
       impact: {
@@ -533,6 +580,23 @@ export function buildDecisionContext(
       result: s.result,
       suggestion: s,
     });
+  }
+
+  /** Max-Geld-Titel/Label nur für die Variante mit höchster Gesamtauszahlung – sonst „Fokus auf Gesamtauszahlung“. */
+  const nonCurrentOptions = options.filter((o) => o.strategyType !== 'current');
+  const maxTotal = nonCurrentOptions.length > 0 ? Math.max(...nonCurrentOptions.map((o) => o.result.householdTotal)) : 0;
+  for (const opt of nonCurrentOptions) {
+    if (
+      (opt.strategyType === 'maxMoney' || opt.suggestion?.goal === 'maxMoney') &&
+      opt.result.householdTotal < maxTotal
+    ) {
+      if (opt.scenarioLabel === SCENARIO_SHORT_LABELS.maxMoney) {
+        opt.scenarioLabel = SCENARIO_SHORT_LABELS.maxMoneyNotHighest;
+      }
+      if (opt.label === STRATEGY_LABELS.maxMoney) {
+        opt.label = STRATEGY_LABELS.maxMoneyNotHighest;
+      }
+    }
   }
 
   for (let j = 1; j < options.length; j++) {
@@ -551,6 +615,14 @@ export function buildDecisionContext(
   }
 
   const clampedIndex = Math.max(0, Math.min(selectedOptionIndex, options.length - 1));
+
+  if (filteredReasons && filteredReasons.length > 0) {
+    console.log('[buildDecisionContext] Gefilterte Suggestions', {
+      inputCount: suggestions.length,
+      outputOptionsCount: options.length,
+      filteredReasons,
+    });
+  }
 
   return {
     decisionQuestion: getDecisionQuestion(goal),

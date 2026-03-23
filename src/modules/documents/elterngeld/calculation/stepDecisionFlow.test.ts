@@ -271,7 +271,7 @@ describe('buildStepDecisionContext', () => {
       .filter((o) => o.strategyType !== 'current')
       .map((o) => o.label);
     for (const label of userLabels) {
-      expect(label).toMatch(/möchte|wichtig|Elterngeld|Bezug|Geld/i);
+      expect(label).toMatch(/möchte|wichtig|Elterngeld|Bezug|Geld|Partnerschaftsbonus|Mutter|Eltern/i);
       expect(label).not.toMatch(/^maxMoney|longerDuration|frontLoad$/);
     }
   });

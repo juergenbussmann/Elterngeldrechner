@@ -159,13 +159,19 @@ export function getExplainableAdvantageWhenSameDurationLessTotal(
     return 'Gleiche Dauer, aber stärker auf einen Elternteil verlagert.';
   }
 
+  /* Ausgewogenere gemeinsame Aufteilung: beide Eltern mit Monaten, ausgeglichener als aktuell */
+  if (optDiff < curDiff && optA > 0 && optB > 0 && Math.abs(optDiff - curDiff) >= 1) {
+    return 'Gleiche Dauer, aber ausgewogenere Aufteilung zwischen beiden Eltern.';
+  }
+
   return null;
 }
 
 /**
  * Prüft, ob eine Variante angezeigt werden darf.
- * Varianten mit gleicher Dauer und weniger Geld werden nur angezeigt,
- * wenn ein erklärbarer Vorteil aus den Daten ableitbar ist.
+ * Varianten mit höherer Summe oder anderer Dauer: immer anzeigen.
+ * Varianten mit gleicher Dauer und weniger Geld: anzeigen, wenn ein erkennbarer
+ * fachlicher Vorteil vorliegt (mehr am Anfang, Bonus, ausgewogenere Aufteilung usw.).
  */
 export function shouldShowVariant(
   suggestion: OptimizationSuggestion,

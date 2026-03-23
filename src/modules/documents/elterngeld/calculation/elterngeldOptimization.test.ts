@@ -116,7 +116,7 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
   });
 
   describe('C) Bereits gut verteilter Ausgangsplan', () => {
-    it('C1: Höherer Elternteil hat bereits alle Monate (12) – maxMoney keine Verbesserung', () => {
+    it('C1: Höherer Elternteil hat bereits alle Monate (12) – szenariobasierte Alternativen (Trade-offs)', () => {
       const plan = createPlan({});
       plan.parents[0].incomeBeforeNet = 1200;
       plan.parents[1].incomeBeforeNet = 3500;
@@ -127,8 +127,10 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
 
       expect(outcome).not.toBeNull();
       if ('suggestions' in outcome) {
-        expect(outcome.suggestions.length).toBe(0);
-        expect(outcome.status).toBe('no_candidate');
+        // Szenariobasiert: Auch bei optimaler Summe bleiben andere Szenarien sichtbar (z.B. längere Dauer, gemeinsame Aufteilung)
+        expect(outcome.status).toBe('checked_but_not_better');
+        expect(outcome.suggestions.length).toBeGreaterThan(0);
+        expect(outcome.suggestions.every((s) => s.optimizedTotal <= result.householdTotal)).toBe(true);
       }
     });
   });

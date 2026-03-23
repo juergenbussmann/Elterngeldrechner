@@ -4,7 +4,8 @@
  * Keine Business-Logik, nur Daten-Mapping.
  */
 
-import type { ElterngeldApplication } from './types/elterngeldTypes';
+import type { ElterngeldApplication, MonthDistributionEntry } from './types/elterngeldTypes';
+import { EMPTY_ELTERNGELD_PARENT } from './types/elterngeldTypes';
 import type { ElterngeldCalculationPlan } from './calculation';
 
 function countBelegteMonate(months: { mode: string }[]): number {
@@ -18,6 +19,29 @@ function hasPlusOrBonus(months: { mode: string }[]): boolean {
 function getHoursFromMonths(months: { hoursPerWeek?: number }[]): number | undefined {
   const m = months.find((x) => x.hoursPerWeek != null && x.hoursPerWeek > 0);
   return m?.hoursPerWeek;
+}
+
+function isValidMonthMode(v: string): v is MonthDistributionEntry['modeA'] {
+  return ['none', 'basis', 'plus', 'partnerBonus'].includes(v);
+}
+
+/** Extrahiert konkrete Monatsverteilung aus Plan für Monate 1..maxMonth. */
+function extractMonthDistribution(
+  plan: ElterngeldCalculationPlan,
+  maxMonth: number
+): MonthDistributionEntry[] {
+  const parentA = plan.parents[0];
+  const parentB = plan.parents.length > 1 ? plan.parents[1] : null;
+  const byMonthA = new Map(parentA.months.map((m) => [m.month, m.mode]));
+  const byMonthB = new Map(parentB?.months.map((m) => [m.month, m.mode]) ?? []);
+
+  const result: MonthDistributionEntry[] = [];
+  for (let m = 1; m <= maxMonth; m++) {
+    const modeA = isValidMonthMode(byMonthA.get(m) ?? 'none') ? (byMonthA.get(m) as MonthDistributionEntry['modeA']) : 'none';
+    const modeB = isValidMonthMode(byMonthB.get(m) ?? 'none') ? (byMonthB.get(m) as MonthDistributionEntry['modeB']) : 'none';
+    result.push({ month: m, modeA, modeB });
+  }
+  return result;
 }
 
 /**
@@ -37,8 +61,19 @@ export function mergePlanIntoPreparation(
   const hasPlus = hasPlusOrBonus(parentA.months) || (parentB ? hasPlusOrBonus(parentB.months) : false);
   const model = hasPB || hasPlus ? 'plus' : 'basis';
 
+  const maxMonth = model === 'plus' ? 24 : 14;
+  const concreteMonthDistribution = extractMonthDistribution(plan, maxMonth);
+
+  const hasPartnerMonths = countB > 0;
+  const applicantMode = hasPartnerMonths ? ('both_parents' as const) : current.applicantMode;
+  const effectiveParentB =
+    parentB && (current.parentB || hasPartnerMonths)
+      ? (current.parentB ?? { ...EMPTY_ELTERNGELD_PARENT })
+      : current.parentB;
+
   const updated: ElterngeldApplication = {
     ...current,
+    applicantMode,
     child: {
       ...current.child,
       birthDate: plan.childBirthDate || current.child.birthDate,
@@ -51,21 +86,22 @@ export function mergePlanIntoPreparation(
       plannedPartTime: (getHoursFromMonths(parentA.months) ?? 0) > 0,
       hoursPerWeek: getHoursFromMonths(parentA.months) ?? current.parentA.hoursPerWeek,
     },
-    parentB: current.parentB && parentB
+    parentB: effectiveParentB && parentB
       ? {
-          ...current.parentB,
-          incomeBeforeBirth: parentB.incomeBeforeNet > 0 ? String(parentB.incomeBeforeNet) : current.parentB.incomeBeforeBirth,
-          employmentType: parentB.employmentType ?? current.parentB.employmentType,
+          ...effectiveParentB,
+          incomeBeforeBirth: parentB.incomeBeforeNet > 0 ? String(parentB.incomeBeforeNet) : effectiveParentB.incomeBeforeBirth,
+          employmentType: parentB.employmentType ?? effectiveParentB.employmentType,
           plannedPartTime: (getHoursFromMonths(parentB.months) ?? 0) > 0,
-          hoursPerWeek: getHoursFromMonths(parentB.months) ?? current.parentB.hoursPerWeek,
+          hoursPerWeek: getHoursFromMonths(parentB.months) ?? effectiveParentB.hoursPerWeek,
         }
-      : current.parentB,
+      : effectiveParentB ?? null,
     benefitPlan: {
       ...current.benefitPlan,
       model,
       parentAMonths: String(countA),
       parentBMonths: String(countB),
       partnershipBonus: hasPB,
+      concreteMonthDistribution,
     },
   };
 

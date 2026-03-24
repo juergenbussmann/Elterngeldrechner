@@ -236,7 +236,7 @@ export const StepSummary: React.FC<Props> = ({
               Antrag vorbereiten
             </Button>
             <p className="elterngeld-step__hint elterngeld-summary__forms-hint">
-              Formulare werden basierend auf deinen Angaben erstellt.
+              Aus deinen Angaben: Formulare und Checkliste im nächsten Schritt.
             </p>
           </>
         )}

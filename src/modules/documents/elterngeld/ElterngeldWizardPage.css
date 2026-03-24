@@ -2985,3 +2985,88 @@
   color: var(--color-error, #dc2626);
   font-weight: 500;
 }
+
+.elterngeld-documents__intro-card {
+  margin-bottom: 1rem;
+}
+
+.elterngeld-documents__lead {
+  margin: 0 0 0.75rem;
+}
+
+.elterngeld-documents__overview p {
+  margin: 0 0 0.5rem;
+}
+
+.elterngeld-documents__overview p:last-child {
+  margin-bottom: 0;
+}
+
+.elterngeld-documents__output-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.elterngeld-documents__output-card {
+  margin-bottom: 0;
+}
+
+.elterngeld-documents__output-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.elterngeld-documents__output-title {
+  font-size: 1rem;
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.elterngeld-documents__status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.elterngeld-documents__status--available {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--color-success, #166534);
+}
+
+.elterngeld-documents__status--planned {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--color-text-muted, #475569);
+}
+
+.elterngeld-documents__status--info {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary-700, #1d4ed8);
+}
+
+.elterngeld-documents__output-desc {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #475569);
+}
+
+.elterngeld-documents__output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.elterngeld-documents__checklist-heading {
+  font-size: 1rem;
+  margin-top: 0;
+}

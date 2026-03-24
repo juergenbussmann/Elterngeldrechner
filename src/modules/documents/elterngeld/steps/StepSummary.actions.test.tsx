@@ -63,7 +63,9 @@ describe('StepSummary – Aktionen', () => {
 
     expect(screen.getAllByRole('button', { name: /Optimierung ansehen/i })).toHaveLength(1);
     expect(screen.getByRole('button', { name: /Antrag vorbereiten/i })).toBeTruthy();
-    expect(screen.getByText(/Formulare werden basierend auf deinen Angaben erstellt/i)).toBeTruthy();
+    expect(
+      screen.getByText(/Aus deinen Angaben: Formulare und Checkliste im nächsten Schritt/i)
+    ).toBeTruthy();
     expect(screen.queryByText(/Bundesland/i)).toBeNull();
   });
 });

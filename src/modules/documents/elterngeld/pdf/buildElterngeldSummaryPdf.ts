@@ -1,120 +1,233 @@
 /**
  * PDF-Generierung für Elterngeld-Vorbereitung.
  * Vorbereitungsdokument, kein offizieller Antrag.
+ * Inhalt aus dem kanonischen Dokumentenmodell (buildElterngeldDocumentModel).
  */
 
 import { jsPDF } from 'jspdf';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
-import { GERMAN_STATES } from '../stateConfig';
-import { getElterngeldDeadlineInfo, formatDateGerman, parseIsoDate } from '../elterngeldDeadlines';
+import type { CalculationResult } from '../calculation';
+import { formatDateGerman, parseIsoDate } from '../elterngeldDeadlines';
+import { buildElterngeldDocumentModel } from '../documentModel/buildElterngeldDocumentModel';
+import {
+  ELTERNGELD_PDF_LINE_HEIGHT,
+  ELTERNGELD_PDF_MARGIN,
+  ELTERNGELD_PDF_TEXT_WIDTH,
+  elterngeldPdfAddWrappedText,
+  elterngeldPdfFormatCurrency,
+} from './elterngeldPdfCommon';
 
-const MARGIN = 25;
-const PAGE_WIDTH = 210;
-const TEXT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
-const LINE_HEIGHT = 6;
+export function buildElterngeldSummaryPdf(
+  values: ElterngeldApplication,
+  liveResult?: CalculationResult | null
+): Blob {
+  const model = buildElterngeldDocumentModel(values, liveResult);
 
-function addWrappedText(
-  doc: jsPDF,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  fontSize: number
-): number {
-  const lines = doc.splitTextToSize(text, maxWidth);
-  doc.setFontSize(fontSize);
-  doc.text(lines, x, y);
-  return y + lines.length * (fontSize * 0.4);
-}
-
-export function buildElterngeldSummaryPdf(values: ElterngeldApplication): Blob {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   doc.setFont('helvetica');
   doc.setFontSize(11);
   doc.setTextColor(0, 0, 0);
 
-  let y = MARGIN;
+  let y = ELTERNGELD_PDF_MARGIN;
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Elterngeld-Vorbereitung', MARGIN, y);
-  y += LINE_HEIGHT * 1.5;
+  doc.text('Elterngeld-Vorbereitung', ELTERNGELD_PDF_MARGIN, y);
+  y += ELTERNGELD_PDF_LINE_HEIGHT * 1.5;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
 
-  const stateName = GERMAN_STATES.find((s) => s.stateCode === values.state)?.displayName || values.state || '–';
-  y = addWrappedText(doc, `Bundesland: ${stateName}`, MARGIN, y, TEXT_WIDTH, 10);
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    `Bundesland: ${model.stateDisplayName}`,
+    ELTERNGELD_PDF_MARGIN,
+    y,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
   y += 3;
 
-  const birthDate = parseIsoDate(values.child.birthDate);
+  const birthDate = parseIsoDate(model.child.birthDate);
   const birthStr = birthDate ? formatDateGerman(birthDate) : '–';
-  const expectedDate = parseIsoDate(values.child.expectedBirthDate);
+  const expectedDate = parseIsoDate(model.child.expectedBirthDate);
   const expectedStr = expectedDate ? formatDateGerman(expectedDate) : '–';
-  y = addWrappedText(doc, `Geburtsdatum: ${birthStr}`, MARGIN, y, TEXT_WIDTH, 10);
-  y = addWrappedText(doc, `Voraussichtlicher Geburtstermin: ${expectedStr}`, MARGIN, y + 2, TEXT_WIDTH, 10);
+  y = elterngeldPdfAddWrappedText(doc, `Geburtsdatum: ${birthStr}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    `Voraussichtlicher Geburtstermin: ${expectedStr}`,
+    ELTERNGELD_PDF_MARGIN,
+    y + 2,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
   y += 5;
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Eltern', MARGIN, y);
-  y += LINE_HEIGHT;
+  doc.text('Eltern', ELTERNGELD_PDF_MARGIN, y);
+  y += ELTERNGELD_PDF_LINE_HEIGHT;
   doc.setFont('helvetica', 'normal');
-  y = addWrappedText(
+  y = elterngeldPdfAddWrappedText(
     doc,
-    `Sie: ${values.parentA.firstName} ${values.parentA.lastName}`,
-    MARGIN,
+    `Sie: ${model.parentA.firstName} ${model.parentA.lastName}`,
+    ELTERNGELD_PDF_MARGIN,
     y,
-    TEXT_WIDTH,
+    ELTERNGELD_PDF_TEXT_WIDTH,
     10
   );
-  y = addWrappedText(doc, `Beschäftigung: ${values.parentA.employmentType}`, MARGIN, y + 2, TEXT_WIDTH, 10);
-  if (values.parentA.incomeBeforeBirth) {
-    y = addWrappedText(doc, `Einkommen vor Geburt: ${values.parentA.incomeBeforeBirth}`, MARGIN, y + 2, TEXT_WIDTH, 10);
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    `Beschäftigung: ${model.parentA.employmentType}`,
+    ELTERNGELD_PDF_MARGIN,
+    y + 2,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
+  if (model.parentA.incomeBeforeBirth) {
+    y = elterngeldPdfAddWrappedText(
+      doc,
+      `Einkommen vor Geburt: ${model.parentA.incomeBeforeBirth}`,
+      ELTERNGELD_PDF_MARGIN,
+      y + 2,
+      ELTERNGELD_PDF_TEXT_WIDTH,
+      10
+    );
+  }
+  if (model.parentB) {
+    y += 3;
+    y = elterngeldPdfAddWrappedText(
+      doc,
+      `Partner: ${model.parentB.firstName} ${model.parentB.lastName}`,
+      ELTERNGELD_PDF_MARGIN,
+      y,
+      ELTERNGELD_PDF_TEXT_WIDTH,
+      10
+    );
+    y = elterngeldPdfAddWrappedText(
+      doc,
+      `Beschäftigung: ${model.parentB.employmentType}`,
+      ELTERNGELD_PDF_MARGIN,
+      y + 2,
+      ELTERNGELD_PDF_TEXT_WIDTH,
+      10
+    );
+    if (model.parentB.incomeBeforeBirth) {
+      y = elterngeldPdfAddWrappedText(
+        doc,
+        `Einkommen vor Geburt: ${model.parentB.incomeBeforeBirth}`,
+        ELTERNGELD_PDF_MARGIN,
+        y + 2,
+        ELTERNGELD_PDF_TEXT_WIDTH,
+        10
+      );
+    }
   }
   y += 5;
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Geplanter Elterngeld-Bezug', MARGIN, y);
-  y += LINE_HEIGHT;
+  doc.text('Geplanter Elterngeld-Bezug', ELTERNGELD_PDF_MARGIN, y);
+  y += ELTERNGELD_PDF_LINE_HEIGHT;
   doc.setFont('helvetica', 'normal');
-  y = addWrappedText(doc, `Modell: ${values.benefitPlan.model}`, MARGIN, y, TEXT_WIDTH, 10);
-  y = addWrappedText(doc, `Ihre Monate: ${values.benefitPlan.parentAMonths || '–'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
-  y = addWrappedText(doc, `Monate Partner: ${values.benefitPlan.parentBMonths || '–'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
-  y = addWrappedText(doc, `Partnerschaftsbonus: ${values.benefitPlan.partnershipBonus ? 'Ja' : 'Nein'}`, MARGIN, y + 2, TEXT_WIDTH, 10);
+  y = elterngeldPdfAddWrappedText(doc, `Modell: ${model.benefitPlan.model}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    `Ihre Monate: ${model.benefitPlan.parentAMonths || '–'}`,
+    ELTERNGELD_PDF_MARGIN,
+    y + 2,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    `Monate Partner: ${model.benefitPlan.parentBMonths || '–'}`,
+    ELTERNGELD_PDF_MARGIN,
+    y + 2,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    `Partnerschaftsbonus: ${model.benefitPlan.partnershipBonus ? 'Ja' : 'Nein'}`,
+    ELTERNGELD_PDF_MARGIN,
+    y + 2,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
   y += 5;
+
+  if (model.calculation) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Orientierung (unverbindliche Schätzung)', ELTERNGELD_PDF_MARGIN, y);
+    y += ELTERNGELD_PDF_LINE_HEIGHT;
+    doc.setFont('helvetica', 'normal');
+    for (const pt of model.calculation.parentTotals) {
+      y = elterngeldPdfAddWrappedText(
+        doc,
+        `${pt.label}: ${elterngeldPdfFormatCurrency(pt.total)}`,
+        ELTERNGELD_PDF_MARGIN,
+        y,
+        ELTERNGELD_PDF_TEXT_WIDTH,
+        10
+      );
+    }
+    y = elterngeldPdfAddWrappedText(
+      doc,
+      `Haushalt gesamt: ${elterngeldPdfFormatCurrency(model.calculation.householdTotal)}`,
+      ELTERNGELD_PDF_MARGIN,
+      y + 2,
+      ELTERNGELD_PDF_TEXT_WIDTH,
+      10
+    );
+    y += 5;
+  }
+
+  if (model.stateNotes?.trim()) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hinweis zum Bundesland', ELTERNGELD_PDF_MARGIN, y);
+    y += ELTERNGELD_PDF_LINE_HEIGHT;
+    doc.setFont('helvetica', 'normal');
+    y = elterngeldPdfAddWrappedText(doc, model.stateNotes.trim(), ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+    y += 5;
+  }
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Unterlagen-Checkliste', MARGIN, y);
-  y += LINE_HEIGHT;
+  doc.text('Unterlagen-Checkliste', ELTERNGELD_PDF_MARGIN, y);
+  y += ELTERNGELD_PDF_LINE_HEIGHT;
   doc.setFont('helvetica', 'normal');
-  const docs = ['Geburtsurkunde', 'Einkommensnachweise', 'Bankverbindung'];
-  docs.forEach((d) => {
-    y = addWrappedText(doc, `• ${d}`, MARGIN, y, TEXT_WIDTH, 10);
-  });
+  for (const d of model.checklistItems) {
+    y = elterngeldPdfAddWrappedText(doc, `• ${d}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+  }
   y += 5;
 
-  const deadlineInfo = getElterngeldDeadlineInfo(values);
+  const deadlineInfo = model.deadlines;
   if (deadlineInfo.deadlineLabel || deadlineInfo.noticeText) {
     doc.setFont('helvetica', 'bold');
-    doc.text('Fristenhinweise', MARGIN, y);
-    y += LINE_HEIGHT;
+    doc.text('Fristenhinweise', ELTERNGELD_PDF_MARGIN, y);
+    y += ELTERNGELD_PDF_LINE_HEIGHT;
     doc.setFont('helvetica', 'normal');
     if (deadlineInfo.deadlineLabel) {
-      y = addWrappedText(doc, deadlineInfo.deadlineLabel, MARGIN, y, TEXT_WIDTH, 10);
+      y = elterngeldPdfAddWrappedText(doc, deadlineInfo.deadlineLabel, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
     }
     if (deadlineInfo.noticeText) {
-      y = addWrappedText(doc, deadlineInfo.noticeText, MARGIN, y + 2, TEXT_WIDTH, 10);
+      y = elterngeldPdfAddWrappedText(
+        doc,
+        deadlineInfo.noticeText,
+        ELTERNGELD_PDF_MARGIN,
+        y + 2,
+        ELTERNGELD_PDF_TEXT_WIDTH,
+        10
+      );
     }
     y += 5;
   }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  y = addWrappedText(
+  y = elterngeldPdfAddWrappedText(
     doc,
     'Hinweis: Dies ist eine Vorbereitungsübersicht, kein offizieller Elterngeld-Antrag. Die Antragstellung erfolgt beim zuständigen Landesamt.',
-    MARGIN,
+    ELTERNGELD_PDF_MARGIN,
     y + 5,
-    TEXT_WIDTH,
+    ELTERNGELD_PDF_TEXT_WIDTH,
     9
   );
 

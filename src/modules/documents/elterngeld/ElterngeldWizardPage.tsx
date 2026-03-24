@@ -30,6 +30,8 @@ import { buildOptimizationResult } from './calculation/elterngeldOptimization';
 import { mergePlanIntoPreparation } from './planToApplicationMerge';
 import { isPartnerBonusPartTimeHoursEligible } from './partnerBonusEligibility';
 import { buildElterngeldSummaryPdf } from './pdf/buildElterngeldSummaryPdf';
+import { buildElterngeldApplicationPdf } from './pdf/buildElterngeldApplicationPdf';
+import { buildElterngeldDocumentModel } from './documentModel/buildElterngeldDocumentModel';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
 import './ElterngeldWizardPage.css';
 import './ElterngeldFlowStepper.css';
@@ -72,6 +74,7 @@ export const ElterngeldWizardPage: React.FC = () => {
   });
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isApplicationPdfSubmitting, setIsApplicationPdfSubmitting] = useState(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [scrollToId, setScrollToId] = useState<string | null>(null);
   const [showOptimizationOverlay, setShowOptimizationOverlay] = useState(false);
@@ -216,7 +219,7 @@ export const ElterngeldWizardPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       if (import.meta.env.DEV) console.time('[documents] PDF build (ElterngeldSummary)');
-      const blob = buildElterngeldSummaryPdf(values);
+      const blob = buildElterngeldSummaryPdf(values, liveResult);
       if (import.meta.env.DEV) console.timeEnd('[documents] PDF build (ElterngeldSummary)');
       await addDocument({
         title: 'Elterngeld-Vorbereitung',
@@ -232,7 +235,30 @@ export const ElterngeldWizardPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [values, showToast]);
+  }, [values, liveResult, showToast]);
+
+  const handleCreateApplicationPdf = useCallback(async () => {
+    setIsApplicationPdfSubmitting(true);
+    try {
+      if (import.meta.env.DEV) console.time('[documents] PDF build (ElterngeldApplication)');
+      const model = buildElterngeldDocumentModel(values, liveResult);
+      const blob = buildElterngeldApplicationPdf(model);
+      if (import.meta.env.DEV) console.timeEnd('[documents] PDF build (ElterngeldApplication)');
+      await addDocument({
+        title: 'Elterngeld-Antragsformular (Vorbereitung)',
+        createdAt: new Date().toISOString(),
+        mimeType: 'application/pdf',
+        blob,
+      });
+      showToast('documents.elterngeld.pdfCreated', { kind: 'success', durationMs: 5000 });
+      setShowSuccess(true);
+    } catch (err) {
+      console.error('[elterngeld] application PDF creation failed', err);
+      showToast('documents.elterngeld.pdfError', { kind: 'error' });
+    } finally {
+      setIsApplicationPdfSubmitting(false);
+    }
+  }, [values, liveResult, showToast]);
 
   if (showSuccess) {
     return (
@@ -343,7 +369,14 @@ export const ElterngeldWizardPage: React.FC = () => {
           />
         )}
         {step.id === 'documents' && (
-          <StepDocuments values={values} />
+          <StepDocuments
+            values={values}
+            liveResult={liveResult}
+            onCreatePdf={handleCreatePdf}
+            isSubmitting={isSubmitting}
+            onCreateApplicationPdf={handleCreateApplicationPdf}
+            isApplicationPdfSubmitting={isApplicationPdfSubmitting}
+          />
         )}
         {step.id !== 'summary' && (
           <div className="next-steps__stack elterngeld-actions">

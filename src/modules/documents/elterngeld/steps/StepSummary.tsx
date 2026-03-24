@@ -93,6 +93,8 @@ type Props = {
   onBackToPlan?: () => void;
   onOpenOptimization?: () => void;
   onNavigateToCalculation?: () => void;
+  /** Nächster Schritt: Formulare/Antrag (Wizard-Dokumente), ohne zusätzliche Eingaben. */
+  onProceedToDocuments?: () => void;
   liveResult?: CalculationResult | null;
   optimizationSummary?: OptimizationSummary;
 };
@@ -104,6 +106,7 @@ export const StepSummary: React.FC<Props> = ({
   onBackToPlan,
   onOpenOptimization,
   onNavigateToCalculation,
+  onProceedToDocuments,
   liveResult,
   optimizationSummary = { hasAnySuggestions: false, partnerBonusSuggestion: null },
 }) => {
@@ -187,15 +190,9 @@ export const StepSummary: React.FC<Props> = ({
 
       {displayHint && displayHint.type === 'optimization' && onOpenOptimization && (
         <div className="elterngeld-summary__optimization-hint elterngeld-step__notice elterngeld-step__notice--tip">
-          <p className="elterngeld-summary__hint-text">Dein Plan funktioniert. Du kannst ihn noch optimieren – mehr Geld oder bessere Verteilung.</p>
-          <Button
-            type="button"
-            variant="secondary"
-            className="btn--softpill elterngeld-summary__action-secondary"
-            onClick={onOpenOptimization}
-          >
-            Optimierung ansehen
-          </Button>
+          <p className="elterngeld-summary__hint-text">
+            Dein Plan funktioniert. Du kannst ihn noch optimieren – mehr Geld oder bessere Verteilung.
+          </p>
         </div>
       )}
 
@@ -227,6 +224,22 @@ export const StepSummary: React.FC<Props> = ({
       )}
 
       <div className="elterngeld-summary__actions elterngeld-summary__actions--secondary">
+        {onProceedToDocuments && (
+          <>
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              className="next-steps__button btn--softpill elterngeld-summary__action-primary"
+              onClick={onProceedToDocuments}
+            >
+              Antrag vorbereiten
+            </Button>
+            <p className="elterngeld-step__hint elterngeld-summary__forms-hint">
+              Formulare werden basierend auf deinen Angaben erstellt.
+            </p>
+          </>
+        )}
         {result && result.validation.errors.length === 0 && onOpenOptimization && (
           <Button
             type="button"
@@ -241,23 +254,12 @@ export const StepSummary: React.FC<Props> = ({
         {onNavigateToCalculation && result && result.validation.errors.length === 0 && (
           <Button
             type="button"
-            variant="primary"
-            fullWidth
-            className="next-steps__button btn--softpill elterngeld-summary__action-primary"
-            onClick={onNavigateToCalculation}
-          >
-            Ergebnis prüfen
-          </Button>
-        )}
-        {onBackToPlan && (
-          <Button
-            type="button"
             variant="secondary"
             fullWidth
             className="next-steps__button btn--softpill elterngeld-summary__action-secondary"
-            onClick={onBackToPlan}
+            onClick={onNavigateToCalculation}
           >
-            Zurück zur Planung
+            Ergebnis prüfen
           </Button>
         )}
         <Button
@@ -270,6 +272,17 @@ export const StepSummary: React.FC<Props> = ({
         >
           {isSubmitting ? 'Wird erstellt…' : 'PDF Übersicht erstellen'}
         </Button>
+        {onBackToPlan && (
+          <Button
+            type="button"
+            variant="ghost"
+            fullWidth
+            className="next-steps__button elterngeld-summary__action-back"
+            onClick={onBackToPlan}
+          >
+            Zurück zur Planung
+          </Button>
+        )}
       </div>
     </Card>
   );

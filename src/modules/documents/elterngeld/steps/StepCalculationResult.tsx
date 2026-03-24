@@ -3,7 +3,7 @@
  * Klarer Optimierungsblock mit zielabhängiger Darstellung.
  */
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import { Modal } from '../../../../shared/ui/Modal';
@@ -16,10 +16,11 @@ import {
   type PartnerBonusAction,
 } from './PartnerBonusCheckDialog';
 import { getMonthGridItemsFromResults } from '../monthGridMappings';
-import type {
-  CalculationResult,
-  MonthlyResult,
-  ElterngeldCalculationPlan,
+import {
+  validatePartnerBonus,
+  type CalculationResult,
+  type MonthlyResult,
+  type ElterngeldCalculationPlan,
 } from '../calculation';
 import {
   buildOptimizationResult,
@@ -42,6 +43,13 @@ import type { CombinedWho } from '../calculation/monthCombinedState';
 import type { MonthMode } from '../calculation';
 import { isPlanEmpty } from '../infra/calculationPlanStorage';
 import { getAdoptionStatus } from './adoptionStatus';
+import type { ElterngeldApplication } from '../types/elterngeldTypes';
+import {
+  ADOPTION_EXPLICIT_PART_TIME_HINT,
+  isAdoptionExplicitPartTimeSatisfied,
+  validatePartnerBonusWithExplicitUserHours,
+  variantHasPartnerschaftsbonus,
+} from './adoptionExplicitPartTime';
 
 const MODE_LABELS: Record<string, string> = {
   none: '–',
@@ -73,7 +81,7 @@ function formatCurrencySigned(amount: number): string {
   return formatted;
 }
 
-function countBezugMonths(result: CalculationResult): number {
+function countBezugMonthsCore(result: CalculationResult): number {
   const months = new Set<number>();
   for (const p of result.parents) {
     for (const r of p.monthlyResults) {
@@ -101,7 +109,7 @@ function countPartnerBonusMonths(result: CalculationResult): number {
 
 function getSuggestionDedupKey(s: OptimizationSuggestion): string {
   const total = Math.round(s.result.householdTotal);
-  const duration = countBezugMonths(s.result);
+  const duration = countBezugMonthsCore(s.result);
   const bonus = countPartnerBonusMonths(s.result);
   const modeSig = s.result.parents
     .map((p) =>
@@ -117,6 +125,40 @@ function getSuggestionDedupKey(s: OptimizationSuggestion): string {
 
 function formatMonthsLabel(n: number, singular: string, plural: string): string {
   return n === 1 ? singular : plural;
+}
+
+/**
+ * Übernahme-Freigabe (PB-Varianten): (1) fehlende explizite Teilzeit, (2) validatePartnerBonus auf Plan
+ * mit **Nutzern**-Stunden (kein Optimizer-Fallback), (3) sonstige PB-Varianten ohne PB wie zuvor validatePartnerBonus(Variante).
+ */
+function getOptimizationAdoptUiState(
+  variantPlan: ElterngeldCalculationPlan,
+  ctx: { userPlan: ElterngeldCalculationPlan; application?: ElterngeldApplication | null }
+): { allowed: boolean; hint: string | null } {
+  const fallbackPbHint =
+    'Vor der Übernahme bitte die Voraussetzungen für den Partnerschaftsbonus anpassen (z. B. Teilzeit zwischen 24 und 32 Stunden pro Woche).';
+
+  if (!variantHasPartnerschaftsbonus(variantPlan)) {
+    const { isValid, warnings } = validatePartnerBonus(variantPlan);
+    if (!isValid) {
+      return { allowed: false, hint: warnings[0] ?? fallbackPbHint };
+    }
+    return { allowed: true, hint: null };
+  }
+
+  if (!isAdoptionExplicitPartTimeSatisfied(variantPlan, ctx.userPlan, ctx.application ?? null)) {
+    return { allowed: false, hint: ADOPTION_EXPLICIT_PART_TIME_HINT };
+  }
+
+  const pbExplicit = validatePartnerBonusWithExplicitUserHours(
+    variantPlan,
+    ctx.userPlan,
+    ctx.application ?? null
+  );
+  if (!pbExplicit.isValid) {
+    return { allowed: false, hint: pbExplicit.warnings[0] ?? fallbackPbHint };
+  }
+  return { allowed: true, hint: null };
 }
 
 function formatStateLabel(who: CombinedWho, mode: MonthMode): string {
@@ -310,23 +352,6 @@ function getResultChangePreviewUserFriendly(
   return lines;
 }
 
-/** Prüft ob zwei Results strukturell gleich sind (für Optimierungsvergleich). */
-function resultsAreEqual(a: CalculationResult, b: CalculationResult): boolean {
-  if (a.parents.length !== b.parents.length) return false;
-  for (let i = 0; i < a.parents.length; i++) {
-    const pa = a.parents[i];
-    const pb = b.parents[i];
-    if (pa.monthlyResults.length !== pb.monthlyResults.length) return false;
-    const byMonthA = new Map(pa.monthlyResults.map((r) => [r.month, r.mode]));
-    const byMonthB = new Map(pb.monthlyResults.map((r) => [r.month, r.mode]));
-    const allMonths = new Set([...byMonthA.keys(), ...byMonthB.keys()]);
-    for (const m of allMonths) {
-      if ((byMonthA.get(m) ?? 'none') !== (byMonthB.get(m) ?? 'none')) return false;
-    }
-  }
-  return true;
-}
-
 type PlanStability = 'gut' | 'pruefen' | 'kritisch';
 
 function getPlanStability(result: CalculationResult): {
@@ -460,6 +485,8 @@ type StepOptimizationBlockProps = {
   onBackToOptimization?: () => void;
   /** Schließt Overlay/Ansicht und führt sichtbar in die Monatsaufteilungs-Bearbeitung. */
   onNavigateToMonthEditing?: () => void;
+  /** Führt zur Stundeneingabe (Vorbereitung: Eltern & Arbeit; Rechner: Eingabe Monatsplan). */
+  onNavigateToPartTimeSettings?: () => void;
   /** Startet direkt bei der Strategie-/Ziel-Auswahl (Step 3). */
   skipToStrategyStep?: boolean;
   /** Blendet „Aktuellen Plan beibehalten“ aus. */
@@ -478,6 +505,12 @@ type StepOptimizationBlockProps = {
   onResolvedPlanChange?: (plan: ElterngeldCalculationPlan) => void;
   /** Nutzerpriorität für Kennzeichnung in der UI (z. B. aus Zielauswahl) */
   optimizationGoal?: OptimizationGoal;
+  /** false: zentrale 24–32-h-Regel nicht erfüllt – kein Partnerbonus-Pfad im Overlay (Standard true). */
+  partnerBonusHoursEligible?: boolean;
+  /** Wird im Overlay bei jeder Teilzeitänderung im Modal erhöht (nur Anzeige-Hinweis, keine Logik). */
+  partTimeEditGeneration?: number;
+  /** Vorbereitungsdaten: für Übernahme-Prüfung „explizit eingetragene Teilzeit“ (nicht nur Fallback-Schätzung). */
+  elterngeldApplicationForAdoption?: ElterngeldApplication | null;
 };
 
 type OptimizationComparisonBlockProps = {
@@ -495,6 +528,10 @@ type OptimizationComparisonBlockProps = {
   originalResultForOptimization?: CalculationResult | null;
   lastAdoptedPlan?: ElterngeldCalculationPlan | null;
   lastAdoptedResult?: CalculationResult | null;
+  onNavigateToPartTimeSettings?: () => void;
+  elterngeldApplicationForAdoption?: ElterngeldApplication | null;
+  /** Nutzer-Basisplan für Adopt-Prüfung (Standard: Optimierungs-`currentPlan`). */
+  adoptUserPlan?: ElterngeldCalculationPlan | null;
 };
 
 type AdoptConfirmDialogProps = {
@@ -622,6 +659,7 @@ export function StepOptimizationBlock({
   onDiscardOptimization,
   onBackToOptimization,
   onNavigateToMonthEditing,
+  onNavigateToPartTimeSettings,
   skipToStrategyStep,
   hideDiscardButton,
   hideBackButton,
@@ -633,9 +671,14 @@ export function StepOptimizationBlock({
   onResolvedResultChange,
   onResolvedPlanChange,
   optimizationGoal,
+  partnerBonusHoursEligible = true,
+  partTimeEditGeneration = 0,
+  elterngeldApplicationForAdoption = null,
 }: StepOptimizationBlockProps) {
   const [selectedOptionPerStep, setSelectedOptionPerStep] = useState<number[]>([]);
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
+  const [variantTotalsUnchangedHint, setVariantTotalsUnchangedHint] = useState<string | null>(null);
+  const lastVariantTotalsSig = useRef<string | null>(null);
   /** Einheitlicher State: immer gesetzt vor Adopt-Dialog-Öffnung – ein Pfad für alle Varianten */
   const [adoptDialogOption, setAdoptDialogOption] = useState<{ plan: ElterngeldCalculationPlan; result: CalculationResult; financialDelta: number; durationDelta: number } | null>(null);
 
@@ -650,56 +693,82 @@ export function StepOptimizationBlock({
             selectedOptionPerStep,
             strategyStepRequireExplicitSelection: skipToStrategyStep,
             userPriorityGoal: optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) ? optimizationGoal : undefined,
+            partnerBonusHoursEligible,
           }
         : {
             selectedOptionPerStep,
             strategyStepRequireExplicitSelection: skipToStrategyStep,
             userPriorityGoal: optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) ? optimizationGoal : undefined,
+            partnerBonusHoursEligible,
           };
     return buildStepDecisionContext(plan, result, opts);
-  }, [plan, result, originalPlanForOptimization, originalResultForOptimization, lastAdoptedPlan, lastAdoptedResult, selectedOptionPerStep, skipToStrategyStep, optimizationGoal]);
+  }, [
+    plan,
+    result,
+    originalPlanForOptimization,
+    originalResultForOptimization,
+    lastAdoptedPlan,
+    lastAdoptedResult,
+    selectedOptionPerStep,
+    skipToStrategyStep,
+    optimizationGoal,
+    partnerBonusHoursEligible,
+  ]);
 
   const { decisionSteps, finalResolvedPlan, finalResolvedResult, baselineLabel, baselineExplanation } = stepContext;
+
+  const optimizationInputRevision = useMemo(
+    () =>
+      [
+        ...plan.parents.map((p) =>
+          p.months.map((m) => `${m.month}:${m.mode}:${m.hoursPerWeek ?? ''}`).join(';')
+        ),
+        String(result.householdTotal),
+      ].join('|'),
+    [plan, result]
+  );
 
   useEffect(() => {
     if (!skipToStrategyStep || !decisionSteps.length) return;
     const targetLen = decisionSteps.length - 1;
     if (targetLen <= 0) return;
-    setSelectedOptionPerStep((prev) => {
-      if (prev.length >= targetLen) return prev;
-      return Array(targetLen).fill(0);
-    });
-  }, [skipToStrategyStep, decisionSteps.length]);
+    setSelectedOptionPerStep(Array(targetLen).fill(0));
+  }, [skipToStrategyStep, decisionSteps.length, optimizationInputRevision]);
+
+  useEffect(() => {
+    if (!skipToStrategyStep) {
+      setVariantTotalsUnchangedHint(null);
+      lastVariantTotalsSig.current = null;
+      return;
+    }
+    const sig = decisionSteps
+      .flatMap((s) => s.stepOptions.map((o) => `${Math.round(o.result.householdTotal)}-${countBezugMonthsCore(o.result)}`))
+      .join('|');
+    if (partTimeEditGeneration > 0 && lastVariantTotalsSig.current !== null && lastVariantTotalsSig.current === sig) {
+      setVariantTotalsUnchangedHint(
+        'Die angezeigten Kennzahlen der Varianten bleiben unter der Schätzung unverändert – trotz angepasster Wochenstunden. Eure Eingabe ist im Plan übernommen.'
+      );
+    } else if (partTimeEditGeneration > 0) {
+      setVariantTotalsUnchangedHint(null);
+    }
+    lastVariantTotalsSig.current = sig;
+  }, [skipToStrategyStep, decisionSteps, partTimeEditGeneration]);
 
   const currentStepIndex = Math.min(selectedOptionPerStep.length, decisionSteps.length - 1);
   const currentStep = decisionSteps[currentStepIndex];
-  const selectedOption = currentStep?.stepOptions[
-    Math.max(0, Math.min(currentStep?.selectedOptionIndex ?? 0, (currentStep?.stepOptions.length ?? 1) - 1))
-  ];
 
   const hasAnyAlternatives = decisionSteps.some((s) => s.stepOptions.length > 1);
-  const isFinalDifferent = !resultsAreEqual(result, finalResolvedResult);
-  const hasSelectableVariant =
-    selectedOption && selectedOption.strategyType !== 'current';
-  const canAdopt =
-    onAdoptOptimization &&
-    (isFinalDifferent || hasSelectableVariant);
-
-  const openAdoptDialog = useCallback(() => {
-    if (!selectedOption?.impact || selectedOption.strategyType === 'current')
-      return;
-    setAdoptDialogOption({
-      plan: selectedOption.plan,
-      result: selectedOption.result,
-      financialDelta: selectedOption.impact.financialDelta,
-      durationDelta: selectedOption.impact.durationDelta,
-    });
-    setShowAdoptConfirm(true);
-  }, [selectedOption]);
 
   const openAdoptDialogForOption = useCallback((opt: DecisionOption) => {
     if (opt.strategyType === 'current') return;
     if (!opt?.impact) return;
+    if (
+      !getOptimizationAdoptUiState(opt.plan, {
+        userPlan: plan,
+        application: elterngeldApplicationForAdoption,
+      }).allowed
+    )
+      return;
     setAdoptDialogOption({
       plan: opt.plan,
       result: opt.result,
@@ -707,7 +776,7 @@ export function StepOptimizationBlock({
       durationDelta: opt.impact.durationDelta,
     });
     setShowAdoptConfirm(true);
-  }, []);
+  }, [plan, elterngeldApplicationForAdoption]);
 
   const closeAdoptDialog = useCallback(() => {
     setShowAdoptConfirm(false);
@@ -741,7 +810,16 @@ export function StepOptimizationBlock({
         <AdoptConfirmDialog
           isOpen={showAdoptConfirm}
           onClose={closeAdoptDialog}
-          onConfirm={() => onAdoptOptimization?.(adoptDialogOption.plan)}
+          onConfirm={() => {
+            if (
+              !getOptimizationAdoptUiState(adoptDialogOption.plan, {
+                userPlan: plan,
+                application: elterngeldApplicationForAdoption,
+              }).allowed
+            )
+              return;
+            onAdoptOptimization?.(adoptDialogOption.plan);
+          }}
           currentResult={currentResultForStep}
           optimizedResult={adoptDialogOption.result}
           formatCurrency={formatCurrency}
@@ -765,13 +843,20 @@ export function StepOptimizationBlock({
           <p className="elterngeld-calculation__data-basis-hint">
             Die Optimierung basiert auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
           </p>
-          <p className="elterngeld-calculation__adoption-hint">
-            Vergleich zum aktuellen Plan. Änderungen gelten erst nach Übernahme – dein Plan bleibt unverändert.
-          </p>
+          {!skipToStrategyStep && (
+            <p className="elterngeld-calculation__adoption-hint">
+              Vergleich zum aktuellen Plan. Änderungen gelten erst nach Übernahme – dein Plan bleibt unverändert.
+            </p>
+          )}
           <p className="elterngeld-calculation__baseline-hint">
             Vergleich zu: <strong>{baselineLabel}</strong>
           </p>
           <p className="elterngeld-calculation__baseline-explanation">{baselineExplanation}</p>
+          {variantTotalsUnchangedHint && (
+            <p className="elterngeld-step__notice elterngeld-step__notice--tip" role="status">
+              {variantTotalsUnchangedHint}
+            </p>
+          )}
           {optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) && (
             <p className="elterngeld-step__hint" role="status">
               Dein gewähltes Ziel: <strong>{SCENARIO_SHORT_LABELS[optimizationGoal] ?? optimizationGoal}</strong>
@@ -784,11 +869,30 @@ export function StepOptimizationBlock({
           </div>
           {currentStepIndex > 0 && (() => {
             const prevStep = decisionSteps[currentStepIndex - 1];
-            if (!prevStep?.feedbackAfterSelection && !prevStep?.nextStepHint) return null;
+            const showPartTimeHoursLink =
+              prevStep?.kind === 'partTime' &&
+              !!onNavigateToPartTimeSettings &&
+              prevStep.stepOptions[Math.max(0, prevStep.selectedOptionIndex)]?.strategyType ===
+                'withPartTime';
+            if (!prevStep?.feedbackAfterSelection && !prevStep?.nextStepHint && !showPartTimeHoursLink) {
+              return null;
+            }
             return (
               <div className="elterngeld-step-flow__transition" role="status">
                 {prevStep.feedbackAfterSelection && (
                   <p className="elterngeld-step-flow__feedback">{prevStep.feedbackAfterSelection}</p>
+                )}
+                {showPartTimeHoursLink && (
+                  <div className="elterngeld-step-flow__feedback elterngeld-step__hint">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="next-steps__button btn--softpill"
+                      onClick={() => onNavigateToPartTimeSettings?.()}
+                    >
+                      Teilzeitstunden anpassen
+                    </Button>
+                  </div>
                 )}
                 {prevStep.nextStepHint && (
                   <p className="elterngeld-step-flow__next-hint">{prevStep.nextStepHint}</p>
@@ -802,6 +906,10 @@ export function StepOptimizationBlock({
             const isStrategyStepSingleOption = step.kind === 'optimization' && step.stepOptions.length === 1;
             if (isStrategyStepSingleOption) {
               const opt = step.stepOptions[0];
+              const singlePbAdopt = getOptimizationAdoptUiState(opt.plan, {
+                userPlan: plan,
+                application: elterngeldApplicationForAdoption,
+              });
               return (
                 <div key={step.id} className="elterngeld-step-flow__step elterngeld-step-flow__step--active">
                   <h3 className="elterngeld-step__title">Für eure Situation gibt es aktuell nur eine sinnvolle Variante.</h3>
@@ -816,16 +924,39 @@ export function StepOptimizationBlock({
                       <span className="elterngeld-plan__summary-value">{countBezugMonths(opt.result)} Monate</span>
                     </div>
                   </div>
-                  <div className="elterngeld-calculation__optimization-actions">
-                    {opt.strategyType !== 'current' && onAdoptOptimization && (
+                  {opt.strategyType === 'withPartTime' && onNavigateToPartTimeSettings && (
+                    <div className="elterngeld-step__hint elterngeld-step-flow__feedback">
                       <Button
                         type="button"
-                        variant="primary"
-                        className="btn--softpill elterngeld-calculation__optimization-action-primary"
-                        onClick={() => openAdoptDialogForOption(opt)}
+                        variant="secondary"
+                        className="next-steps__button btn--softpill"
+                        onClick={() => onNavigateToPartTimeSettings?.()}
                       >
-                        Diese Variante übernehmen
+                        Teilzeitstunden anpassen
                       </Button>
+                    </div>
+                  )}
+                  <div className="elterngeld-calculation__optimization-actions">
+                    {opt.strategyType !== 'current' && onAdoptOptimization && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          className="btn--softpill elterngeld-calculation__optimization-action-primary"
+                          disabled={!singlePbAdopt.allowed}
+                          onClick={() => openAdoptDialogForOption(opt)}
+                        >
+                          Diese Variante übernehmen
+                        </Button>
+                        {!singlePbAdopt.allowed && singlePbAdopt.hint && (
+                          <span
+                            className="elterngeld-step__notice elterngeld-step__notice--tip elterngeld-calculation__optimization-adopt-block-hint"
+                            role="status"
+                          >
+                            {singlePbAdopt.hint}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -862,6 +993,9 @@ export function StepOptimizationBlock({
                       formatCurrencySigned={formatCurrencySigned}
                       onSelectOption={(idx) => handleSelectOption(currentStepIndex, idx)}
                       onAdoptOption={onAdoptOptimization ? openAdoptDialogForOption : undefined}
+                      onNavigateToPartTimeSettings={onNavigateToPartTimeSettings}
+                      adoptUserPlan={plan}
+                      adoptApplication={elterngeldApplicationForAdoption}
                     />
                   ))}
                 </div>
@@ -940,9 +1074,13 @@ function OptimizationComparisonBlock({
   originalResultForOptimization,
   lastAdoptedPlan,
   lastAdoptedResult,
+  onNavigateToPartTimeSettings,
+  elterngeldApplicationForAdoption = null,
+  adoptUserPlan = null,
 }: OptimizationComparisonBlockProps) {
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
   const { goal, status, currentResult, suggestions } = optimizationResultSet;
+  const comparisonAdoptUserPlan = adoptUserPlan ?? optimizationResultSet.currentPlan;
 
   const decisionContext = useMemo(() => {
     const opts =
@@ -962,7 +1100,13 @@ function OptimizationComparisonBlock({
   const selectedOption = options[clampedIndex];
   const hasAlternatives = options.length > 1;
   const isCurrentSelected = selectedOption?.strategyType === 'current';
-  const canAdopt = !isCurrentSelected && selectedOption && onAdoptOptimization;
+  const showAdoptPrimary = !isCurrentSelected && selectedOption && onAdoptOptimization;
+  const comparisonPbAdopt = selectedOption
+    ? getOptimizationAdoptUiState(selectedOption.plan, {
+        userPlan: comparisonAdoptUserPlan,
+        application: elterngeldApplicationForAdoption,
+      })
+    : { allowed: true, hint: null as string | null };
 
   const isAlreadyOptimal = options.length <= 1 || (status !== 'improved' && status !== 'checked_but_not_better');
 
@@ -971,7 +1115,17 @@ function OptimizationComparisonBlock({
       <AdoptConfirmDialog
         isOpen={showAdoptConfirm}
         onClose={() => setShowAdoptConfirm(false)}
-        onConfirm={() => selectedOption && selectedOption.strategyType !== 'current' && onAdoptOptimization?.(selectedOption.plan)}
+        onConfirm={() => {
+          if (!selectedOption || selectedOption.strategyType === 'current') return;
+          if (
+            !getOptimizationAdoptUiState(selectedOption.plan, {
+              userPlan: comparisonAdoptUserPlan,
+              application: elterngeldApplicationForAdoption,
+            }).allowed
+          )
+            return;
+          onAdoptOptimization?.(selectedOption.plan);
+        }}
         currentResult={currentResult}
         optimizedResult={selectedOption?.result ?? currentResult}
         formatCurrency={formatCurrency}
@@ -1039,6 +1193,9 @@ function OptimizationComparisonBlock({
                             formatCurrency={formatCurrency}
                             formatCurrencySigned={formatCurrencySigned}
                             onSelectOption={onSelectOption}
+                            onNavigateToPartTimeSettings={onNavigateToPartTimeSettings}
+                            adoptUserPlan={comparisonAdoptUserPlan}
+                            adoptApplication={elterngeldApplicationForAdoption}
                           />
                         );
                       })}
@@ -1061,6 +1218,9 @@ function OptimizationComparisonBlock({
                             formatCurrency={formatCurrency}
                             formatCurrencySigned={formatCurrencySigned}
                             onSelectOption={onSelectOption}
+                            onNavigateToPartTimeSettings={onNavigateToPartTimeSettings}
+                            adoptUserPlan={comparisonAdoptUserPlan}
+                            adoptApplication={elterngeldApplicationForAdoption}
                           />
                         );
                       })}
@@ -1071,15 +1231,26 @@ function OptimizationComparisonBlock({
             })()}
 
             <div className="elterngeld-calculation__optimization-actions">
-              {canAdopt && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="btn--softpill elterngeld-calculation__optimization-action-primary"
-                  onClick={() => setShowAdoptConfirm(true)}
-                >
-                  Diese Variante übernehmen
-                </Button>
+              {showAdoptPrimary && (
+                <>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="btn--softpill elterngeld-calculation__optimization-action-primary"
+                    disabled={!comparisonPbAdopt.allowed}
+                    onClick={() => {
+                      if (!comparisonPbAdopt.allowed) return;
+                      setShowAdoptConfirm(true);
+                    }}
+                  >
+                    Diese Variante übernehmen
+                  </Button>
+                  {!comparisonPbAdopt.allowed && comparisonPbAdopt.hint && (
+                    <p className="elterngeld-step__notice elterngeld-step__notice--tip elterngeld-calculation__optimization-adopt-block-hint" role="status">
+                      {comparisonPbAdopt.hint}
+                    </p>
+                  )}
+                </>
               )}
               <div className="elterngeld-calculation__optimization-actions-secondary">
                 {onDiscardOptimization && (
@@ -1111,7 +1282,7 @@ function OptimizationComparisonBlock({
   );
 }
 
-function OptionCard({
+export function OptionCard({
   opt,
   idx,
   clampedIndex,
@@ -1120,6 +1291,9 @@ function OptionCard({
   formatCurrencySigned,
   onSelectOption,
   onAdoptOption,
+  onNavigateToPartTimeSettings,
+  adoptUserPlan,
+  adoptApplication = null,
 }: {
   opt: DecisionOption;
   idx: number;
@@ -1129,6 +1303,9 @@ function OptionCard({
   formatCurrencySigned: (n: number) => string;
   onSelectOption: (idx: number) => void;
   onAdoptOption?: (opt: DecisionOption) => void;
+  onNavigateToPartTimeSettings?: () => void;
+  adoptUserPlan: ElterngeldCalculationPlan;
+  adoptApplication?: ElterngeldApplication | null;
 }) {
   const impactLines = getOptionImpactLines(opt, formatCurrency, formatCurrencySigned);
   const planChangeLines =
@@ -1138,11 +1315,15 @@ function OptionCard({
   const isSelected = idx === clampedIndex;
   const hasStructuralOnly = impactLines.length === 0 && planChangeLines.length > 0;
   const isCurrent = opt.strategyType === 'current';
+  const pbAdopt = getOptimizationAdoptUiState(opt.plan, {
+    userPlan: adoptUserPlan,
+    application: adoptApplication ?? null,
+  });
   const cardClassName = `elterngeld-calculation__suggestion-card ${isSelected ? 'elterngeld-calculation__suggestion-card--selected' : ''} ${hasStructuralOnly ? 'elterngeld-calculation__suggestion-card--structural-primary' : ''}`;
 
   const handleClick = () => {
     onSelectOption(idx);
-    if (!isCurrent && onAdoptOption) onAdoptOption(opt);
+    if (!isCurrent && onAdoptOption && pbAdopt.allowed) onAdoptOption(opt);
   };
 
   const cardContent = (
@@ -1188,6 +1369,27 @@ function OptionCard({
         </div>
       )}
       <span className="elterngeld-calculation__suggestion-description">{opt.description}</span>
+      {opt.strategyType === 'withPartTime' && onNavigateToPartTimeSettings && (
+        <span
+          role="button"
+          tabIndex={0}
+          className="ui-btn ui-btn--pill next-steps__button btn--softpill elterngeld-calculation__part-time-hours-cta"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onNavigateToPartTimeSettings();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              onNavigateToPartTimeSettings();
+            }
+          }}
+        >
+          Teilzeitstunden anpassen
+        </span>
+      )}
       {isSelected && opt.strategyType !== 'current' && (() => {
         const full = opt.impact.fullSummary;
         const optBreakdown = getOptimizationBreakdown(currentResult, opt.result);
@@ -1253,7 +1455,7 @@ function OptionCard({
         );
       })()}
       <span className="elterngeld-calculation__suggestion-meta">
-        {formatCurrency(opt.result.householdTotal)} · {countBezugMonths(opt.result)} Monate
+        {formatCurrency(opt.result.householdTotal)} · {countBezugMonthsCore(opt.result)} Monate
         {opt.strategyType !== 'current' && hasPartnerBonus(opt.result) && (
           <> · Partnerschaftsbonus</>
         )}
@@ -1262,24 +1464,37 @@ function OptionCard({
         {opt.scenarioLabel && !opt.matchesUserPriority && !opt.recommended && <> · {opt.scenarioLabel}</>}
       </span>
       {!isCurrent && onAdoptOption && (
-        <span
-          role="button"
-          tabIndex={0}
-          className="elterngeld-calculation__suggestion-adopt-btn btn--softpill"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdoptOption(opt);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
+        <>
+          <span
+            role="button"
+            tabIndex={pbAdopt.allowed ? 0 : -1}
+            aria-disabled={!pbAdopt.allowed}
+            className={`elterngeld-calculation__suggestion-adopt-btn btn--softpill${!pbAdopt.allowed ? ' elterngeld-calculation__suggestion-adopt-btn--disabled' : ''}`}
+            onClick={(e) => {
               e.stopPropagation();
+              if (!pbAdopt.allowed) return;
               onAdoptOption(opt);
-            }
-          }}
-        >
-          Diese Variante übernehmen
-        </span>
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!pbAdopt.allowed) return;
+                onAdoptOption(opt);
+              }
+            }}
+          >
+            Diese Variante übernehmen
+          </span>
+          {!pbAdopt.allowed && pbAdopt.hint && (
+            <span
+              className="elterngeld-step__notice elterngeld-step__notice--tip elterngeld-calculation__suggestion-adopt-hint"
+              role="status"
+            >
+              {pbAdopt.hint}
+            </span>
+          )}
+        </>
       )}
     </>
   );
@@ -1416,6 +1631,8 @@ type Props = {
   onApplyPartnerBonusFixMultiple?: (months: number[]) => void;
   /** Ersetzt den Plan durch gemeinsame Monate für Partnerschaftsbonus */
   onApplyCreatePartnerOverlap?: (suggestedPlan: ElterngeldCalculationPlan) => void;
+  /** Vorbereitung zur Prüfung „explizit eingetragene Teilzeit“ bei Übernahme (Rechner: nur wenn Vorbereitung gespeichert). */
+  elterngeldApplicationForAdoption?: ElterngeldApplication | null;
 };
 
 export const StepCalculationResult: React.FC<Props> = ({
@@ -1439,6 +1656,7 @@ export const StepCalculationResult: React.FC<Props> = ({
   onApplyPartnerBonusFix,
   onApplyPartnerBonusFixMultiple,
   onApplyCreatePartnerOverlap,
+  elterngeldApplicationForAdoption = null,
 }) => {
   const { parents, householdTotal, validation, meta } = result;
 
@@ -1656,18 +1874,22 @@ export const StepCalculationResult: React.FC<Props> = ({
                   result={result}
                   formatCurrency={formatCurrency}
                   formatCurrencySigned={formatCurrencySigned}
-                  countBezugMonths={countBezugMonths}
+                  countBezugMonths={countBezugMonthsCore}
                   hasPartnerBonus={hasPartnerBonus}
                   onAdoptOptimization={onAdoptOptimization}
                   onDiscardOptimization={onDiscardOptimization}
                   onBackToOptimization={onBackFromOptimization}
                   onNavigateToMonthEditing={onNavigateToMonthEditing ?? (onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined)}
+                  onNavigateToPartTimeSettings={
+                    onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined
+                  }
                   originalPlanForOptimization={originalPlanForOptimization}
                   originalResultForOptimization={originalResultForOptimization}
                   lastAdoptedPlan={lastAdoptedPlan}
                   lastAdoptedResult={lastAdoptedResult}
                   onResolvedResultChange={setDisplayResultForMonths}
                   optimizationGoal={optimizationGoal}
+                  elterngeldApplicationForAdoption={elterngeldApplicationForAdoption}
                 />
               </>
             )}

@@ -12,6 +12,7 @@ import { getMonthGridItemsFromValues } from '../monthGridMappings';
 import { ElterngeldSelectButton } from '../ui/ElterngeldSelectButton';
 import { applicationToCalculationPlan } from '../applicationToCalculationPlan';
 import { mergePlanIntoPreparation } from '../planToApplicationMerge';
+import { isPartnerBonusPartTimeHoursEligible } from '../partnerBonusEligibility';
 import { calculatePlan, validatePartnerBonus } from '../calculation';
 import type { OptimizationSuggestion } from '../calculation/elterngeldOptimization';
 
@@ -61,15 +62,32 @@ function getFirstRelevantMonth(result: CalculationResult): number | null {
   return null;
 }
 
-type HintAction = 'focusMonth' | 'focusEinkommen' | 'focusGrunddaten' | 'focusMonatsplan' | 'openOptimization' | 'openPartnerBonusCheck' | null;
+type HintAction =
+  | 'focusMonth'
+  | 'focusEinkommen'
+  | 'focusGrunddaten'
+  | 'focusMonatsplan'
+  | 'openOptimization'
+  | 'openPartnerBonusCheck'
+  | 'focusElternArbeit'
+  | null;
 
-function getHintActionFromWarning(warning: string, result: CalculationResult): { label: string; action: HintAction; month?: number } {
+function getHintActionFromWarning(
+  warning: string,
+  result: CalculationResult,
+  hoursEligibleForPartnerBonus: boolean
+): { label: string; action: HintAction; month?: number } {
   const month = extractMonthFromWarning(warning);
   if (month != null) return { label: `Monat ${month} anpassen`, action: 'focusMonth', month };
-  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus')) return { label: 'Partnerschaftsbonus prüfen', action: 'openPartnerBonusCheck' };
   if (warning.includes('24–32') || warning.includes('Wochenstunden') || warning.includes('Arbeitszeit')) {
     const m = getFirstRelevantMonth(result);
     return { label: 'Arbeitszeit anpassen', action: m != null ? 'focusMonth' : 'focusMonatsplan', month: m ?? undefined };
+  }
+  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus')) {
+    if (!hoursEligibleForPartnerBonus) {
+      return { label: 'Teilzeitstunden anpassen', action: 'focusElternArbeit' };
+    }
+    return { label: 'Partnerschaftsbonus prüfen', action: 'openPartnerBonusCheck' };
   }
   if (warning.includes('Einkommen')) return { label: 'Einkommen anpassen', action: 'focusEinkommen' };
   if (warning.includes('Geburtsdatum') || warning.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
@@ -114,11 +132,6 @@ const APPLY_RANGE_OPTIONS = [
   { id: 'toEnd' as const, label: 'alle folgenden Monate', count: -1 },
 ] as const;
 
-/** 24–32 h inkl.; fehlend/außerhalb → Partnerschaftsbonus-Kontext nicht erfüllt. */
-function isPartnerBonusHourBandOk(h: number | undefined | null): boolean {
-  return h != null && !Number.isNaN(h) && h >= 24 && h <= 32;
-}
-
 /** Formatiert Monatsnummern für Anzeige (z. B. "3–6" oder "3, 5, 7"). Nur Darstellung, keine Logik. */
 function formatBothMonthRange(months: number[]): string {
   if (months.length === 0) return '';
@@ -133,6 +146,22 @@ function formatBothMonthRange(months: number[]): string {
   }
   if (consecutive) return `${sorted[0]}–${sorted[sorted.length - 1]}`;
   return sorted.join(', ');
+}
+
+/** Monate, die nach einer Anpassung der Bezugszähler in der Rasteransicht als „Kein Bezug“ erscheinen (vorher nicht). */
+function computeMonthsTurnedToNone(
+  beforeValues: ElterngeldApplication,
+  afterValues: ElterngeldApplication,
+  maxMonths: number
+): number[] {
+  const itemsBefore = getMonthGridItemsFromValues(beforeValues, maxMonths);
+  const itemsAfter = getMonthGridItemsFromValues(afterValues, maxMonths);
+  return itemsBefore
+    .filter((row) => {
+      const aft = itemsAfter.find((x) => x.month === row.month);
+      return row.state !== 'none' && aft?.state === 'none';
+    })
+    .map((r) => r.month);
 }
 
 function parseMonthCount(value: string): number {
@@ -180,13 +209,13 @@ export const StepPlan: React.FC<Props> = ({
   onApplyBonusFix,
 }) => {
   const [activeMonth, setActiveMonth] = useState<number | null>(null);
-  const [showPartnerBonusCheck, setShowPartnerBonusCheck] = useState(false);
   const [selectedApplyRange, setSelectedApplyRange] = useState<ApplyRangeId | null>(null);
   const [showLeistungDetails, setShowLeistungDetails] = useState(false);
   const [showModelLeistungDetails, setShowModelLeistungDetails] = useState(false);
   const [selectedModelInDialog, setSelectedModelInDialog] = useState<'basis' | 'plus'>(() =>
     values.benefitPlan.model === 'basis' ? 'basis' : 'plus'
   );
+  const [monthGridAutoAdjustNotice, setMonthGridAutoAdjustNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeMonth !== null) {
@@ -229,12 +258,10 @@ export const StepPlan: React.FC<Props> = ({
       : 0;
   const hasPartner = values.applicantMode === 'both_parents';
 
-  const partnerBonusNotAllowed = useMemo(() => {
-    if (!hasPartner) return false;
-    const hA = values.parentA.hoursPerWeek;
-    const hB = values.parentB?.hoursPerWeek;
-    return !isPartnerBonusHourBandOk(hA) || !isPartnerBonusHourBandOk(hB);
-  }, [hasPartner, values.parentA.hoursPerWeek, values.parentB?.hoursPerWeek]);
+  const partnerBonusNotAllowed = useMemo(
+    () => hasPartner && !isPartnerBonusPartTimeHoursEligible(values),
+    [hasPartner, values]
+  );
 
   const assignMonth = useCallback(
     (month: number, who: 'mother' | 'partner' | 'both' | 'none') => {
@@ -242,47 +269,44 @@ export const StepPlan: React.FC<Props> = ({
       const bp = values.benefitPlan;
 
       const clearDistribution = { ...bp, concreteMonthDistribution: undefined };
+      let benefitPlan = clearDistribution;
       if (who === 'mother') {
-        onChange({
-          ...values,
-          benefitPlan: {
-            ...clearDistribution,
-            parentAMonths: String(capped),
-            parentBMonths: String(Math.min(countB, capped - 1)),
-            partnershipBonus: false,
-          },
-        });
+        benefitPlan = {
+          ...clearDistribution,
+          parentAMonths: String(capped),
+          parentBMonths: String(Math.min(countB, capped - 1)),
+          partnershipBonus: false,
+        };
       } else if (who === 'partner') {
-        onChange({
-          ...values,
-          benefitPlan: {
-            ...clearDistribution,
-            parentAMonths: String(Math.min(countA, capped - 1)),
-            parentBMonths: String(capped),
-            partnershipBonus: false,
-          },
-        });
+        benefitPlan = {
+          ...clearDistribution,
+          parentAMonths: String(Math.min(countA, capped - 1)),
+          parentBMonths: String(capped),
+          partnershipBonus: false,
+        };
       } else if (who === 'both') {
-        onChange({
-          ...values,
-          benefitPlan: {
-            ...clearDistribution,
-            parentAMonths: String(Math.max(countA, capped)),
-            parentBMonths: String(Math.max(countB, capped)),
-            partnershipBonus: true,
-          },
-        });
+        benefitPlan = {
+          ...clearDistribution,
+          parentAMonths: String(Math.max(countA, capped)),
+          parentBMonths: String(Math.max(countB, capped)),
+          partnershipBonus: true,
+        };
       } else {
-        onChange({
-          ...values,
-          benefitPlan: {
-            ...clearDistribution,
-            parentAMonths: String(Math.min(countA, capped - 1)),
-            parentBMonths: hasPartner ? String(Math.min(countB, capped - 1)) : bp.parentBMonths,
-          },
-        });
+        benefitPlan = {
+          ...clearDistribution,
+          parentAMonths: String(Math.min(countA, capped - 1)),
+          parentBMonths: hasPartner ? String(Math.min(countB, capped - 1)) : bp.parentBMonths,
+        };
       }
-      /* Dialog bleibt offen – Nutzer kann optional „auf Folgemonate übernehmen“ nutzen */
+
+      const nextValues = { ...values, benefitPlan };
+      const turned = computeMonthsTurnedToNone(values, nextValues, maxMonths);
+      setMonthGridAutoAdjustNotice(
+        turned.length > 0
+          ? `Die geplanten Bezugsmonate wurden angepasst. Lebensmonat${turned.length === 1 ? ' ' : 'e '}${formatBothMonthRange(turned)} ${turned.length === 1 ? 'wird' : 'werden'} jetzt als „Kein Bezug“ angezeigt, weil sich aus dieser Auswahl kürzere Bezugsdauern ergeben.`
+          : null
+      );
+      onChange(nextValues);
     },
     [values, onChange, maxMonths, countA, countB, hasPartner]
   );
@@ -365,7 +389,14 @@ export const StepPlan: React.FC<Props> = ({
       }
     }
 
-    onChange({ ...values, benefitPlan: newBp });
+    const nextValues = { ...values, benefitPlan: newBp };
+    const turned = computeMonthsTurnedToNone(values, nextValues, maxMonths);
+    setMonthGridAutoAdjustNotice(
+      turned.length > 0
+        ? `Die geplanten Bezugsmonate wurden angepasst. Lebensmonat${turned.length === 1 ? ' ' : 'e '}${formatBothMonthRange(turned)} ${turned.length === 1 ? 'wird' : 'werden'} jetzt als „Kein Bezug“ angezeigt, weil sich aus dieser Auswahl kürzere Bezugsdauern ergeben.`
+        : null
+    );
+    onChange(nextValues);
     closePanel();
   }, [
     selectedApplyRange,
@@ -395,6 +426,7 @@ export const StepPlan: React.FC<Props> = ({
 
   const mainHint = useMemo(() => {
     if (!planResult) return null;
+    const hoursEligible = isPartnerBonusPartTimeHoursEligible(values);
     const { validation } = planResult;
     const firstError = validation.errors[0];
     if (firstError) {
@@ -402,11 +434,11 @@ export const StepPlan: React.FC<Props> = ({
       if (action) return { text: firstError, label, action: action as HintAction, month: undefined as number | undefined };
     }
     for (const w of validation.warnings) {
-      const { label, action, month } = getHintActionFromWarning(w, planResult);
+      const { label, action, month } = getHintActionFromWarning(w, planResult, hoursEligible);
       if (action) return { text: w, label, action, month };
     }
     return null;
-  }, [planResult]);
+  }, [planResult, values]);
 
   return (
     <Card id="elterngeld-plan-card" className="still-daily-checklist__card elterngeld-plan-card">
@@ -436,6 +468,8 @@ export const StepPlan: React.FC<Props> = ({
               } else if (mainHint.action === 'focusMonatsplan') {
                 const el = document.getElementById('elterngeld-plan-month-grid') ?? document.getElementById('elterngeld-plan-card');
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else if (mainHint.action === 'focusElternArbeit' && onNavigateToStep) {
+                onNavigateToStep('elternArbeit', 'elterngeld-step-eltern-arbeit-teilzeit');
               }
             }}
           >
@@ -463,7 +497,10 @@ export const StepPlan: React.FC<Props> = ({
         </Card>
       )}
 
-      {hasPartner && !partnerBonusValidation.isValid && !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
+      {hasPartner &&
+        isPartnerBonusPartTimeHoursEligible(values) &&
+        !partnerBonusValidation.isValid &&
+        !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
         <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--warning">
           <p className="elterngeld-plan__status-text">
             Der Partnerschaftsbonus ist möglich, aber noch nicht passend eingeplant.
@@ -563,6 +600,15 @@ export const StepPlan: React.FC<Props> = ({
           activeMonth={activeMonth ?? undefined}
         />
       </div>
+
+      {monthGridAutoAdjustNotice && (
+        <div
+          className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--tip"
+          role="status"
+        >
+          <p className="elterngeld-plan__status-text">{monthGridAutoAdjustNotice}</p>
+        </div>
+      )}
 
       <div className="elterngeld-plan__counts elterngeld-plan__counts--secondary">
         <MonthSummary items={items} />

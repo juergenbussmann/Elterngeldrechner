@@ -70,6 +70,11 @@ export interface BuildStepDecisionContextOptions extends BuildDecisionContextOpt
   strategyStepRequireExplicitSelection?: boolean;
   /** Nutzerpriorität (wenn bekannt), für Kennzeichnung in der UI */
   userPriorityGoal?: import('./elterngeldOptimization').OptimizationGoal;
+  /**
+   * false: keine Partnerbonus-Ziele/„Mit Partnerschaftsbonus“-Variante (zentrale 24–32-h-Regel aus der Vorbereitung).
+   * Standard true für Abwärtskompatibilität (z. B. Rechner ohne Vorbereitungskontext).
+   */
+  partnerBonusHoursEligible?: boolean;
 }
 
 function countBezugMonths(result: CalculationResult): number {
@@ -150,10 +155,15 @@ function resultsAreEqual(a: CalculationResult, b: CalculationResult): boolean {
 /** Sammelt alle Kandidaten aus mehreren Optimierungsläufen */
 function collectAllCandidates(
   plan: ElterngeldCalculationPlan,
-  result: CalculationResult
+  result: CalculationResult,
+  includePartnerBonusGoal: boolean
 ): { plan: ElterngeldCalculationPlan; result: CalculationResult; strategyType: string }[] {
   const seen = new Map<string, { plan: ElterngeldCalculationPlan; result: CalculationResult; strategyType: string }>();
-  const goals = ['maxMoney', 'longerDuration', 'frontLoad', 'partnerBonus'] as const;
+  const goals = (
+    includePartnerBonusGoal
+      ? (['maxMoney', 'longerDuration', 'frontLoad', 'partnerBonus'] as const)
+      : (['maxMoney', 'longerDuration', 'frontLoad'] as const)
+  ) as readonly ('maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus')[];
 
   for (const goal of goals) {
     const outcome = buildOptimizationResult(plan, result, goal);
@@ -187,6 +197,8 @@ function getFeedbackForStep1(strategyType?: string): string {
 /** Kontextabhängige Rückmeldung für Schritt 2 */
 function getFeedbackForStep2(strategyType?: string): string {
   switch (strategyType) {
+    case 'current':
+      return 'Eure aktuelle Aufteilung bleibt hier zunächst unverändert – ohne automatische Planänderung in diesem Schritt. Im nächsten Schritt könnt ihr Varianten vergleichen und bei Bedarf eine Umstellung übernehmen.';
     case 'withoutPartTime':
       return 'Ihr verzichtet auf Teilzeit und Partnerschaftsbonus.';
     case 'withPartTime':
@@ -242,6 +254,7 @@ export function buildStepDecisionContext(
   const lastAdoptedResult = opts?.lastAdoptedResult ?? null;
   const preSelected = opts?.selectedOptionPerStep ?? [];
   const comparisonMode = opts?.comparisonMode ?? 'vsCurrent';
+  const partnerBonusHoursEligible = opts?.partnerBonusHoursEligible ?? true;
 
   const { basePlan, baseResult, baselineLabel, baselineExplanation } = resolveBaseline(
     comparisonMode,
@@ -253,7 +266,7 @@ export function buildStepDecisionContext(
     lastAdoptedResult
   );
 
-  const allCandidates = collectAllCandidates(plan, result);
+  const allCandidates = collectAllCandidates(plan, result, partnerBonusHoursEligible);
   const steps: DecisionStep[] = [];
   const derivedPlanAfterStep: (DerivedPlanAfterStep | null)[] = [];
   let currentPlan = plan;
@@ -349,7 +362,15 @@ export function buildStepDecisionContext(
       comparisonMode,
     });
 
-    step2Options = step2Ctx.options.filter((o) => o.strategyType === 'withoutPartTime' || o.strategyType === 'withPartTime');
+    step2Options = step2Ctx.options.filter(
+      (o) =>
+        o.strategyType === 'current' ||
+        o.strategyType === 'withoutPartTime' ||
+        o.strategyType === 'withPartTime'
+    );
+    if (!partnerBonusHoursEligible) {
+      step2Options = step2Options.filter((o) => o.strategyType !== 'withPartTime');
+    }
   }
 
   const hasStep2 = partTimeRelevant && step2Options.length > 0;
@@ -369,7 +390,7 @@ export function buildStepDecisionContext(
     feedbackAfterSelection: getFeedbackForStep1(step1Choice?.strategyType),
     nextStepHint: hasStep2
       ? 'Als Nächstes schauen wir, ob Teilzeit und Partnerschaftsbonus für euch sinnvoll sind.'
-      : 'Als Nächstes geht es darum, ob euch mehr Geld oder eine längere Bezugsdauer wichtiger ist.',
+      : 'Im nächsten Schritt könnt ihr die Vorschläge vergleichen und optional eine Variante übernehmen.',
   });
 
   let step2Selected = -1;
@@ -391,7 +412,8 @@ export function buildStepDecisionContext(
         stepOptions: step2Options,
         selectedOptionIndex: step2Selected,
         feedbackAfterSelection: getFeedbackForStep2(step2Choice?.strategyType),
-        nextStepHint: 'Jetzt geht es nur noch darum, ob euch mehr Geld oder eine längere Bezugsdauer wichtiger ist.',
+        nextStepHint:
+          'Im nächsten Schritt könnt ihr die Vorschläge vergleichen und optional eine Variante übernehmen.',
       });
   }
 
@@ -408,7 +430,7 @@ export function buildStepDecisionContext(
   const goalsForStep3: readonly string[] =
     step1Choice?.strategyType === 'motherOnly'
       ? (['maxMoney', 'longerDuration', 'frontLoad'] as const)
-      : (['maxMoney', 'longerDuration', 'frontLoad', ...(hasPartner ? ['partnerBonus'] : [])] as const);
+      : (['maxMoney', 'longerDuration', 'frontLoad', ...(hasPartner && partnerBonusHoursEligible ? ['partnerBonus'] : [])] as const);
 
   /** Alle validen Suggestions pro Ziel sammeln (sortiert nach Ziel-Metrik, beste zuerst). */
   const candidatesPerGoal = new Map<string, OptimizationSuggestion[]>();

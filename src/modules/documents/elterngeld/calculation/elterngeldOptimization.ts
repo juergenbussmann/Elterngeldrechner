@@ -15,6 +15,30 @@ function duplicatePlan(plan: ElterngeldCalculationPlan): ElterngeldCalculationPl
   return JSON.parse(JSON.stringify(plan));
 }
 
+/** Fallback je Elternteil, wenn im kanonischen Plan keine Nutzerstunden ermittelbar sind (entspricht bisheriger Referenzannahme). */
+const OPTIMIZER_HOURS_FALLBACK = 28;
+
+/**
+ * Wochenstunden aus dem Ist-Plan eines Elternteils: Plus- und Partnerbonus-Monate bevorzugen, sonst erster Bezugsmonat mit Stunden.
+ */
+function extractUserWeeklyHoursFromParentPlan(parent: CalculationParentInput): number | undefined {
+  const withHours = parent.months.filter(
+    (m) =>
+      m.mode !== 'none' &&
+      m.hoursPerWeek != null &&
+      Number.isFinite(m.hoursPerWeek) &&
+      m.hoursPerWeek > 0
+  );
+  if (withHours.length === 0) return undefined;
+  const firstByMode = (mode: MonthMode) => withHours.find((m) => m.mode === mode)?.hoursPerWeek;
+  return firstByMode('partnerBonus') ?? firstByMode('plus') ?? withHours[0].hoursPerWeek;
+}
+
+function resolveOptimizerWeeklyHours(parent: CalculationParentInput | undefined): number {
+  if (!parent) return OPTIMIZER_HOURS_FALLBACK;
+  return extractUserWeeklyHoursFromParentPlan(parent) ?? OPTIMIZER_HOURS_FALLBACK;
+}
+
 export type OptimizationGoal =
   | 'maxMoney'
   | 'longerDuration'
@@ -365,14 +389,15 @@ function createReferencePlan(
   const months = Array.from({ length: totalMonths }, (_, i) => i + 1);
   const mode =
     config === 'motherOnlyBasis' || config === 'bothBasis' ? 'basis' : 'plus';
-  const hoursForBonus = 28;
+  const hoursA = resolveOptimizerWeeklyHours(parentA);
+  const hoursB = resolveOptimizerWeeklyHours(parentB);
 
   if (config === 'motherOnlyBasis' || config === 'motherOnlyPlus') {
     const pAMonths = months.map((month) => ({
       month,
       mode: mode as MonthMode,
       incomeDuringNet: 0,
-      hoursPerWeek: mode === 'plus' ? hoursForBonus : undefined,
+      hoursPerWeek: mode === 'plus' ? hoursA : undefined,
     }));
     const parents: CalculationParentInput[] = [
       { ...parentA, months: pAMonths },
@@ -403,13 +428,13 @@ function createReferencePlan(
       month,
       mode: mode as MonthMode,
       incomeDuringNet: 0,
-      hoursPerWeek: mode === 'plus' ? hoursForBonus : undefined,
+      hoursPerWeek: mode === 'plus' ? hoursA : undefined,
     }));
     const pBMonths = toB.map((month) => ({
       month,
       mode: mode as MonthMode,
       incomeDuringNet: 0,
-      hoursPerWeek: mode === 'plus' ? hoursForBonus : undefined,
+      hoursPerWeek: mode === 'plus' ? hoursB : undefined,
     }));
     return {
       childBirthDate: plan.childBirthDate,
@@ -431,13 +456,13 @@ function createReferencePlan(
         month,
         mode: 'partnerBonus' as MonthMode,
         incomeDuringNet: 0,
-        hoursPerWeek: hoursForBonus,
+        hoursPerWeek: hoursA,
       })),
       ...restA.map((month) => ({
         month,
         mode: 'plus' as MonthMode,
         incomeDuringNet: 0,
-        hoursPerWeek: hoursForBonus,
+        hoursPerWeek: hoursA,
       })),
     ].sort((a, b) => a.month - b.month);
     const pBMonths = overlapMonths
@@ -445,7 +470,7 @@ function createReferencePlan(
         month,
         mode: 'partnerBonus' as MonthMode,
         incomeDuringNet: 0,
-        hoursPerWeek: hoursForBonus,
+        hoursPerWeek: hoursB,
       }))
       .sort((a, b) => a.month - b.month);
     return {
@@ -724,7 +749,7 @@ function createBothFromSingleParentPlan(
       month: t.month,
       mode: t.mode,
       incomeDuringNet: 0,
-      hoursPerWeek: t.hoursPerWeek ?? 28,
+      hoursPerWeek: t.hoursPerWeek ?? resolveOptimizerWeeklyHours(parentB),
     });
     pB.months.sort((a, b) => a.month - b.month);
   }
@@ -1227,7 +1252,7 @@ function addPartnerBonusOverlapCandidates(
           month,
           mode: 'plus',
           incomeDuringNet: src.incomeDuringNet,
-          hoursPerWeek: src.hoursPerWeek ?? 28,
+          hoursPerWeek: src.hoursPerWeek ?? resolveOptimizerWeeklyHours(fromParent),
         });
         target.months.sort((a, b) => a.month - b.month);
       } else {
@@ -1235,7 +1260,7 @@ function addPartnerBonusOverlapCandidates(
           ...target.months[idx],
           mode: 'plus',
           incomeDuringNet: src.incomeDuringNet,
-          hoursPerWeek: src.hoursPerWeek ?? 28,
+          hoursPerWeek: src.hoursPerWeek ?? resolveOptimizerWeeklyHours(fromParent),
         };
       }
     }
@@ -1496,14 +1521,14 @@ function tryAddPartnerBonus(plan: ElterngeldCalculationPlan): ElterngeldCalculat
       parentA.months[idxA] = {
         ...parentA.months[idxA],
         mode: 'partnerBonus',
-        hoursPerWeek: parentA.months[idxA].hoursPerWeek ?? 28,
+        hoursPerWeek: parentA.months[idxA].hoursPerWeek ?? resolveOptimizerWeeklyHours(parentA),
       };
     }
     if (idxB >= 0) {
       parentB.months[idxB] = {
         ...parentB.months[idxB],
         mode: 'partnerBonus',
-        hoursPerWeek: parentB.months[idxB].hoursPerWeek ?? 28,
+        hoursPerWeek: parentB.months[idxB].hoursPerWeek ?? resolveOptimizerWeeklyHours(parentB),
       };
     }
   }

@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import { getMonthGridItemsFromValues } from '../monthGridMappings';
+import { isPartnerBonusPartTimeHoursEligible } from '../partnerBonusEligibility';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
 import type { CalculationResult } from '../calculation';
 import type { OptimizationSuggestion } from '../calculation/elterngeldOptimization';
@@ -72,7 +73,6 @@ function getErrorActionFromError(error: string): { label: string; action: 'focus
 function getHintActionFromWarning(warning: string, result: CalculationResult): { label: string; action: string | null } {
   const month = warning.match(/Monat\s+(\d+)/i);
   if (month) return { label: `Monat ${month[1]} anpassen`, action: 'focusMonth' };
-  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus')) return { label: 'Partnerschaftsbonus prüfen', action: 'openPartnerBonusCheck' };
   if (warning.includes('24–32') || warning.includes('Wochenstunden') || warning.includes('Arbeitszeit')) {
     for (const p of result.parents) {
       const m = p.monthlyResults.find((r) => r.mode === 'partnerBonus' || r.mode === 'plus');
@@ -80,6 +80,7 @@ function getHintActionFromWarning(warning: string, result: CalculationResult): {
     }
     return { label: 'Arbeitszeit anpassen', action: 'focusMonatsplan' };
   }
+  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus')) return { label: 'Partnerschaftsbonus prüfen', action: 'openPartnerBonusCheck' };
   if (warning.includes('Einkommen')) return { label: 'Einkommen anpassen', action: 'focusEinkommen' };
   if (warning.includes('Geburtsdatum') || warning.includes('Termin')) return { label: 'Grunddaten prüfen', action: 'focusGrunddaten' };
   return { label: '', action: null };
@@ -131,7 +132,7 @@ export const StepSummary: React.FC<Props> = ({
     if (optimizationSummary.hasAnySuggestions && onOpenOptimization) {
       return { type: 'optimization' as const };
     }
-    if (hasPartner) {
+    if (hasPartner && isPartnerBonusPartTimeHoursEligible(values)) {
       const bothMonths = items.filter((i) => i.state === 'both').map((i) => i.month);
       const rangeStr = formatBothMonthRange(bothMonths);
       const isBasisOnly = values.benefitPlan.model === 'basis';
@@ -143,7 +144,7 @@ export const StepSummary: React.FC<Props> = ({
       };
     }
     return null;
-  }, [result, optimizationSummary.hasAnySuggestions, optimizationSummary.partnerBonusSuggestion, onOpenOptimization, hasPartner, items, values.benefitPlan.model]);
+  }, [result, optimizationSummary.hasAnySuggestions, optimizationSummary.partnerBonusSuggestion, onOpenOptimization, hasPartner, items, values.benefitPlan.model, values]);
 
   return (
     <Card className="still-daily-checklist__card elterngeld-summary-card">

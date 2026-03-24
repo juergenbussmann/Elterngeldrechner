@@ -495,7 +495,7 @@ export function buildDecisionContext(
     id: 'current',
     distinctnessKey: currentKey,
     label: 'Aktueller Plan',
-    description: 'Deine aktuelle Aufteilung beibehalten.',
+    description: 'Dein Plan bleibt unverändert – keine automatische Umwandlung und kein Optimierungs-Eingriff.',
     strategyType: 'current',
     recommended: false,
     recommendedReason: null,
@@ -551,9 +551,13 @@ export function buildDecisionContext(
       userPriorityGoal && (s.goal === userPriorityGoal || strategyType === userPriorityGoal)
     );
     const isStep3Strategy = ['maxMoney', 'longerDuration', 'frontLoad'].includes(strategyType);
-    const description = isStep3Strategy
+    let description = isStep3Strategy
       ? (STEP3_STRATEGY_CONSEQUENCES[strategyType] ?? s.explanation)
       : s.explanation;
+    if (strategyType === 'withPartTime') {
+      description +=
+        ' In dieser Schätzung werden pro Elternteil eure im Plan hinterlegten Wochenstunden verwendet; fehlen sie dort, gelten 28 Wochenstunden als Fallback je Elternteil.';
+    }
     const isFirstNonCurrent = options.filter((o) => o.strategyType !== 'current').length === 0;
     const recommendedReasonText = getRecommendedReasonText(strategyType, goal, s);
 

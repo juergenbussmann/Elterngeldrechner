@@ -2701,6 +2701,18 @@
   margin-bottom: 0.5rem;
 }
 
+.elterngeld-calculation__suggestion-adopt-btn--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.elterngeld-calculation__suggestion-adopt-hint,
+.elterngeld-calculation__optimization-adopt-block-hint {
+  display: block;
+  width: 100%;
+}
+
 .elterngeld-calculation__optimization-label {
   font-weight: 600;
   font-size: 0.95rem;

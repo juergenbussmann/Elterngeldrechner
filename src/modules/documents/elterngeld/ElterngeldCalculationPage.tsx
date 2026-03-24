@@ -49,7 +49,11 @@ import '../../checklists/styles/softpill-cards.css';
 type View = 'goal' | 'input' | 'result' | 'compare';
 type EditingVariant = 'A' | 'B';
 
-type LocationState = { fromPreparation?: ElterngeldCalculationPlan } | null;
+type LocationState = {
+  fromPreparation?: ElterngeldCalculationPlan;
+  /** Nur Wizard „Ergebnis prüfen“: direkt kanonischer Ergebnis-/Prüfpfad (kein Konflikt-Panel, kein Legacy-Zielschritt „Was ist dir wichtiger?“). */
+  fromWizardErgebnisPruefen?: boolean;
+} | null;
 
 /**
  * Ermittelt den initialen Berechnungsplan.
@@ -98,15 +102,40 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const child = getChildDateContext(profile);
   const birthOrDue = child.effectiveDate ?? '';
 
-  const fromPreparation = (location.state as LocationState)?.fromPreparation;
+  const locationState = (location.state as LocationState) ?? null;
+  const fromPreparation = locationState?.fromPreparation;
+  const fromWizardErgebnisPruefen = locationState?.fromWizardErgebnisPruefen === true;
   const persisted = loadCalculationPlan();
   const conflictDetected = hasDataConflict(persisted, fromPreparation);
+  /** Einstieg nur über StepSummary „Ergebnis prüfen“ (Wizard setzt Flag + Plan in location.state). */
+  const wizardErgebnisDirectEntry =
+    Boolean(fromWizardErgebnisPruefen && fromPreparation != null);
 
-  const [conflictResolved, setConflictResolved] = useState(!conflictDetected);
-  const [usingPreparationFlow, setUsingPreparationFlow] = useState(!!fromPreparation && !conflictDetected);
-  const [view, setView] = useState<View>(() =>
-    fromPreparation && !conflictDetected ? 'goal' : 'input'
+  const wizardErgebnisInitialResult: CalculationResult | null =
+    wizardErgebnisDirectEntry && fromPreparation
+      ? (() => {
+          try {
+            return calculatePlan(fromPreparation);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+
+  const [conflictResolved, setConflictResolved] = useState(
+    !conflictDetected || wizardErgebnisDirectEntry
   );
+  const [usingPreparationFlow, setUsingPreparationFlow] = useState(() => {
+    if (wizardErgebnisDirectEntry) return true;
+    return !!fromPreparation && !conflictDetected;
+  });
+  const [view, setView] = useState<View>(() => {
+    if (wizardErgebnisDirectEntry) {
+      return wizardErgebnisInitialResult ? 'result' : 'input';
+    }
+    if (fromPreparation && !conflictDetected) return 'goal';
+    return 'input';
+  });
   const [editingVariant, setEditingVariant] = useState<EditingVariant>('A');
   const [plan, setPlan] = useState<ElterngeldCalculationPlan>(() => {
     // Bei Konflikt: Vorbereitung ist führend – fromPreparation als Standard
@@ -118,12 +147,18 @@ export const ElterngeldCalculationPage: React.FC = () => {
     const loaded = loadVariantBPlan();
     return loaded && !isPlanEmpty(loaded) ? loaded : null;
   });
-  const [result, setResult] = useState<CalculationResult | null>(null);
-  const [planUsedForResult, setPlanUsedForResult] = useState<ElterngeldCalculationPlan | null>(null);
+  const [result, setResult] = useState<CalculationResult | null>(wizardErgebnisInitialResult);
+  const [planUsedForResult, setPlanUsedForResult] = useState<ElterngeldCalculationPlan | null>(() =>
+    wizardErgebnisDirectEntry && fromPreparation ? fromPreparation : null
+  );
   const [optimizationGoal, setOptimizationGoal] = useState<OptimizationGoal | undefined>();
   const [optimizationStatus, setOptimizationStatus] = useState<'idle' | 'proposed' | 'adopted'>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [variantBIsOutdated, setVariantBIsOutdated] = useState(false);
+  const [variantBIsOutdated, setVariantBIsOutdated] = useState(() => {
+    if (!wizardErgebnisDirectEntry) return false;
+    const b = loadVariantBPlan();
+    return Boolean(b && !isPlanEmpty(b));
+  });
   const [optimizationAdoptedInSession, setOptimizationAdoptedInSession] = useState(false);
   const [originalPlanForOptimization, setOriginalPlanForOptimization] = useState<ElterngeldCalculationPlan | null>(null);
   const [originalResultForOptimization, setOriginalResultForOptimization] = useState<CalculationResult | null>(null);
@@ -137,6 +172,11 @@ export const ElterngeldCalculationPage: React.FC = () => {
   const planFromPreparationRef = useRef<ElterngeldCalculationPlan | null>(null);
   const planOriginFromPreparationRef = useRef(false);
   const initOriginRef = useRef(false);
+
+  useEffect(() => {
+    if (!wizardErgebnisDirectEntry || !fromPreparation) return;
+    saveCalculationPlan(fromPreparation);
+  }, [wizardErgebnisDirectEntry, fromPreparation]);
 
   const currentPlan = editingVariant === 'A' ? plan : planB!;
   const setCurrentPlan = editingVariant === 'A' ? setPlan : setPlanB;
@@ -233,10 +273,11 @@ export const ElterngeldCalculationPage: React.FC = () => {
   }, [view]);
 
   useEffect(() => {
+    if (fromWizardErgebnisPruefen) return;
     if (usingPreparationFlow && view === 'input') {
       setView('goal');
     }
-  }, [usingPreparationFlow, view]);
+  }, [usingPreparationFlow, view, fromWizardErgebnisPruefen]);
 
   const handleBack = useCallback(() => {
     setNavigateTarget(null);
@@ -472,7 +513,9 @@ export const ElterngeldCalculationPage: React.FC = () => {
         className={`next-steps next-steps--plain elterngeld__section ${view === 'result' ? 'elterngeld-calculation__in-optimization' : ''}`}
       >
         <SectionHeader as="h1" title="Elterngeld planen" />
-        <ElterngeldFlowStepper currentStep={view === 'goal' ? 1 : view === 'input' ? 2 : 3} />
+        {!fromWizardErgebnisPruefen && (
+          <ElterngeldFlowStepper currentStep={view === 'goal' ? 1 : view === 'input' ? 2 : 3} />
+        )}
         <p className="elterngeld-calculation__subtitle">
           Orientierung für deine Planung – keine amtliche Prüfung
         </p>
@@ -747,6 +790,9 @@ export const ElterngeldCalculationPage: React.FC = () => {
               onApplyPartnerBonusFix={handleApplyPartnerBonusFix}
               onApplyPartnerBonusFixMultiple={handleApplyPartnerBonusFixMultiple}
               onApplyCreatePartnerOverlap={handleApplyCreatePartnerOverlap}
+              elterngeldApplicationForAdoption={
+                !isPreparationEmpty(loadPreparation()) ? loadPreparation() : null
+              }
             />
             <div className="next-steps__stack elterngeld-nav">
               {optimizationGoal && (

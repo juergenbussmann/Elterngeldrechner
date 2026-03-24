@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePlan } from './calculationEngine';
 import { buildOptimizationResult } from './elterngeldOptimization';
+import type { OptimizationResultSet } from './elterngeldOptimization';
 import { buildDecisionContext } from './decisionContext';
 import type { ElterngeldCalculationPlan } from './types';
 
@@ -74,6 +75,9 @@ describe('buildDecisionContext', () => {
     expect(ctx.options.length).toBeGreaterThanOrEqual(1);
     expect(ctx.options[0].strategyType).toBe('current');
     expect(ctx.options[0].label).toBe('Aktueller Plan');
+    expect(ctx.options[0].description).toBe(
+      'Dein Plan bleibt unverändert – keine automatische Umwandlung und kein Optimierungs-Eingriff.'
+    );
   });
 
   it('dedupliziert Optionen mit gleichem distinctnessKey', () => {
@@ -287,5 +291,46 @@ describe('buildDecisionContext', () => {
     for (const opt of ctx.options) {
       expect(opt.label).not.toMatch(/^maxMoney|longerDuration|frontLoad|partnerBonus$/);
     }
+  });
+
+  it('Option withPartTime: Beschreibung enthält Hinweis zu 28 Wochenstunden', () => {
+    const plan = createPlan({});
+    plan.parents[0].incomeBeforeNet = 2500;
+    plan.parents[1].incomeBeforeNet = 2500;
+    setMonth(plan, 0, 1, 'basis');
+    setMonth(plan, 0, 2, 'basis');
+    const result = calculatePlan(plan);
+    const altPlan = JSON.parse(JSON.stringify(plan)) as ElterngeldCalculationPlan;
+    setMonth(altPlan, 0, 1, 'plus');
+    const altResult = calculatePlan(altPlan);
+    const resultSet: OptimizationResultSet = {
+      goal: 'maxMoney',
+      status: 'improved',
+      currentPlan: plan,
+      currentResult: result,
+      suggestions: [
+        {
+          goal: 'maxMoney',
+          status: 'improved',
+          strategyType: 'withPartTime',
+          title: 'Mit Partnerschaftsbonus',
+          explanation: 'Beide in Teilzeit – Bonusmonate werden genutzt.',
+          metricLabel: 'Gesamtsumme',
+          currentMetricValue: result.householdTotal,
+          optimizedMetricValue: altResult.householdTotal,
+          deltaValue: altResult.householdTotal - result.householdTotal,
+          currentTotal: result.householdTotal,
+          optimizedTotal: altResult.householdTotal,
+          currentDurationMonths: 2,
+          optimizedDurationMonths: 2,
+          plan: altPlan,
+          result: altResult,
+        },
+      ],
+    };
+    const ctx = buildDecisionContext(resultSet, 0);
+    const withPart = ctx.options.find((o) => o.strategyType === 'withPartTime');
+    expect(withPart).toBeDefined();
+    expect(withPart!.description).toMatch(/28\s*Wochenstunden/);
   });
 });

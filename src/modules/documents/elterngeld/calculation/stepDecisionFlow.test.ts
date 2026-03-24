@@ -233,7 +233,24 @@ describe('buildStepDecisionContext', () => {
     const step1 = ctx.decisionSteps[0];
     if (!partTimeStep) {
       expect(step1.nextStepHint).not.toMatch(/Teilzeit|Partnerschaftsbonus/);
-      expect(step1.nextStepHint).toMatch(/Geld|Bezugsdauer/i);
+      expect(step1.nextStepHint).toMatch(/Vorschläge|vergleichen|übernehmen/i);
+    }
+  });
+
+  it('kein nextStepHint suggeriert erneut eine Geld-vs.-Bezugsdauer-Entscheidung (alter Wortlaut entfällt)', () => {
+    const plan = createPlan({});
+    plan.parents[0].incomeBeforeNet = 1200;
+    plan.parents[1].incomeBeforeNet = 3500;
+    setMonth(plan, 0, 1, 'basis');
+    setMonth(plan, 0, 2, 'basis');
+
+    const result = calculatePlan(plan);
+    const ctx = buildStepDecisionContext(plan, result);
+    const misleading = /mehr Geld oder eine längere Bezugsdauer wichtiger ist/i;
+    for (const step of ctx.decisionSteps) {
+      if (step.nextStepHint) {
+        expect(step.nextStepHint).not.toMatch(misleading);
+      }
     }
   });
 
@@ -288,5 +305,63 @@ describe('buildStepDecisionContext', () => {
 
     const recalc = calculatePlan(ctx.finalResolvedPlan);
     expect(Math.round(recalc.householdTotal)).toBe(Math.round(ctx.finalResolvedResult.householdTotal));
+  });
+
+  it('Schritt 2 (Teilzeit): erste Option ist „Aktueller Plan“ – Default-Vorauswahl [0,0,…] behält den echten Plan', () => {
+    const plan = createPlan({});
+    plan.parents[0].incomeBeforeNet = 2000;
+    plan.parents[1].incomeBeforeNet = 2000;
+    setMonth(plan, 0, 1, 'plus');
+    setMonth(plan, 0, 2, 'plus');
+    setMonth(plan, 1, 3, 'plus');
+    setMonth(plan, 1, 4, 'plus');
+
+    const result = calculatePlan(plan);
+    const ctx = buildStepDecisionContext(plan, result, { selectedOptionPerStep: [0, 0, 0] });
+
+    const partTimeStep = ctx.decisionSteps.find((s) => s.kind === 'partTime');
+    if (partTimeStep && partTimeStep.stepOptions.length > 0) {
+      expect(partTimeStep.stepOptions[0].strategyType).toBe('current');
+      expect(Math.round(ctx.finalResolvedResult.householdTotal)).toBe(Math.round(result.householdTotal));
+    }
+  });
+
+  it('Schritt 2: feedbackAfterSelection für strategyType „current“ (stabiler UX-Text)', () => {
+    const plan = createPlan({});
+    plan.parents[0].incomeBeforeNet = 2000;
+    plan.parents[1].incomeBeforeNet = 2000;
+    setMonth(plan, 0, 1, 'plus');
+    setMonth(plan, 0, 2, 'plus');
+    setMonth(plan, 1, 3, 'plus');
+    setMonth(plan, 1, 4, 'plus');
+
+    const result = calculatePlan(plan);
+    const ctx = buildStepDecisionContext(plan, result, { selectedOptionPerStep: [0, 0, 0] });
+    const partTimeStep = ctx.decisionSteps.find((s) => s.kind === 'partTime');
+    if (!partTimeStep) return;
+    expect(partTimeStep.stepOptions[0].strategyType).toBe('current');
+    const fb = partTimeStep.feedbackAfterSelection ?? '';
+    expect(fb).toBe(
+      'Eure aktuelle Aufteilung bleibt hier zunächst unverändert – ohne automatische Planänderung in diesem Schritt. Im nächsten Schritt könnt ihr Varianten vergleichen und bei Bedarf eine Umstellung übernehmen.'
+    );
+    expect(fb).not.toMatch(/Optimierungs-Eingriff/);
+    expect(fb).not.toMatch(/die anderen Optionen schlagen jeweils eine Umstellung vor/);
+  });
+
+  it('bei partnerBonusHoursEligible false enthält Schritt 2 keine „withPartTime“-Option', () => {
+    const plan = createPlan({});
+    plan.parents[0].incomeBeforeNet = 2000;
+    plan.parents[1].incomeBeforeNet = 2000;
+    setMonth(plan, 0, 1, 'plus');
+    setMonth(plan, 0, 2, 'plus');
+    setMonth(plan, 1, 3, 'plus');
+    setMonth(plan, 1, 4, 'plus');
+
+    const result = calculatePlan(plan);
+    const ctx = buildStepDecisionContext(plan, result, { partnerBonusHoursEligible: false });
+    const partTimeStep = ctx.decisionSteps.find((s) => s.kind === 'partTime');
+    if (partTimeStep) {
+      expect(partTimeStep.stepOptions.some((o) => o.strategyType === 'withPartTime')).toBe(false);
+    }
   });
 });

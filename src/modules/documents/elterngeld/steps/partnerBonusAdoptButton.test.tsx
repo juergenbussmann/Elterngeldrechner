@@ -305,6 +305,34 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
     expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).hasAttribute('disabled')).toBe(false);
   });
 
+  it('Klick auf die Variantenkarte wählt nur aus, löst keine Übernahme aus', () => {
+    const plan = planWithPartnerBonusHours(28);
+    const result = calculatePlan(plan);
+    const opt = makeOption(plan, result);
+    const onAdopt = vi.fn();
+    const onSelect = vi.fn();
+
+    render(
+      <OptionCard
+        opt={opt}
+        idx={0}
+        clampedIndex={0}
+        currentResult={result}
+        formatCurrency={(n) => `€${n}`}
+        formatCurrencySigned={(n) => `${n}`}
+        onSelectOption={onSelect}
+        onAdoptOption={onAdopt}
+        adoptUserPlan={plan}
+      />
+    );
+
+    const card = screen.getByText('Testvariante').closest('.elterngeld-calculation__suggestion-card');
+    expect(card).toBeTruthy();
+    fireEvent.click(card!);
+    expect(onSelect).toHaveBeenCalledWith(0);
+    expect(onAdopt).not.toHaveBeenCalled();
+  });
+
   it('ElterngeldPlus ohne Partnerschaftsbonus: Übernahme nicht durch diese Regel blockiert', () => {
     const plan = createDefaultPlan('2025-06-01', true);
     plan.parents[0].incomeBeforeNet = 2500;

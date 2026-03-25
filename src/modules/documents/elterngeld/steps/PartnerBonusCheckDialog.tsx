@@ -372,7 +372,7 @@ export const PartnerBonusCheckDialog: React.FC<Props> = ({
                 <p className="elterngeld-partner-bonus-check__explanation">{
                   getSectionContextText(sectionActions[0])
                 }</p>
-                <div className="elterngeld-partner-bonus-check__actions">
+                <div className="elterngeld-partner-bonus-check__actions next-steps__stack">
                   {sectionActions.map((action, i) => (
                     <Button
                       key={i}

@@ -936,7 +936,7 @@ export function StepOptimizationBlock({
                       </Button>
                     </div>
                   )}
-                  <div className="elterngeld-calculation__optimization-actions">
+                  <div className="elterngeld-calculation__optimization-actions next-steps__stack">
                     {opt.strategyType !== 'current' && onAdoptOptimization && (
                       <>
                         <Button
@@ -982,7 +982,9 @@ export function StepOptimizationBlock({
                   </p>
                 )}
                 {step.stepOptions.length > 1 && (
-                  <p className="elterngeld-calculation__option-hint">Klicke auf eine Variante, um sie zu übernehmen:</p>
+                  <p className="elterngeld-calculation__option-hint">
+                    Wähle eine Variante per Klick; die Übernahme bestätigst du mit dem Button unten.
+                  </p>
                 )}
                 <div className="elterngeld-calculation__suggestion-list" role="list">
                   {step.stepOptions.map((opt, optIdx) => (
@@ -1031,7 +1033,7 @@ export function StepOptimizationBlock({
               </div>
             );
           })()}
-          <div className="elterngeld-calculation__optimization-actions">
+          <div className="elterngeld-calculation__optimization-actions next-steps__stack">
             <div className="elterngeld-calculation__optimization-actions-secondary">
               {onBackToGoalSelection && (
                 <Button type="button" variant="secondary" className="btn--softpill" onClick={onBackToGoalSelection}>
@@ -1233,7 +1235,7 @@ function OptimizationComparisonBlock({
               );
             })()}
 
-            <div className="elterngeld-calculation__optimization-actions">
+            <div className="elterngeld-calculation__optimization-actions next-steps__stack">
               {showAdoptPrimary && (
                 <>
                   <Button
@@ -1324,9 +1326,8 @@ export function OptionCard({
   });
   const cardClassName = `elterngeld-calculation__suggestion-card ${isSelected ? 'elterngeld-calculation__suggestion-card--selected' : ''} ${hasStructuralOnly ? 'elterngeld-calculation__suggestion-card--structural-primary' : ''}`;
 
-  const handleClick = () => {
+  const handleSelectOnly = () => {
     onSelectOption(idx);
-    if (!isCurrent && onAdoptOption && pbAdopt.allowed) onAdoptOption(opt);
   };
 
   const cardContent = (
@@ -1373,25 +1374,17 @@ export function OptionCard({
       )}
       <span className="elterngeld-calculation__suggestion-description">{opt.description}</span>
       {opt.strategyType === 'withPartTime' && onNavigateToPartTimeSettings && (
-        <span
-          role="button"
-          tabIndex={0}
-          className="ui-btn ui-btn--pill next-steps__button btn--softpill elterngeld-calculation__part-time-hours-cta"
+        <Button
+          type="button"
+          variant="secondary"
+          className="btn--softpill elterngeld-calculation__part-time-hours-cta next-steps__button"
           onClick={(e) => {
-            e.preventDefault();
             e.stopPropagation();
             onNavigateToPartTimeSettings();
           }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              e.stopPropagation();
-              onNavigateToPartTimeSettings();
-            }
-          }}
         >
           Teilzeitstunden anpassen
-        </span>
+        </Button>
       )}
       {isSelected && opt.strategyType !== 'current' && (() => {
         const full = opt.impact.fullSummary;
@@ -1509,12 +1502,12 @@ export function OptionCard({
       tabIndex={0}
       aria-pressed={isSelected}
       className={cardClassName}
-      onClick={handleClick}
+      onClick={handleSelectOnly}
       onKeyDown={(e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         if ((e.target as HTMLElement).closest('button')) return;
         e.preventDefault();
-        handleClick();
+        handleSelectOnly();
       }}
     >
       {cardContent}

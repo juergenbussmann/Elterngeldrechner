@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
 import { useI18n } from '../../../shared/lib/i18n';
-import { isNativeAndroid } from '../../../shared/lib/platform';
 import { useTheme } from '../../../core/theme/ThemeProvider';
 import type { DocumentItem } from '../domain/types';
 import {
@@ -82,7 +82,8 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
         console.error('[pdf] open:handler:error', new Error('guard: missing blob or not application/pdf'));
         return;
       }
-      const nativeAndroid = isNativeAndroid();
+      const nativeAndroid =
+        Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
       console.info('[pdf] open:handler:before-action', {
         branch: nativeAndroid ? 'android-native-open' : 'web-open-tab',
       });
@@ -90,14 +91,8 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
       if (nativeAndroid) {
         try {
           await openPdfNative(document.blob, pdfFilename);
-        } catch (err) {
-          console.error('[pdf] native:open:error', err);
-          try {
-            await sharePdfNative(document.blob, pdfFilename);
-          } catch (err2) {
-            console.error('[pdf] native:error', err2);
-            await shareOrDownloadPdfMobile(document.blob, document.title, pdfFilename);
-          }
+        } catch {
+          await sharePdfNative(document.blob, pdfFilename);
         }
       } else {
         openBlobInNewTab(document.blob);

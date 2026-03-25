@@ -322,9 +322,10 @@ a[href^='tel:'] {
   z-index: 10;
   height: calc(56px + env(safe-area-inset-top, 0px));
   min-height: 56px;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
+  column-gap: 0.5rem;
   padding: env(safe-area-inset-top, 0px) 16px 0 16px;
   box-sizing: border-box;
   border-bottom: 1px solid var(--surface-border);
@@ -341,23 +342,21 @@ a[href^='tel:'] {
 
 .app-shell__header-left,
 .app-shell__header-right {
-  width: 48px;
-  min-width: 48px;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .app-shell__header-left {
+  justify-self: start;
   justify-content: flex-start;
 }
 
 .app-shell__header-right {
   gap: 0.5rem;
+  justify-self: end;
   justify-content: flex-end;
-  min-width: 48px;
-  width: auto;
 }
 
 .app-shell__phase-label {
@@ -372,10 +371,9 @@ a[href^='tel:'] {
 }
 
 .app-shell__header-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  min-width: 0;
   text-align: center;
+  justify-self: stretch;
   pointer-events: none;
 }
 
@@ -484,6 +482,10 @@ a[href^='tel:'] {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* MAIN – gewoon flow binnen .app-shell, padding vangt header/footer af */

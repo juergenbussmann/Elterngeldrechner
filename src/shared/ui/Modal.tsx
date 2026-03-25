@@ -47,7 +47,8 @@ export const Modal: React.FC<ModalProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
-    zIndex: 50,
+    zIndex: 10000,
+    pointerEvents: 'auto',
   };
 
   const containerStyle: CSSProperties = {

@@ -968,7 +968,7 @@
 }
 
 .elterngeld-actions--tertiary {
-  margin-top: 0.5rem;
+  margin-top: 1rem;
 }
 
 .elterngeld-optimization-goal__intro {
@@ -1031,10 +1031,7 @@
 }
 
 .elterngeld-adopt-confirm__actions {
-  margin-top: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .elterngeld-adopt-confirm__actions .next-steps__button {
@@ -1139,9 +1136,7 @@
 }
 
 .elterngeld-edit-origin-dialog__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .elterngeld-edit-origin-dialog__btn {
@@ -1150,9 +1145,7 @@
 }
 
 .elterngeld-partner-bonus-check__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .elterngeld-partner-bonus-check__action-btn {
@@ -1196,9 +1189,6 @@
 }
 
 .elterngeld-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   margin-top: 1rem;
 }
 
@@ -1208,10 +1198,6 @@
   padding: var(--pill-padding-y, 0.5rem) var(--pill-padding-x, 1rem);
   font-weight: 600;
   border-radius: var(--pill-radius, 22px);
-}
-
-.elterngeld-nav--with-variants {
-  flex-wrap: wrap;
 }
 
 .elterngeld-nav__remove-variant {
@@ -2226,10 +2212,6 @@
   margin: 0.75rem 0 1rem 0;
 }
 
-.elterngeld-calculation__suggestion-card {
-  position: relative;
-}
-
 .elterngeld-calculation__suggestion-card-badge {
   position: absolute;
   top: 0.5rem;
@@ -2289,15 +2271,16 @@
 }
 
 .elterngeld-calculation__suggestion-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.25rem;
   padding: 0.6rem 0.85rem;
-  border: 1px solid var(--color-border, #e4e4e7);
+  border: 1px solid var(--ui-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
+  box-shadow: var(--ui-inset);
   cursor: pointer;
   text-align: left;
   min-width: 0;
@@ -2306,7 +2289,10 @@
   overflow: visible;
   font-family: inherit;
   font-size: 0.9rem;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
   width: 100%;
   box-sizing: border-box;
 }
@@ -2323,20 +2309,32 @@
 }
 
 .elterngeld-calculation__suggestion-card:hover {
-  background: rgba(120, 96, 76, 0.06);
-  border-color: rgba(120, 96, 76, 0.25);
+  border-color: var(--ui-border-hover);
+  background: linear-gradient(180deg, var(--ui-surface-1-hover), var(--ui-surface-2-hover));
+  box-shadow: var(--ui-inset-hover);
 }
 
 .elterngeld-calculation__suggestion-card:focus-visible {
-  outline: 2px solid var(--color-primary, #2563eb);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ui-focus),
+    var(--ui-inset);
 }
 
 .elterngeld-calculation__suggestion-card--selected {
-  border-color: var(--color-primary, #2563eb);
-  border-width: 3px;
-  background: rgba(37, 99, 235, 0.15) !important;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+  border: 1px solid var(--ui-selected-border);
+  box-shadow: var(--ui-selected-shadow), var(--ui-inset);
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
+  font-weight: 600;
+}
+
+/* Modal (dialog-softpill): Basiskarte nutzt !important – Selected mit höherer Spezifität warm/tokenbasiert */
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__suggestion-card.elterngeld-calculation__suggestion-card--selected {
+  border: 1px solid var(--ui-selected-border);
+  box-shadow: var(--ui-selected-shadow), var(--ui-inset) !important;
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2)) !important;
   font-weight: 600;
 }
 
@@ -2585,7 +2583,7 @@
 }
 
 .elterngeld-calculation__optimization-action-primary {
-  margin-bottom: 0.5rem;
+  width: 100%;
   transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -2621,14 +2619,7 @@
 }
 
 .elterngeld-calculation__optimization-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
   margin-top: 1rem;
-}
-
-.elterngeld-calculation__optimization-actions .btn {
-  width: 100%;
 }
 
 .elterngeld-calculation__adopted-banner {
@@ -2715,12 +2706,6 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
-}
-
-.elterngeld-calculation__suggestion-adopt-btn--disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  pointer-events: none;
 }
 
 .elterngeld-calculation__suggestion-adopt-hint,
@@ -3004,6 +2989,10 @@
 
 .elterngeld-summary__intro-hint {
   margin: 0 0 1rem;
+}
+
+.elterngeld-summary__actions {
+  margin-top: 1rem;
 }
 
 .elterngeld-summary__next-documents-hint {

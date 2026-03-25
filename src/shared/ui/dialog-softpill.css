@@ -196,3 +196,62 @@
   transform: none !important;
   box-shadow: var(--pill-shadow), var(--pill-inset) !important;
 }
+
+/* Variantenkarten im Optimierungs-Overlay: gleiche Hover/Active/Disabled-Regeln wie Checklisten-Card */
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card .btn,
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card button {
+  border-radius: var(--pill-radius) !important;
+  padding: var(--pill-padding-y) var(--pill-padding-x) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.2px !important;
+  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
+  border: 1px solid var(--pill-border) !important;
+  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .modal__container--softpill
+    .elterngeld-optimization-overlay-content
+    .elterngeld-calculation__suggestion-card
+    .btn:hover:not(:disabled),
+  .modal__container--softpill
+    .elterngeld-optimization-overlay-content
+    .elterngeld-calculation__suggestion-card
+    button:hover:not(:disabled) {
+    background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover)) !important;
+    border-color: var(--pill-border-hover) !important;
+    box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover) !important;
+  }
+}
+
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__suggestion-card
+  .btn:active:not(:disabled),
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__suggestion-card
+  button:active:not(:disabled) {
+  transform: translateY(1px) !important;
+  box-shadow: var(--pill-shadow-active), var(--pill-inset-active) !important;
+}
+
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__suggestion-card
+  .btn:disabled,
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__suggestion-card
+  button:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.06) !important;
+  transform: none !important;
+  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
+}

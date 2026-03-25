@@ -15,7 +15,7 @@ export function isMobilePdfOpenHeuristic(): boolean {
 
 let pdfDiagnosticContextLogged = false;
 
-async function blobToBase64(blob: Blob): Promise<string> {
+export async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -37,68 +37,73 @@ async function blobToBase64(blob: Blob): Promise<string> {
  * APK/Capacitor: PDF im Cache speichern und mit installierter App öffnen (IntentVIEW), nicht Share-Link.
  */
 export async function openPdfNative(blob: Blob, filename: string): Promise<void> {
-  console.info('[pdf] native:open:start', { filename });
+  try {
+    console.info('[pdf] native:open:start', { filename });
 
-  const base64 = await blobToBase64(blob);
-  const safeName = filename.replace(/[/\\]/g, '_').trim() || 'document.pdf';
-  const path = `${Date.now()}-${safeName}`;
+    const base64 = await blobToBase64(blob);
+    const safeName = filename.replace(/[/\\]/g, '_').trim() || 'document.pdf';
+    const path = `${Date.now()}-${safeName}`;
 
-  await Filesystem.writeFile({
-    path,
-    data: base64,
-    directory: Directory.Cache,
-    recursive: true,
-  });
+    await Filesystem.writeFile({
+      path,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true,
+    });
 
-  const { uri } = await Filesystem.getUri({
-    path,
-    directory: Directory.Cache,
-  });
+    const { uri } = await Filesystem.getUri({
+      path,
+      directory: Directory.Cache,
+    });
 
-  console.info('[pdf] native:open:uri', { uri });
+    console.info('[pdf] native:open:uri', { uri });
 
-  await FileOpener.open({
-    filePath: uri,
-    contentType: 'application/pdf',
-  });
+    await FileOpener.open({
+      filePath: uri,
+      contentType: 'application/pdf',
+    });
 
-  console.info('[pdf] native:open:success');
+    console.info('[pdf] native:open:success');
+  } catch (error) {
+    console.error('[pdf] native:open:error', error);
+    throw error;
+  }
 }
 
 /**
  * APK/Capacitor: PDF als Datei im nativen Cache schreiben und System-Share öffnen (kein WebView-Blob-Download).
  */
 export async function sharePdfNative(blob: Blob, filename: string): Promise<void> {
-  console.info('[pdf] native:start', { filename });
+  console.info('[pdf] native:share:start', { filename });
+  try {
+    const base64 = await blobToBase64(blob);
+    const safeName = filename.replace(/[/\\]/g, '_').trim() || 'document.pdf';
+    const path = `${Date.now()}-${safeName}`;
 
-  const base64 = await blobToBase64(blob);
-  const safeName = filename.replace(/[/\\]/g, '_').trim() || 'document.pdf';
-  const filePath = `${Date.now()}-${safeName}`;
+    await Filesystem.writeFile({
+      path,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true,
+    });
 
-  console.info('[pdf] native:write:start', { filePath });
+    const { uri } = await Filesystem.getUri({
+      path,
+      directory: Directory.Cache,
+    });
 
-  await Filesystem.writeFile({
-    path: filePath,
-    data: base64,
-    directory: Directory.Cache,
-    recursive: true,
-  });
+    console.info('[pdf] native:share:uri', { uri });
 
-  console.info('[pdf] native:write:success', { filePath });
+    await Share.share({
+      title: safeName,
+      url: uri,
+    });
 
-  const { uri } = await Filesystem.getUri({
-    path: filePath,
-    directory: Directory.Cache,
-  });
-
-  console.info('[pdf] native:share:invoke', { uri });
-
-  await Share.share({
-    title: safeName,
-    url: uri,
-  });
-
-  console.info('[pdf] native:share:success');
+    console.info('[pdf] native:share:success');
+  } catch (error) {
+    console.error('[pdf] native:share:error', error);
+    throw error;
+  }
 }
 
 function logPdfDiagnosticContextOnce(): void {
@@ -117,13 +122,22 @@ function clickAnchorInDocument(a: HTMLAnchorElement): void {
   if (!body) {
     throw new Error('document.body missing');
   }
+
   a.style.display = 'none';
   body.appendChild(a);
+
   try {
     a.click();
   } finally {
     body.removeChild(a);
   }
+}
+
+function revokeObjectURLAfterClick(url: string, op: string): void {
+  setTimeout(() => {
+    console.info('[pdf] url:revoke', { op });
+    URL.revokeObjectURL(url);
+  }, 0);
 }
 
 /**
@@ -150,8 +164,7 @@ export function openBlobInNewTab(blob: Blob, filename?: string): void {
     throw error;
   } finally {
     if (url) {
-      console.info('[pdf] url:revoke', { op: 'open' });
-      URL.revokeObjectURL(url);
+      revokeObjectURLAfterClick(url, 'open');
     }
   }
 }
@@ -178,8 +191,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
     throw error;
   } finally {
     if (url) {
-      console.info('[pdf] url:revoke', { op: 'download' });
-      URL.revokeObjectURL(url);
+      revokeObjectURLAfterClick(url, 'download');
     }
   }
 }

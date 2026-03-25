@@ -27,7 +27,7 @@ export const EditOriginDialog: React.FC<Props> = ({
       <p className="elterngeld-edit-origin-dialog__text">
         Du hast Daten aus deiner Vorbereitung geändert. Wie möchtest du fortfahren?
       </p>
-      <div className="elterngeld-edit-origin-dialog__actions">
+      <div className="elterngeld-edit-origin-dialog__actions next-steps__stack">
         <Button
           type="button"
           variant="primary"

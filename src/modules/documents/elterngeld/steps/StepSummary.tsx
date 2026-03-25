@@ -220,7 +220,7 @@ export const StepSummary: React.FC<Props> = ({
         </div>
       )}
 
-      <div className="elterngeld-summary__actions elterngeld-summary__actions--secondary">
+      <div className="elterngeld-summary__actions elterngeld-summary__actions--secondary next-steps__stack">
         {result && result.validation.errors.length === 0 && onOpenOptimization && (
           <Button
             type="button"

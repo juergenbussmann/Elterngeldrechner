@@ -2197,11 +2197,14 @@
   color: #444;
 }
 
-/* OptimizationOverlay – minimal notwendige Styles */
+/* OptimizationOverlay – minimal notwendige Styles (Portal: gleicher Rhythmus wie .elterngeld-screen) */
 .elterngeld-optimization-overlay-content {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .elterngeld-optimization-overlay__goal-section {
@@ -2322,6 +2325,11 @@
 .elterngeld-calculation__suggestion-card:hover {
   background: rgba(120, 96, 76, 0.06);
   border-color: rgba(120, 96, 76, 0.25);
+}
+
+.elterngeld-calculation__suggestion-card:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
 }
 
 .elterngeld-calculation__suggestion-card--selected {
@@ -2581,16 +2589,24 @@
   transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.elterngeld-calculation__optimization-action-primary:hover {
+.elterngeld-calculation__optimization-action-primary:hover:not(:disabled) {
   filter: brightness(1.08);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.elterngeld-calculation__optimization-action-primary:active {
+.elterngeld-calculation__optimization-action-primary:active:not(:disabled) {
   filter: brightness(0.98);
   transform: translateY(1px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.elterngeld-calculation__optimization-action-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.08);
+  box-shadow: none;
+  transform: none;
 }
 
 .elterngeld-calculation__optimization-actions-secondary {
@@ -2986,8 +3002,30 @@
   font-weight: 500;
 }
 
+.elterngeld-summary__intro-hint {
+  margin: 0 0 1rem;
+}
+
+.elterngeld-summary__next-documents-hint {
+  margin: 0.75rem 0 0.5rem;
+  font-weight: 500;
+}
+
+.elterngeld-documents__back-wrap {
+  margin-bottom: 0.75rem;
+}
+
+.elterngeld-documents__back {
+  padding-left: 0;
+  justify-content: flex-start;
+}
+
 .elterngeld-documents__intro-card {
   margin-bottom: 1rem;
+}
+
+.elterngeld-documents__finish-section {
+  margin-top: 1rem;
 }
 
 .elterngeld-documents__lead {
@@ -3000,6 +3038,13 @@
 
 .elterngeld-documents__overview p:last-child {
   margin-bottom: 0;
+}
+
+.elterngeld-documents__step-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #4b5563);
 }
 
 .elterngeld-documents__output-list {

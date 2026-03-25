@@ -88,12 +88,10 @@ function getHintActionFromWarning(warning: string, result: CalculationResult): {
 
 type Props = {
   values: ElterngeldApplication;
-  onCreatePdf: () => void;
-  isSubmitting: boolean;
   onBackToPlan?: () => void;
   onOpenOptimization?: () => void;
   onNavigateToCalculation?: () => void;
-  /** Nächster Schritt: Formulare/Antrag (Wizard-Dokumente), ohne zusätzliche Eingaben. */
+  /** Erster Schritt der linearen Ausgabestrecke (PDF-Übersicht). */
   onProceedToDocuments?: () => void;
   liveResult?: CalculationResult | null;
   optimizationSummary?: OptimizationSummary;
@@ -101,8 +99,6 @@ type Props = {
 
 export const StepSummary: React.FC<Props> = ({
   values,
-  onCreatePdf,
-  isSubmitting,
   onBackToPlan,
   onOpenOptimization,
   onNavigateToCalculation,
@@ -152,6 +148,9 @@ export const StepSummary: React.FC<Props> = ({
   return (
     <Card className="still-daily-checklist__card elterngeld-summary-card">
       <h3 className="elterngeld-step__title">Zusammenfassung</h3>
+      <p className="elterngeld-step__hint elterngeld-summary__intro-hint">
+        Kurzüberblick zu Schätzung und Dauer – als Nächstes erstellst du im folgenden Schritt deine Dokumente.
+      </p>
 
       {result && (
         <div className="elterngeld-plan__summary-card still-daily-checklist__card">
@@ -191,7 +190,7 @@ export const StepSummary: React.FC<Props> = ({
       {displayHint && displayHint.type === 'optimization' && onOpenOptimization && (
         <div className="elterngeld-summary__optimization-hint elterngeld-step__notice elterngeld-step__notice--tip">
           <p className="elterngeld-summary__hint-text">
-            Dein Plan funktioniert. Du kannst ihn noch optimieren – mehr Geld oder bessere Verteilung.
+            Dein Plan funktioniert. Optional kannst du eine Optimierung ansehen.
           </p>
         </div>
       )}
@@ -201,13 +200,11 @@ export const StepSummary: React.FC<Props> = ({
           {displayHint.bothMonths.length > 0 ? (
             <>
               <span className="elterngeld-plan__bonus-preview-icon" aria-hidden="true">💡</span>{' '}
-              Gemeinsame Monate erkannt – diese können Grundlage für Partnerschaftsbonus sein, wenn ElterngeldPlus genutzt wird.
+              Gemeinsame Monate – bei ElterngeldPlus Basis für Partnerschaftsbonus.
               {displayHint.rangeStr && (
-                <span className="elterngeld-plan__bonus-preview-range"> Mögliche gemeinsame Monate: Lebensmonat {displayHint.rangeStr}.</span>
+                <span className="elterngeld-plan__bonus-preview-range"> Lebensmonat {displayHint.rangeStr}.</span>
               )}
-              <span className="elterngeld-plan__bonus-preview-tip">
-                Wähle oben „ElterngeldPlus“, um Bonusmonate zu planen.
-              </span>
+              <span className="elterngeld-plan__bonus-preview-tip"> Mit ElterngeldPlus Bonusmonate planen.</span>
               {displayHint.isBasisOnly && (
                 <span className="elterngeld-plan__bonus-preview-warning">
                   Partnerschaftsbonus ist nur mit ElterngeldPlus möglich.
@@ -224,22 +221,6 @@ export const StepSummary: React.FC<Props> = ({
       )}
 
       <div className="elterngeld-summary__actions elterngeld-summary__actions--secondary">
-        {onProceedToDocuments && (
-          <>
-            <Button
-              type="button"
-              variant="primary"
-              fullWidth
-              className="next-steps__button btn--softpill elterngeld-summary__action-primary"
-              onClick={onProceedToDocuments}
-            >
-              Antrag vorbereiten
-            </Button>
-            <p className="elterngeld-step__hint elterngeld-summary__forms-hint">
-              Aus deinen Angaben: Formulare und Checkliste im nächsten Schritt.
-            </p>
-          </>
-        )}
         {result && result.validation.errors.length === 0 && onOpenOptimization && (
           <Button
             type="button"
@@ -262,16 +243,22 @@ export const StepSummary: React.FC<Props> = ({
             Ergebnis prüfen
           </Button>
         )}
-        <Button
-          type="button"
-          variant="secondary"
-          fullWidth
-          className="next-steps__button btn--softpill elterngeld-summary__action-secondary"
-          onClick={onCreatePdf}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Wird erstellt…' : 'PDF Übersicht erstellen'}
-        </Button>
+        {onProceedToDocuments && (
+          <>
+            <p className="elterngeld-step__hint elterngeld-summary__forms-hint elterngeld-summary__next-documents-hint">
+              Als Nächstes: PDF-Übersicht erstellen — danach Checkliste und Antragsvorbereitung.
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              className="next-steps__button btn--softpill elterngeld-summary__action-primary"
+              onClick={onProceedToDocuments}
+            >
+              Weiter zur PDF-Übersicht
+            </Button>
+          </>
+        )}
         {onBackToPlan && (
           <Button
             type="button"

@@ -83,6 +83,7 @@ export const Button: React.FC<ButtonProps> = ({
       className={mergedClassName}
       style={computedStyle}
       onMouseDown={(event) => {
+        if (rest.disabled) return;
         setIsPressed(true);
         rest.onMouseDown?.(event);
       }}

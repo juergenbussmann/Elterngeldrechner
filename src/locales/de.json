@@ -431,6 +431,7 @@
   "documents.privacy": "Dokumente werden nur auf diesem Gerät gespeichert.",
   "documents.delete": "Löschen",
   "documents.pdfOpen": "PDF öffnen",
+  "documents.pdfOpenMobile": "Teilen / in App öffnen",
   "documents.pdfDownload": "PDF herunterladen",
   "documents.pdfShare": "PDF teilen",
   "documents.pdfType": "PDF-Dokument",

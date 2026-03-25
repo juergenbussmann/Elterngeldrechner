@@ -30,13 +30,14 @@ const STATUS_LABEL: Record<DocumentOutputUiStatus, string> = {
 /** Bekannte Schlüssel aus StateConfig.documentOutputKinds → kurze Copy (nur Darstellung). */
 const DOCUMENT_OUTPUT_KIND_COPY: Record<string, { title: string; description: string }> = {
   [ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND]: {
-    title: 'Amtliches Antragsformular',
+    title: 'Antragsvorbereitung (PDF)',
     description:
-      'Strukturierte Antrags-Vorbereitung als PDF (Felder zu Kind, Bezug und Antragstellern). Für ausgewählte Bundesländer freigeschaltet — kein Original-Formular der Behörde.',
+      'Strukturierte Übersicht deiner Angaben für die spätere Beantragung: Felder zu Kind, Bezug und Antragstellern. Kein Originalformular der Elterngeldstelle — nur für ausgewählte Bundesländer freigeschaltet.',
   },
   landesformular: {
-    title: 'Landesformular',
-    description: 'Vorgefertigtes Formular der zuständigen Landesstelle',
+    title: 'Landesformular (geplant)',
+    description:
+      'Geplante Ausgabe — noch nicht verfügbar. Beantragung erfolgt mit den Vorgaben und Formularen der zuständigen Elterngeldstelle.',
   },
 };
 
@@ -97,9 +98,9 @@ export function getElterngeldDocumentOutputRows(model: ElterngeldDocumentModel):
   } else {
     rows.push({
       id: 'output-form-state',
-      title: 'Amtliches Antragsformular',
+      title: 'Antragsvorbereitung (PDF)',
       description:
-        'Die App erstellt noch kein ausfüllbares Landeseinzel-Formular. Nutze die Zusammenfassung und die Angaben beim zuständigen Amt.',
+        'Für dein Bundesland ist diese PDF-Antragshilfe in der App noch nicht freigeschaltet. Nutze die Zusammenfassung (PDF) und die offiziellen Formulare deiner Elterngeldstelle.',
       status: 'planned',
       statusLabel: 'Für dein Bundesland noch nicht in der App',
       action: 'none',

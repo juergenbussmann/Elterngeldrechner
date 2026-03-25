@@ -1211,7 +1211,7 @@ body.debug-layout .app-shell__footer {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .btn--softpill:hover {
+  .btn--softpill:hover:not(:disabled) {
     background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover));
 
     border-color: var(--pill-border-hover);
@@ -1222,10 +1222,18 @@ body.debug-layout .app-shell__footer {
   }
 }
 
-.btn--softpill:active {
+.btn--softpill:active:not(:disabled) {
   transform: translateY(1px);
 
   box-shadow: var(--pill-shadow-active), var(--pill-inset-active);
+}
+
+.btn--softpill:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.06);
+  transform: none;
+  box-shadow: var(--pill-shadow), var(--pill-inset);
 }
 
 .btn--softpill:focus-visible {

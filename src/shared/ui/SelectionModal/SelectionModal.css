@@ -13,7 +13,8 @@
 .selection-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
+  /* Warme Elterngeld-/Pill-Scrim-Logik (kein kühles Slate-Overlay) */
+  background: rgba(120, 96, 76, 0.22);
   z-index: 0;
 }
 
@@ -30,9 +31,9 @@
   overflow: hidden;
   box-sizing: border-box;
   border-radius: 24px;
-  background: var(--surface, var(--pill-bg-top, #f6efe6));
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
-  border: 1px solid var(--surface-border, var(--pill-border, rgba(120, 96, 76, 0.2)));
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
+  box-shadow: var(--ui-shadow), var(--ui-inset);
+  border: 1px solid var(--ui-border);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -41,9 +42,9 @@
   width: 36px;
   height: 4px;
   margin: 10px auto 6px;
-  background: var(--color-text-secondary, #94a3b8);
+  background: var(--ui-border-hover);
   border-radius: 2px;
-  opacity: 0.6;
+  opacity: 0.85;
 }
 
 .selection-modal__header {
@@ -79,8 +80,13 @@
 }
 
 .selection-modal__close:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--ui-focus-ring);
   color: var(--color-text-primary);
+}
+
+.selection-modal__close:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
 }
 
 /* Liste scrollt intern – niemals aus dem Viewport */
@@ -106,17 +112,20 @@
   box-sizing: border-box;
   padding: 14px 44px 14px 16px;
   margin: 0 0 8px;
-  border: 1px solid rgba(120, 96, 76, 0.12);
-  border-radius: 18px;
-  background: rgba(255, 250, 244, 0.9);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-card);
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2));
   color: var(--color-text-primary, #2c2c2c);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: var(--ui-inset);
   overflow-wrap: anywhere;
   word-break: break-word;
   cursor: pointer;
   font-family: inherit;
   font-size: 0.95rem;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
   flex-shrink: 0;
 }
 
@@ -125,18 +134,30 @@
 }
 
 .selection-modal__option:hover {
-  background: rgba(255, 250, 244, 0.98);
-  border-color: var(--pill-border-hover, rgba(170, 135, 100, 0.25));
+  border-color: var(--ui-border-hover);
+  background: linear-gradient(180deg, var(--ui-surface-1-hover), var(--ui-surface-2-hover));
+  box-shadow: var(--ui-inset-hover);
 }
 
 .selection-modal__option:active {
-  background: rgba(248, 242, 232, 0.98);
+  box-shadow: var(--ui-inset-active);
 }
 
+.selection-modal__option:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+/* Entspricht .ui-chip--selected (ui-tokens.css) */
 .selection-modal__option--selected {
-  border-color: rgba(170, 126, 84, 0.45);
-  background: rgba(255, 244, 230, 0.95);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--ui-selected-border);
+  box-shadow: var(--ui-selected-shadow);
+}
+
+.selection-modal__option--selected:hover {
+  border-color: var(--ui-selected-border);
+  box-shadow: var(--ui-selected-shadow);
+  background: linear-gradient(180deg, var(--ui-surface-1-hover), var(--ui-surface-2-hover));
 }
 
 .selection-modal__option-label {
@@ -155,6 +176,6 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
-  color: var(--color-primary, #2563eb);
-  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+  font-weight: 700;
 }

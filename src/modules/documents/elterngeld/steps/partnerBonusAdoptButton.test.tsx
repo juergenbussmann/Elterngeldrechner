@@ -111,7 +111,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
     );
 
     const adopt = screen.getByRole('button', { name: /^Diese Variante übernehmen$/i });
-    expect(adopt.getAttribute('aria-disabled')).toBe('true');
+    expect(adopt.hasAttribute('disabled')).toBe(true);
     expect(
       screen.getByText(/Partnerschaftsbonus erfordert 24[–-]32 Wochenstunden/i)
     ).toBeTruthy();
@@ -142,7 +142,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
     );
 
     const adopt = screen.getByRole('button', { name: /^Diese Variante übernehmen$/i });
-    expect(adopt.getAttribute('aria-disabled')).not.toBe('true');
+    expect(adopt.hasAttribute('disabled')).toBe(false);
     fireEvent.click(adopt);
     expect(onAdopt).toHaveBeenCalledWith(opt);
   });
@@ -169,7 +169,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
     );
 
     const adopt = screen.getByRole('button', { name: /^Diese Variante übernehmen$/i });
-    expect(adopt.getAttribute('aria-disabled')).toBe('true');
+    expect(adopt.hasAttribute('disabled')).toBe(true);
     expect(screen.getByText(ADOPTION_EXPLICIT_PART_TIME_HINT)).toBeTruthy();
   });
 
@@ -195,9 +195,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
       />
     );
 
-    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).getAttribute('aria-disabled')).toBe(
-      'true'
-    );
+    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByText(ADOPTION_EXPLICIT_PART_TIME_HINT)).toBeTruthy();
   });
 
@@ -223,9 +221,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
       />
     );
 
-    expect(
-      screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).getAttribute('aria-disabled')
-    ).not.toBe('true');
+    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).hasAttribute('disabled')).toBe(false);
   });
 
   it('Vorbereitung: explizite 20 h (außerhalb 24–32) → gesperrt mit zentraler PB-Stundenmeldung', () => {
@@ -250,9 +246,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
       />
     );
 
-    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).getAttribute('aria-disabled')).toBe(
-      'true'
-    );
+    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).hasAttribute('disabled')).toBe(true);
     expect(
       screen.getByText(/Partnerschaftsbonus erfordert 24[–-]32 Wochenstunden/i)
     ).toBeTruthy();
@@ -280,9 +274,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
       />
     );
 
-    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).getAttribute('aria-disabled')).toBe(
-      'true'
-    );
+    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).hasAttribute('disabled')).toBe(true);
     expect(
       screen.getByText(/Partnerschaftsbonus erfordert 24[–-]32 Wochenstunden/i)
     ).toBeTruthy();
@@ -310,9 +302,7 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
       />
     );
 
-    expect(
-      screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).getAttribute('aria-disabled')
-    ).not.toBe('true');
+    expect(screen.getByRole('button', { name: /^Diese Variante übernehmen$/i }).hasAttribute('disabled')).toBe(false);
   });
 
   it('ElterngeldPlus ohne Partnerschaftsbonus: Übernahme nicht durch diese Regel blockiert', () => {
@@ -347,6 +337,6 @@ describe('OptionCard Übernahme (Partnerschaftsbonus + explizite Teilzeit)', () 
     );
 
     const adopt = screen.getByRole('button', { name: /^Diese Variante übernehmen$/i });
-    expect(adopt.getAttribute('aria-disabled')).not.toBe('true');
+    expect(adopt.hasAttribute('disabled')).toBe(false);
   });
 });

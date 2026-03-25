@@ -45,7 +45,7 @@ describe('getElterngeldDocumentOutputRows', () => {
     expect(cl?.action).toBe('scrollChecklist');
   });
 
-  it('ohne documentOutputKinds: Platzhalter für amtliches Formular', () => {
+  it('ohne documentOutputKinds: Platzhalter für Antragsvorbereitung (PDF)', () => {
     const rows = getElterngeldDocumentOutputRows(minimalModel({ documentOutputKinds: [] }));
     const form = rows.find((r) => r.id === 'output-form-state');
     expect(form).toBeDefined();
@@ -58,7 +58,7 @@ describe('getElterngeldDocumentOutputRows', () => {
     );
     const appRow = rows.find((r) => r.action === 'applicationPdf');
     expect(appRow).toBeDefined();
-    expect(appRow?.title).toBe('Amtliches Antragsformular');
+    expect(appRow?.title).toBe('Antragsvorbereitung (PDF)');
     expect(appRow?.status).toBe('available');
     expect(rows.some((r) => r.id === 'output-form-state')).toBe(false);
   });
@@ -79,7 +79,7 @@ describe('getElterngeldDocumentOutputRows', () => {
     );
     expect(rows.some((r) => r.id === 'output-form-state')).toBe(false);
     expect(rows.filter((r) => r.id.startsWith('output-kind-')).length).toBe(2);
-    expect(rows.some((r) => r.title === 'Landesformular')).toBe(true);
+    expect(rows.some((r) => r.title === 'Landesformular (geplant)')).toBe(true);
     expect(rows.some((r) => r.title === 'Ausgabe (custom_kind)')).toBe(true);
   });
 

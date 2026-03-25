@@ -23,7 +23,9 @@ import { StepEinkommen } from './steps/StepEinkommen';
 import { StepElternArbeit } from './steps/StepElternArbeit';
 import { StepPlan } from './steps/StepPlan';
 import { StepSummary } from './steps/StepSummary';
-import { StepDocuments } from './steps/StepDocuments';
+import { StepDocumentsSummaryPdf } from './steps/StepDocumentsSummaryPdf';
+import { StepDocumentsChecklist } from './steps/StepDocumentsChecklist';
+import { StepDocumentsApplicationPdf } from './steps/StepDocumentsApplicationPdf';
 import { OptimizationOverlay } from './steps/OptimizationOverlay';
 import { ResultReviewOverlay } from './steps/ResultReviewOverlay';
 import { buildOptimizationResult } from './calculation/elterngeldOptimization';
@@ -48,10 +50,18 @@ const WIZARD_STEPS = [
   { id: 'elternArbeit', title: 'Eltern & Arbeit' },
   { id: 'plan', title: 'Monate planen' },
   { id: 'summary', title: 'Zusammenfassung' },
-  { id: 'documents', title: 'Dokumente' },
+  { id: 'documentsSummaryPdf', title: 'PDF-Übersicht' },
+  { id: 'documentsChecklist', title: 'Checkliste' },
+  { id: 'documentsApplicationPdf', title: 'Antragsvorbereitung' },
 ] as const;
 
-const TOTAL_STEPS = 7; /* Intro + 6 Wizard-Schritte */
+const LINEAR_DOCUMENT_STEP_IDS = new Set<string>([
+  'documentsSummaryPdf',
+  'documentsChecklist',
+  'documentsApplicationPdf',
+]);
+
+const TOTAL_STEPS = 9; /* Intro + 8 Wizard-Schritte */
 
 export const ElterngeldWizardPage: React.FC = () => {
   const { profile, actions } = usePhase();
@@ -215,7 +225,8 @@ export const ElterngeldWizardPage: React.FC = () => {
     setStepIndex(0);
   }, []);
 
-  const handleCreatePdf = useCallback(async () => {
+  /** Zusammenfassungs-PDF im Wizard: speichern und Hinweis, ohne Erfolgs-Screen (linearer Flow). */
+  const handleCreateSummaryPdf = useCallback(async () => {
     setIsSubmitting(true);
     try {
       if (import.meta.env.DEV) console.time('[documents] PDF build (ElterngeldSummary)');
@@ -228,7 +239,6 @@ export const ElterngeldWizardPage: React.FC = () => {
         blob,
       });
       showToast('documents.elterngeld.pdfCreated', { kind: 'success', durationMs: 5000 });
-      setShowSuccess(true);
     } catch (err) {
       console.error('[elterngeld] PDF creation failed', err);
       showToast('documents.elterngeld.pdfError', { kind: 'error' });
@@ -245,7 +255,7 @@ export const ElterngeldWizardPage: React.FC = () => {
       const blob = buildElterngeldApplicationPdf(model);
       if (import.meta.env.DEV) console.timeEnd('[documents] PDF build (ElterngeldApplication)');
       await addDocument({
-        title: 'Elterngeld-Antragsformular (Vorbereitung)',
+        title: 'Elterngeld-Antragsvorbereitung (PDF)',
         createdAt: new Date().toISOString(),
         mimeType: 'application/pdf',
         blob,
@@ -356,24 +366,29 @@ export const ElterngeldWizardPage: React.FC = () => {
         {step.id === 'summary' && (
           <StepSummary
             values={values}
-            onCreatePdf={handleCreatePdf}
-            isSubmitting={isSubmitting}
             onBackToPlan={() => setStepIndex(WIZARD_STEPS.findIndex((s) => s.id === 'plan'))}
             onOpenOptimization={() => setShowOptimizationOverlay(true)}
             onNavigateToCalculation={() => setShowResultReviewOverlay(true)}
-            onProceedToDocuments={() =>
-              setStepIndex(WIZARD_STEPS.findIndex((s) => s.id === 'documents'))
-            }
+            onProceedToDocuments={handleNext}
             liveResult={liveResult}
             optimizationSummary={optimizationSummary}
           />
         )}
-        {step.id === 'documents' && (
-          <StepDocuments
+        {step.id === 'documentsSummaryPdf' && (
+          <StepDocumentsSummaryPdf
             values={values}
             liveResult={liveResult}
-            onCreatePdf={handleCreatePdf}
+            onCreatePdf={handleCreateSummaryPdf}
             isSubmitting={isSubmitting}
+          />
+        )}
+        {step.id === 'documentsChecklist' && (
+          <StepDocumentsChecklist values={values} liveResult={liveResult} onContinue={handleNext} />
+        )}
+        {step.id === 'documentsApplicationPdf' && (
+          <StepDocumentsApplicationPdf
+            values={values}
+            liveResult={liveResult}
             onCreateApplicationPdf={handleCreateApplicationPdf}
             isApplicationPdfSubmitting={isApplicationPdfSubmitting}
           />
@@ -389,16 +404,28 @@ export const ElterngeldWizardPage: React.FC = () => {
             >
               Zurück
             </Button>
-            <Button
-              type="button"
-              variant="primary"
-              className="next-steps__button btn--softpill elterngeld-actions__primary"
-              onClick={handleNext}
-            >
-              {step.id === 'plan' && liveResult && liveResult.validation.errors.length === 0
-                ? 'Weiter zum Ergebnis'
-                : 'Weiter'}
-            </Button>
+            {step.id === 'documentsSummaryPdf' ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="next-steps__button btn--softpill elterngeld-actions__primary"
+                onClick={handleNext}
+              >
+                Weiter zur Checkliste
+              </Button>
+            ) : null}
+            {!isLastStep && !LINEAR_DOCUMENT_STEP_IDS.has(step.id) ? (
+              <Button
+                type="button"
+                variant="primary"
+                className="next-steps__button btn--softpill elterngeld-actions__primary"
+                onClick={handleNext}
+              >
+                {step.id === 'plan' && liveResult && liveResult.validation.errors.length === 0
+                  ? 'Weiter zum Ergebnis'
+                  : 'Weiter'}
+              </Button>
+            ) : null}
           </div>
         )}
         <div className="next-steps__stack elterngeld-actions elterngeld-actions--tertiary">

@@ -2,9 +2,16 @@ import React, { useState, useCallback } from 'react';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
 import { useI18n } from '../../../shared/lib/i18n';
+import { isNativeAndroid } from '../../../shared/lib/platform';
 import { useTheme } from '../../../core/theme/ThemeProvider';
 import type { DocumentItem } from '../domain/types';
-import { openBlobInNewTab, downloadBlob, shareBlob } from '../lib/pdfActions';
+import {
+  openBlobInNewTab,
+  downloadBlob,
+  openPdfNative,
+  shareOrDownloadPdfMobile,
+  sharePdfNative,
+} from '../lib/pdfActions';
 
 type DocumentViewerDialogProps = {
   isOpen: boolean;
@@ -68,26 +75,66 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
   const imageUrl = useObjectUrl(isImage ? document?.blob : undefined);
   const pdfUrl = useObjectUrl(isPdf ? document?.blob : undefined);
 
-  const handlePdfOpen = useCallback(() => {
-    if (document?.blob && isPdf) {
-      openBlobInNewTab(document.blob);
+  const handlePdfOpen = useCallback(async () => {
+    console.info('[pdf] open:handler:start', { id: document?.id });
+    try {
+      if (!document?.blob || !isPdf) {
+        console.error('[pdf] open:handler:error', new Error('guard: missing blob or not application/pdf'));
+        return;
+      }
+      const nativeAndroid = isNativeAndroid();
+      console.info('[pdf] open:handler:before-action', {
+        branch: nativeAndroid ? 'android-native-open' : 'web-open-tab',
+      });
+      const pdfFilename = getPdfFilename(document.title);
+      if (nativeAndroid) {
+        try {
+          await openPdfNative(document.blob, pdfFilename);
+        } catch (err) {
+          console.error('[pdf] native:open:error', err);
+          try {
+            await sharePdfNative(document.blob, pdfFilename);
+          } catch (err2) {
+            console.error('[pdf] native:error', err2);
+            await shareOrDownloadPdfMobile(document.blob, document.title, pdfFilename);
+          }
+        }
+      } else {
+        openBlobInNewTab(document.blob);
+      }
+      console.info('[pdf] open:handler:after-action');
+    } catch (error) {
+      console.error('[pdf] open:handler:error', error);
     }
-  }, [document?.blob, isPdf]);
+  }, [document?.id, document?.title, document?.blob, isPdf]);
 
   const handlePdfDownload = useCallback(() => {
-    if (document?.blob && isPdf) {
+    console.info('[pdf] download:handler:start', { id: document?.id });
+    try {
+      if (!document?.blob || !isPdf) {
+        console.error('[pdf] download:handler:error', new Error('guard: missing blob or not application/pdf'));
+        return;
+      }
+      console.info('[pdf] download:handler:before-action');
       downloadBlob(document.blob, getPdfFilename(document.title));
+      console.info('[pdf] download:handler:after-action');
+    } catch (error) {
+      console.error('[pdf] download:handler:error', error);
     }
-  }, [document?.blob, document?.title, isPdf]);
+  }, [document?.id, document?.title, document?.blob, isPdf]);
 
   const handlePdfShare = useCallback(async () => {
-    if (document?.blob && isPdf) {
-      const ok = await shareBlob(document.blob, document.title, getPdfFilename(document.title));
-      if (!ok) {
-        handlePdfDownload();
+    console.info('[pdf] share:start', { id: document?.id });
+    try {
+      if (!document?.blob || !isPdf) {
+        console.error('[pdf] share:error', new Error('guard: missing blob or not application/pdf'));
+        return;
       }
+      await shareOrDownloadPdfMobile(document.blob, document.title, getPdfFilename(document.title));
+    } catch (error) {
+      console.error('[pdf] share:error', error);
     }
-  }, [document?.blob, document?.title, isPdf, handlePdfDownload]);
+  }, [document?.id, document?.title, document?.blob, isPdf]);
 
   if (!document) {
     return null;
@@ -131,17 +178,39 @@ export const DocumentViewerDialog: React.FC<DocumentViewerDialogProps> = ({
               {t('documents.pdfType')}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }}>
-              <Button type="button" variant="primary" onClick={handlePdfOpen}>
-                {t('documents.pdfOpen')}
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => {
+                  console.info('[pdf] open:click');
+                  void handlePdfOpen().catch((error) => console.error('[pdf] open:handler:error', error));
+                }}
+              >
+                {isMobile ? t('documents.pdfOpenMobile') : t('documents.pdfOpen')}
               </Button>
-              {typeof navigator !== 'undefined' && navigator.share && (
-                <Button type="button" variant="secondary" onClick={handlePdfShare}>
+              {typeof navigator.share === 'function' && !isMobile && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    void handlePdfShare().catch((error) => console.error('[pdf] share:error', error));
+                  }}
+                >
                   {t('documents.pdfShare')}
                 </Button>
               )}
-              <Button type="button" variant="secondary" onClick={handlePdfDownload}>
-                {t('documents.pdfDownload')}
-              </Button>
+              {!isMobile && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    console.info('[pdf] download:click');
+                    handlePdfDownload();
+                  }}
+                >
+                  {t('documents.pdfDownload')}
+                </Button>
+              )}
             </div>
           </div>
         ) : document.mimeType === 'text/plain' && document.blob ? (

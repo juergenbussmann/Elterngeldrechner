@@ -43,15 +43,13 @@ function okResult(): CalculationResult {
 }
 
 describe('StepSummary – Aktionen', () => {
-  it('genau ein „Optimierung ansehen“, primärer „Antrag vorbereiten“, kein Bundesland-Text', () => {
+  it('genau ein „Optimierung ansehen“, primärer „Weiter zur PDF-Übersicht“, kein Bundesland-Text', () => {
     const values = minimalApp();
     const result = okResult();
 
     render(
       <StepSummary
         values={values}
-        onCreatePdf={vi.fn()}
-        isSubmitting={false}
         onBackToPlan={vi.fn()}
         onOpenOptimization={vi.fn()}
         onNavigateToCalculation={vi.fn()}
@@ -62,10 +60,8 @@ describe('StepSummary – Aktionen', () => {
     );
 
     expect(screen.getAllByRole('button', { name: /Optimierung ansehen/i })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: /Antrag vorbereiten/i })).toBeTruthy();
-    expect(
-      screen.getByText(/Aus deinen Angaben: Formulare und Checkliste im nächsten Schritt/i)
-    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Weiter zur PDF-Übersicht/i })).toBeTruthy();
+    expect(screen.getByText(/Als Nächstes: PDF-Übersicht erstellen/i)).toBeTruthy();
     expect(screen.queryByText(/Bundesland/i)).toBeNull();
   });
 });

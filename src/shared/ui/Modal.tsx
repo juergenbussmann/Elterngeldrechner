@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
 import { useTheme } from '../../core/theme/ThemeProvider';
 import { Button } from './Button';
@@ -70,7 +71,7 @@ export const Modal: React.FC<ModalProps> = ({
     color: colors.textPrimary,
   };
 
-  return (
+  const modalTree = (
     <div
       style={overlayStyle}
       className={isSoftpill ? 'modal__overlay modal__overlay--softpill' : undefined}
@@ -78,7 +79,7 @@ export const Modal: React.FC<ModalProps> = ({
       aria-modal="true"
     >
       <div
-        style={containerStyle}
+        style={{ ...containerStyle, pointerEvents: 'auto' }}
         className={
           isSoftpill ? 'modal__container still-daily-checklist__card modal__container--softpill' : undefined
         }
@@ -122,4 +123,6 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalTree, document.body) : null;
 };

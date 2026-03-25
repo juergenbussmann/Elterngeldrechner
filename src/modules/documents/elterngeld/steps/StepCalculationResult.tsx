@@ -944,7 +944,10 @@ export function StepOptimizationBlock({
                           variant="primary"
                           className="btn--softpill elterngeld-calculation__optimization-action-primary"
                           disabled={!singlePbAdopt.allowed}
-                          onClick={() => openAdoptDialogForOption(opt)}
+                          onClick={() => {
+                            if (!singlePbAdopt.allowed) return;
+                            openAdoptDialogForOption(opt);
+                          }}
                         >
                           Diese Variante übernehmen
                         </Button>
@@ -1465,27 +1468,19 @@ export function OptionCard({
       </span>
       {!isCurrent && onAdoptOption && (
         <>
-          <span
-            role="button"
-            tabIndex={pbAdopt.allowed ? 0 : -1}
-            aria-disabled={!pbAdopt.allowed}
-            className={`elterngeld-calculation__suggestion-adopt-btn btn--softpill${!pbAdopt.allowed ? ' elterngeld-calculation__suggestion-adopt-btn--disabled' : ''}`}
+          <Button
+            type="button"
+            variant="primary"
+            className="elterngeld-calculation__suggestion-adopt-btn btn--softpill"
+            disabled={!pbAdopt.allowed}
             onClick={(e) => {
               e.stopPropagation();
               if (!pbAdopt.allowed) return;
               onAdoptOption(opt);
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                if (!pbAdopt.allowed) return;
-                onAdoptOption(opt);
-              }
-            }}
           >
             Diese Variante übernehmen
-          </span>
+          </Button>
           {!pbAdopt.allowed && pbAdopt.hint && (
             <span
               className="elterngeld-step__notice elterngeld-step__notice--tip elterngeld-calculation__suggestion-adopt-hint"
@@ -1508,15 +1503,22 @@ export function OptionCard({
   }
 
   return (
-    <button
+    <div
       key={opt.id}
-      type="button"
       role="listitem"
+      tabIndex={0}
+      aria-pressed={isSelected}
       className={cardClassName}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if ((e.target as HTMLElement).closest('button')) return;
+        e.preventDefault();
+        handleClick();
+      }}
     >
       {cardContent}
-    </button>
+    </div>
   );
 }
 

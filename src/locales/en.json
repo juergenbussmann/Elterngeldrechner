@@ -423,6 +423,7 @@
   "documents.privacy": "Documents are stored only on this device.",
   "documents.delete": "Delete",
   "documents.pdfOpen": "Open PDF",
+  "documents.pdfOpenMobile": "Share / open in app",
   "documents.pdfDownload": "Download PDF",
   "documents.pdfShare": "Share PDF",
   "documents.pdfType": "PDF document",

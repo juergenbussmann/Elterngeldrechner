@@ -122,7 +122,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
     return (
       <>
         <Modal isOpen={isOpen} onClose={handleClose} title="Aufteilung prüfen" variant="softpill" scrollableContent hideFooter>
-          <div className="elterngeld-optimization-overlay-content">
+          <div className="elterngeld-screen elterngeld-optimization-overlay-content">
             <StepOptimizationBlock
               plan={plan}
               result={result}
@@ -161,7 +161,10 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
             scrollableContent
             hideFooter
           >
-            <div data-testid="elterngeld-optimization-part-time-hours-modal">
+            <div
+              className="elterngeld-optimization-overlay-content"
+              data-testid="elterngeld-optimization-part-time-hours-modal"
+            >
               <p className="elterngeld-step__hint">
                 Geänderte Teilzeitstunden wirken auf den aktuellen Plan, die Vergleichsbasis und die Alternativvarianten
                 mit Plus oder Partnerschaftsbonus (je Elternteil eure Stunden aus dem Plan; ohne Eintrag 28 Stunden als
@@ -201,7 +204,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Aufteilung prüfen" variant="softpill" scrollableContent hideFooter>
-      <div className="elterngeld-optimization-overlay-content">
+      <div className="elterngeld-screen elterngeld-optimization-overlay-content">
         <Card className="elterngeld-plan__summary-card still-daily-checklist__card" role="article">
           <h3 className="elterngeld-step__title">Aktueller Plan</h3>
           <p className="elterngeld-step__hint">

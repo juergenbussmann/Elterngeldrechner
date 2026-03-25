@@ -503,9 +503,6 @@
 }
 
 .elterngeld-plan__panel-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
@@ -1168,7 +1165,7 @@
 .elterngeld-plan__partner-bonus-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 10px;
   margin-top: 0.5rem;
 }
 
@@ -1328,12 +1325,6 @@
 
 .elterngeld-calculation__conflict-action--reset {
   color: var(--color-text-secondary, #505050);
-}
-
-.elterngeld-calculation__conflict-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 .elterngeld-calculation__conflict-actions .btn {
@@ -2610,7 +2601,7 @@
 .elterngeld-calculation__optimization-actions-secondary {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 10px;
 }
 
 .elterngeld-calculation__optimization-actions-secondary .btn {
@@ -3095,9 +3086,7 @@
 }
 
 .elterngeld-documents__output-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .elterngeld-documents__checklist-heading {

@@ -532,7 +532,7 @@ export const ElterngeldCalculationPage: React.FC = () => {
                 ? 'Du hast bereits einen gespeicherten Plan und eine alternative Variante. Gleichzeitig liegen neue Daten aus der Vorbereitung vor. Was möchtest du verwenden?'
                 : 'Du hast bereits einen gespeicherten Plan. Gleichzeitig liegen neue Daten aus der Vorbereitung vor. Was möchtest du verwenden?'}
             </p>
-            <div className="elterngeld-calculation__conflict-actions">
+            <div className="next-steps__stack elterngeld-calculation__conflict-actions">
               <Button
                 type="button"
                 variant="primary"

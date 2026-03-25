@@ -54,7 +54,7 @@ export const StepDocumentsChecklist: React.FC<Props> = ({ values, liveResult, on
         </Card>
       ) : null}
 
-      <div className="elterngeld-documents__output-actions">
+      <div className="next-steps__stack elterngeld-documents__output-actions">
         <Button
           type="button"
           variant="primary"

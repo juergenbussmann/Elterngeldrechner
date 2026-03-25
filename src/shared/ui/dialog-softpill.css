@@ -197,6 +197,52 @@
   box-shadow: var(--pill-shadow), var(--pill-inset) !important;
 }
 
+/* Zielwahl „Was ist dir wichtiger?“ (ElterngeldSelectButton): Wizard-Surfaces + --ui-selected-*, überschreibt elterngeld-ui.css */
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn-group {
+  gap: 10px !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-card) !important;
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2)) !important;
+  box-shadow: var(--ui-inset) !important;
+  color: var(--color-text-primary, #0f172a) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .modal__container--softpill
+    .elterngeld-optimization-overlay-content
+    .elterngeld-select-btn:hover:not(.elterngeld-select-btn--disabled) {
+    border-color: var(--ui-border-hover) !important;
+    background: linear-gradient(180deg, var(--ui-surface-1-hover), var(--ui-surface-2-hover)) !important;
+    box-shadow: var(--ui-inset-hover) !important;
+  }
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn:focus-visible {
+  outline: none !important;
+  box-shadow:
+    0 0 0 2px var(--ui-focus),
+    var(--ui-inset) !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn--selected {
+  border: 1px solid var(--ui-selected-border) !important;
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2)) !important;
+  box-shadow: var(--ui-selected-shadow), var(--ui-inset) !important;
+  font-weight: 700 !important;
+  color: var(--color-text-primary, #0f172a) !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn__check {
+  color: var(--color-text-primary, #0f172a) !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn--disabled {
+  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2)) !important;
+}
+
 /* Variantenkarten im Optimierungs-Overlay: gleiche Hover/Active/Disabled-Regeln wie Checklisten-Card */
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card .btn,
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card button {

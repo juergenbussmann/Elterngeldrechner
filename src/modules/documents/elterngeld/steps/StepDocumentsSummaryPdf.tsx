@@ -45,7 +45,7 @@ export const StepDocumentsSummaryPdf: React.FC<Props> = ({
           <strong>Geburt / Termin:</strong> {birthStr}
         </p>
       </div>
-      <div className="elterngeld-documents__output-actions">
+      <div className="next-steps__stack elterngeld-documents__output-actions">
         <Button
           type="button"
           variant="primary"

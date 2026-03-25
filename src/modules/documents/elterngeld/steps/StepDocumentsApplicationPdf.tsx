@@ -41,7 +41,7 @@ export const StepDocumentsApplicationPdf: React.FC<Props> = ({
               {applicationRow.statusLabel}
             </span>
           </p>
-          <div className="elterngeld-documents__output-actions">
+          <div className="next-steps__stack elterngeld-documents__output-actions">
             <Button
               type="button"
               variant="primary"

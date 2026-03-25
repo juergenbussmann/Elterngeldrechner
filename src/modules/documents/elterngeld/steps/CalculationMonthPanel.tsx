@@ -297,7 +297,7 @@ export const CalculationMonthPanel: React.FC<CalculationMonthPanelProps> = ({
           </div>
         </div>
         <p className="elterngeld-plan__panel-sub">Wer nimmt diesen Monat?</p>
-        <div className="elterngeld-plan__panel-actions">
+        <div className="next-steps__stack elterngeld-plan__panel-actions">
           {WHO_OPTIONS.filter((o) => (o.who === 'partner' || o.who === 'both') ? hasPartner : true).map((opt) => (
             <ElterngeldSelectButton
               key={opt.who}

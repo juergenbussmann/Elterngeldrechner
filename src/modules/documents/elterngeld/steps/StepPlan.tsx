@@ -705,7 +705,7 @@ export const StepPlan: React.FC<Props> = ({
               </div>
             </div>
             <p className="elterngeld-plan__panel-sub">Wer nimmt diesen Monat?</p>
-            <div className="elterngeld-plan__panel-actions">
+            <div className="next-steps__stack elterngeld-plan__panel-actions">
               {MONTH_OPTIONS.filter((o) => (o.id === 'partner' || o.id === 'both') ? hasPartner : true).map((opt) => (
                 <ElterngeldSelectButton
                   key={opt.id}

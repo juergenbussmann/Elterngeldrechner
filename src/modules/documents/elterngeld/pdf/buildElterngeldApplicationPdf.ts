@@ -35,15 +35,25 @@ import {
   elterngeldPdfFormatCurrency,
 } from './elterngeldPdfCommon';
 import { elterngeldPdfRenderMonthDistributionSection } from './elterngeldPdfMonthDistributionSection';
+import type { ElterngeldDocumentFormField } from '../documentModel/elterngeldDocumentFormTypes';
 
 function fieldLine(doc: jsPDF, label: string, value: string, y: number, fontSize: number): number {
   const text = `${label}: ${value || '–'}`;
   return elterngeldPdfAddWrappedText(doc, text, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, fontSize);
 }
 
-/** Wie mapped Formularfeld: bei leerem App-Wert nur „Bezeichnung:“ ohne Platzhalter. */
-function mappedFormFieldLine(doc: jsPDF, label: string, value: string, y: number, fontSize: number): number {
-  const text = value === '' ? `${label}:` : `${label}: ${value}`;
+/** Mapped Formularfeld: Wert oder bei Leere Ausfüllhinweis in Anführungszeichen (kein echter Antragsinhalt). */
+function mappedFormFieldLine(doc: jsPDF, field: ElterngeldDocumentFormField, y: number, fontSize: number): number {
+  let text: string;
+  if (field.value !== '') {
+    text = `${field.label}: ${field.value}`;
+  } else if (field.source === 'official_form_only') {
+    text = `${field.label}:\n„${field.hint}“`;
+  } else if (field.hint) {
+    text = `${field.label}:\n„${field.hint}“`;
+  } else {
+    text = `${field.label}:`;
+  }
   return elterngeldPdfAddWrappedText(doc, text, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, fontSize);
 }
 
@@ -56,7 +66,7 @@ function renderMappedFormSectionA(doc: jsPDF, model: ElterngeldDocumentModel, y:
     y = elterngeldPdfEnsurePageSpace(doc, y);
     y = subsectionHeading(doc, sub.subsectionTitle, y);
     for (const f of sub.fields) {
-      y = mappedFormFieldLine(doc, f.label, f.value, y, 10);
+      y = mappedFormFieldLine(doc, f, y, 10);
       y += 2;
     }
     y += 4;

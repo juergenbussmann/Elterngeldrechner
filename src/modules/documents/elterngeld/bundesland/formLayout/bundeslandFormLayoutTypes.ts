@@ -16,6 +16,8 @@ export interface BundeslandFormSectionALayout {
   readonly subsectionOrder: readonly FormSubsectionKey[];
   readonly subsectionTitles?: Partial<Readonly<Record<FormSubsectionKey, string>>>;
   readonly labelOverrides?: Partial<Readonly<Record<ElterngeldFormFieldId, string>>>;
+  /** Ausfüllhinweise bei leerem Wert; gehen vor GENERIC_FORM_FIELD_HINTS. */
+  readonly hintOverrides?: Partial<Readonly<Record<ElterngeldFormFieldId, string>>>;
   readonly fieldOrder?: Partial<
     Readonly<Record<FormSubsectionKey, readonly ElterngeldFormFieldId[]>>
   >;

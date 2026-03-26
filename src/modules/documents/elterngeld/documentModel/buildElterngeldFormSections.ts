@@ -14,6 +14,7 @@ import {
   SECTION_A_TITLE,
 } from '../applicationForm/elterngeldApplicationFormLabels';
 import { resolveFormFieldLabel } from '../bundesland/resolveFormFieldLabel';
+import { resolveFormFieldHint } from '../bundesland/formFieldHints';
 import type { ElterngeldFormFieldId } from '../bundesland/elterngeldFormFieldIds';
 import type { FormSubsectionKey } from '../bundesland/formLayout/formSubsectionKeys';
 import { getBundeslandFormSectionALayout } from '../bundesland/formLayout/bundeslandFormLayoutRegistry';
@@ -28,6 +29,8 @@ import type {
   ElterngeldDocumentFormSection,
   ElterngeldDocumentFormSubsection,
 } from './elterngeldDocumentFormTypes';
+import { isAppBoundFormField } from './elterngeldDocumentFormTypes';
+import { buildOfficialFormOnlySubsection } from '../bundesland/formProfiles/officialFormOnlyFields';
 
 /** Titel aus einheitlichem Antrag (1–13) — NI/RLP/ST u. a.; Abschnitt 3/4/12 ohne passende App-Felder: nicht ausgespielt. */
 const TITLE_1_KIND = '1. Angaben zum Kind';
@@ -60,7 +63,14 @@ function field(
   value: string,
   empty: boolean
 ): ElterngeldDocumentFormField {
-  return { id, label: resolveFormFieldLabel(id, stateCode), value, empty };
+  return {
+    source: 'app',
+    id,
+    label: resolveFormFieldLabel(id, stateCode),
+    value,
+    empty,
+    hint: empty ? resolveFormFieldHint(id, stateCode) : null,
+  };
 }
 
 type SubsectionDraft = ElterngeldDocumentFormSubsection;
@@ -72,14 +82,15 @@ function sortFieldsByLayout(
 ): ElterngeldDocumentFormField[] {
   const order = layout?.fieldOrder?.[key];
   if (!order?.length) return fields;
-  const byId = new Map(fields.map((f) => [f.id, f]));
+  const appFields = fields.filter(isAppBoundFormField);
+  const byId = new Map(appFields.map((f) => [f.id, f]));
   const out: ElterngeldDocumentFormField[] = [];
   for (const id of order) {
     const f = byId.get(id);
     if (f) out.push(f);
   }
   for (const f of fields) {
-    if (!out.some((x) => x.id === f.id)) out.push(f);
+    if (!out.includes(f)) out.push(f);
   }
   return out;
 }
@@ -88,7 +99,7 @@ function pickElternFieldsById(
   elternFields: ElterngeldDocumentFormField[],
   ids: readonly ElterngeldFormFieldId[]
 ): ElterngeldDocumentFormField[] {
-  const byId = new Map(elternFields.map((f) => [f.id, f]));
+  const byId = new Map(elternFields.filter(isAppBoundFormField).map((f) => [f.id, f]));
   const out: ElterngeldDocumentFormField[] = [];
   for (const id of ids) {
     const f = byId.get(id);
@@ -425,6 +436,8 @@ export function buildElterngeldFormSectionA(
 
   const profil = getFormularProfil(stateCode);
   const subsections = buildSubsectionsForProfil(profil, values, byKey, stateCode);
+  const officialSub = buildOfficialFormOnlySubsection(profil, subsections);
+  if (officialSub) subsections.push(officialSub);
 
   return {
     sectionCode: 'A',

@@ -14,7 +14,11 @@ import { getElterngeldDeadlineInfo, type ElterngeldDeadlineInfo } from '../elter
 import { buildElterngeldFormSectionA } from './buildElterngeldFormSections';
 import type { ElterngeldDocumentFormSection } from './elterngeldDocumentFormTypes';
 
-/** Gemeinsame Basis-Checkliste für alle Bundesländer (eine Quelle für UI + PDF). */
+/**
+ * Gemeinsame Basis-Checkliste für alle Bundesländer (eine Quelle für UI + PDF).
+ * Steuer-ID und Bankverbindung sind hier fachlich mit den üblichen Antragspositionen verknüpft;
+ * die reine Darstellung in Abschnitt A nutzt dazu formProfiles/officialFormOnlyFields (ohne App-State).
+ */
 export const ELTERNGELD_BASE_DOCUMENT_CHECKLIST: readonly string[] = [
   'Geburtsurkunde',
   'Einkommensnachweise',

@@ -71,9 +71,18 @@ export const ElterngeldApplicationFormFillHelperPreview: React.FC<
                   </p>
                   <div className="elterngeld-plan__summary-rows">
                     {sub.fields.map((f) => (
-                      <div key={f.id} className="elterngeld-plan__summary-row">
+                      <div
+                        key={f.source === 'app' ? f.id : f.displayKey}
+                        className="elterngeld-plan__summary-row"
+                      >
                         <span className="elterngeld-plan__summary-label">{f.label}</span>
-                        <span className="elterngeld-plan__summary-value">{f.value}</span>
+                        <span className="elterngeld-plan__summary-value">
+                          {f.empty && f.hint ? (
+                            <span className="elterngeld-step__hint elterngeld-summary__forms-hint">{f.hint}</span>
+                          ) : (
+                            f.value
+                          )}
+                        </span>
                       </div>
                     ))}
                   </div>

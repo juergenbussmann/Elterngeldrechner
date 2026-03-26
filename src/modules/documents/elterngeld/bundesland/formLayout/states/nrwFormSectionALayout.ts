@@ -15,4 +15,9 @@ export const NRW_FORM_SECTION_A_LAYOUT: BundeslandFormSectionALayout = {
     childBirthDate: 'Geburtsdatum des Kindes',
     childExpectedBirthDate: 'Voraussichtlicher Tag der Entbindung',
   },
+  hintOverrides: {
+    childBirthDate: 'Trag im Antrag das Geburtsdatum des Kindes ein (sofern das Kind bereits geboren ist).',
+    childExpectedBirthDate:
+      'Trag im Antrag den voraussichtlichen Tag der Entbindung ein, wenn noch kein Geburtsdatum feststeht.',
+  },
 };

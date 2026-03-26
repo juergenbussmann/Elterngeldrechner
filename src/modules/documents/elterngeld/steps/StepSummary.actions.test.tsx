@@ -43,7 +43,7 @@ function okResult(): CalculationResult {
 }
 
 describe('StepSummary – Aktionen', () => {
-  it('genau ein „Optimierung ansehen“, primärer „Weiter zur PDF-Übersicht“, kein Bundesland-Text', () => {
+  it('genau ein „Optimierung ansehen“, primärer „Weiter zur Datenübersicht“, kein Bundesland-Text', () => {
     const values = minimalApp();
     const result = okResult();
 
@@ -60,8 +60,10 @@ describe('StepSummary – Aktionen', () => {
     );
 
     expect(screen.getAllByRole('button', { name: /Optimierung ansehen/i })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: /Weiter zur PDF-Übersicht/i })).toBeTruthy();
-    expect(screen.getByText(/Als Nächstes: PDF-Übersicht erstellen/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Weiter zur Datenübersicht/i })).toBeTruthy();
+    expect(
+      screen.getByText(/Als Nächstes: Datenübersicht, danach Kurzüberblick und Ausfüllhilfe/i)
+    ).toBeTruthy();
     expect(screen.queryByText(/Bundesland/i)).toBeNull();
   });
 });

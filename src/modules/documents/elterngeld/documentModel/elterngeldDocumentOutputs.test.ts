@@ -6,30 +6,14 @@ import { INITIAL_ELTERNGELD_APPLICATION } from '../types/elterngeldTypes';
 import { ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND } from './elterngeldOutputKindConstants';
 
 function minimalModel(overrides: Partial<ElterngeldDocumentModel>): ElterngeldDocumentModel {
+  const base = buildElterngeldDocumentModel({
+    ...INITIAL_ELTERNGELD_APPLICATION,
+    state: 'NW',
+  });
   return {
-    stateCode: 'NW',
-    stateDisplayName: 'Nordrhein-Westfalen',
-    applicantMode: 'single_applicant',
-    parentA: {
-      firstName: '',
-      lastName: '',
-      employmentType: 'employed',
-      incomeBeforeBirth: '',
-      plannedPartTime: false,
-    },
-    parentB: null,
-    child: { birthDate: '', expectedBirthDate: '', multipleBirth: false },
-    benefitPlan: {
-      model: 'basis',
-      parentAMonths: '',
-      parentBMonths: '',
-      partnershipBonus: false,
-    },
+    ...base,
     deadlines: { noticeText: 'Tipp', noticeLevel: 'tip' },
     checklistItems: ['A', 'B'],
-    documentOutputKinds: [],
-    stateNotes: undefined,
-    calculation: null,
     ...overrides,
   };
 }
@@ -45,22 +29,23 @@ describe('getElterngeldDocumentOutputRows', () => {
     expect(cl?.action).toBe('scrollChecklist');
   });
 
-  it('ohne documentOutputKinds: Platzhalter für Antragsvorbereitung (PDF)', () => {
+  it('ohne documentOutputKinds: Ausfüllhilfe-PDF ist verfügbar', () => {
     const rows = getElterngeldDocumentOutputRows(minimalModel({ documentOutputKinds: [] }));
-    const form = rows.find((r) => r.id === 'output-form-state');
+    const form = rows.find((r) => r.id === 'output-application-fill-helper');
     expect(form).toBeDefined();
-    expect(form?.status).toBe('planned');
+    expect(form?.status).toBe('available');
+    expect(form?.action).toBe('applicationPdf');
+    expect(rows.some((r) => r.id === 'output-form-state')).toBe(false);
   });
 
-  it('application_pdf in documentOutputKinds → verfügbar mit Aktion applicationPdf', () => {
+  it('application_pdf in documentOutputKinds → eine Ausfüllhilfe-Zeile, kein Duplikat', () => {
     const rows = getElterngeldDocumentOutputRows(
       minimalModel({ documentOutputKinds: [ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND] })
     );
-    const appRow = rows.find((r) => r.action === 'applicationPdf');
-    expect(appRow).toBeDefined();
-    expect(appRow?.title).toBe('Antragsvorbereitung (PDF)');
-    expect(appRow?.status).toBe('available');
-    expect(rows.some((r) => r.id === 'output-form-state')).toBe(false);
+    const appRows = rows.filter((r) => r.action === 'applicationPdf');
+    expect(appRows).toHaveLength(1);
+    expect(appRows[0]?.id).toBe('output-application-fill-helper');
+    expect(appRows[0]?.status).toBe('available');
   });
 
   it('Nordrhein-Westfalen laut stateConfig: Modell enthält application_pdf und Zeile ist verfügbar', () => {

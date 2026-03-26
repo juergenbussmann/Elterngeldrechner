@@ -169,9 +169,8 @@ export function getExplainableAdvantageWhenSameDurationLessTotal(
 
 /**
  * Prüft, ob eine Variante angezeigt werden darf.
- * Varianten mit höherer Summe oder anderer Dauer: immer anzeigen.
- * Varianten mit gleicher Dauer und weniger Geld: anzeigen, wenn ein erkennbarer
- * fachlicher Vorteil vorliegt (mehr am Anfang, Bonus, ausgewogenere Aufteilung usw.).
+ * Gleiche Bezugsdauer und geringere Gesamtauszahlung: nie (auch nicht über „erklärbare“ Vorteile).
+ * Sonst: höhere/gleiche Summe, oder geänderte Dauer inkl. Trade-off weniger Geld.
  */
 export function shouldShowVariant(
   suggestion: OptimizationSuggestion,
@@ -182,6 +181,8 @@ export function shouldShowVariant(
   const currentDuration = countBezugMonths(currentResult);
   const optimizedTotal = suggestion.optimizedTotal;
   const currentTotal = currentResult.householdTotal;
+
+  if (optimizedDuration === currentDuration && optimizedTotal < currentTotal) return false;
 
   if (optimizedTotal >= currentTotal) return true;
   if (optimizedDuration !== currentDuration) return true;

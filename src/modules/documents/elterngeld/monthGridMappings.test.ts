@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getMonthGridItemsFromValues } from './monthGridMappings';
+import { getMonthGridItemsFromValues, resolveDocumentMonthDistribution } from './monthGridMappings';
 import type { ElterngeldApplication } from './types/elterngeldTypes';
 
 describe('getMonthGridItemsFromValues – concreteMonthDistribution', () => {
@@ -43,5 +43,68 @@ describe('getMonthGridItemsFromValues – concreteMonthDistribution', () => {
     for (let i = 4; i < 24; i++) {
       expect(items[i]).toEqual({ month: i + 1, state: 'mother', label: 'Mutter', subLabel: 'Plus' });
     }
+  });
+});
+
+describe('resolveDocumentMonthDistribution', () => {
+  it('nutzt concreteMonthDistribution wenn gesetzt', () => {
+    const values: ElterngeldApplication = {
+      state: '',
+      applicantMode: 'both_parents',
+      child: { birthDate: '2025-03-01', expectedBirthDate: '', multipleBirth: false },
+      parentA: {
+        firstName: '',
+        lastName: '',
+        employmentType: 'employed',
+        incomeBeforeBirth: '',
+        plannedPartTime: false,
+      },
+      parentB: {
+        firstName: '',
+        lastName: '',
+        employmentType: 'employed',
+        incomeBeforeBirth: '',
+        plannedPartTime: false,
+      },
+      benefitPlan: {
+        model: 'plus',
+        parentAMonths: '24',
+        parentBMonths: '4',
+        partnershipBonus: true,
+        concreteMonthDistribution: [
+          { month: 1, modeA: 'partnerBonus', modeB: 'partnerBonus' },
+          { month: 2, modeA: 'plus', modeB: 'none' },
+        ],
+      },
+    };
+    const d = resolveDocumentMonthDistribution(values, null, 24);
+    expect(d[0]).toEqual({ month: 1, modeA: 'partnerBonus', modeB: 'partnerBonus' });
+    expect(d[1]).toEqual({ month: 2, modeA: 'plus', modeB: 'none' });
+    expect(d[2]).toEqual({ month: 3, modeA: 'none', modeB: 'none' });
+  });
+
+  it('Count-Fallback: erste Person Monate 1–3 Basis bei Modell basis', () => {
+    const values: ElterngeldApplication = {
+      state: '',
+      applicantMode: 'single_applicant',
+      child: { birthDate: '', expectedBirthDate: '', multipleBirth: false },
+      parentA: {
+        firstName: '',
+        lastName: '',
+        employmentType: 'employed',
+        incomeBeforeBirth: '',
+        plannedPartTime: false,
+      },
+      parentB: null,
+      benefitPlan: {
+        model: 'basis',
+        parentAMonths: '3',
+        parentBMonths: '',
+        partnershipBonus: false,
+      },
+    };
+    const d = resolveDocumentMonthDistribution(values, null, 14);
+    expect(d.slice(0, 3).every((e) => e.modeA === 'basis')).toBe(true);
+    expect(d[3]?.modeA).toBe('none');
   });
 });

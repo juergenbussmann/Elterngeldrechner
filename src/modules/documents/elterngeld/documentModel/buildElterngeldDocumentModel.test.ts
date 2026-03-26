@@ -1,15 +1,47 @@
 import { describe, it, expect } from 'vitest';
 import { buildElterngeldDocumentModel, ELTERNGELD_BASE_DOCUMENT_CHECKLIST } from './buildElterngeldDocumentModel';
 import { INITIAL_ELTERNGELD_APPLICATION } from '../types/elterngeldTypes';
+import { ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND } from './elterngeldOutputKindConstants';
 
 describe('buildElterngeldDocumentModel', () => {
-  it('maps state code to display name via GERMAN_STATES', () => {
+  it('maps state code to display name via Bundesland-Resolver', () => {
     const model = buildElterngeldDocumentModel({
       ...INITIAL_ELTERNGELD_APPLICATION,
       state: 'NI',
     });
     expect(model.stateCode).toBe('NI');
     expect(model.stateDisplayName).toBe('Niedersachsen');
+    expect(model.isKnownBundesland).toBe(true);
+    expect(model.bundeslandTier).toBe('generic');
+    expect(model.documentOutputKinds).toEqual([]);
+  });
+
+  it('NRW: bundeslandTier nrw und Kennzeichnung application_pdf', () => {
+    const model = buildElterngeldDocumentModel({
+      ...INITIAL_ELTERNGELD_APPLICATION,
+      state: 'NW',
+    });
+    expect(model.bundeslandTier).toBe('nrw');
+    expect(model.documentOutputKinds).toContain(ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND);
+  });
+
+  it('unbekannter Code: kein NRW-Fallback bei Ausgaben', () => {
+    const model = buildElterngeldDocumentModel({
+      ...INITIAL_ELTERNGELD_APPLICATION,
+      state: 'ZZ',
+    });
+    expect(model.isKnownBundesland).toBe(false);
+    expect(model.bundeslandTier).toBe('generic');
+    expect(model.documentOutputKinds).toEqual([]);
+    expect(model.stateDisplayName).toBe('ZZ');
+  });
+
+  it('leeres Bundesland: wie Resolver, für Ausfüllhilfe erkennbar', () => {
+    const model = buildElterngeldDocumentModel(INITIAL_ELTERNGELD_APPLICATION);
+    expect(model.stateCode).toBe('');
+    expect(model.stateDisplayName).toBe('–');
+    expect(model.isKnownBundesland).toBe(false);
+    expect(model.bundeslandTier).toBe('generic');
   });
 
   it('exposes applicant, child and benefitPlan from values', () => {
@@ -64,6 +96,24 @@ describe('buildElterngeldDocumentModel', () => {
     expect(model.calculation).not.toBeNull();
     expect(model.calculation?.householdTotal).toBe(1000);
     expect(model.calculation?.validationHasErrors).toBe(false);
+  });
+
+  it('setzt documentMonthDistribution für alle Lebensmonate (Count-Fallback)', () => {
+    const model = buildElterngeldDocumentModel({
+      ...INITIAL_ELTERNGELD_APPLICATION,
+      state: 'BE',
+      benefitPlan: {
+        ...INITIAL_ELTERNGELD_APPLICATION.benefitPlan,
+        model: 'basis',
+        parentAMonths: '6',
+        parentBMonths: '0',
+        partnershipBonus: false,
+      },
+    });
+    expect(model.documentMonthDistribution).toHaveLength(14);
+    expect(model.documentMonthDistribution[0]?.modeA).toBe('basis');
+    expect(model.documentMonthDistribution[5]?.modeA).toBe('basis');
+    expect(model.documentMonthDistribution[6]?.modeA).toBe('none');
   });
 
   it('omits calculation snapshot when liveResult has validation errors', () => {

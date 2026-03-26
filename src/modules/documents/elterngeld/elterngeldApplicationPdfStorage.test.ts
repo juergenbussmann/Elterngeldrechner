@@ -10,7 +10,7 @@ describe('Elterngeld Antragsvorbereitung-PDF Speicherung', () => {
   beforeEach(() => {
     addDocumentSpy = vi.spyOn(documentService, 'addDocument').mockResolvedValue({
       id: 'test-doc-id',
-      title: 'Elterngeld-Antragsvorbereitung (PDF)',
+      title: 'Elterngeld-Antragsvorbereitung – Ausfüllhilfe (PDF)',
       createdAt: new Date().toISOString(),
       mimeType: 'application/pdf',
       blob: new Blob(),
@@ -28,7 +28,7 @@ describe('Elterngeld Antragsvorbereitung-PDF Speicherung', () => {
     });
     const blob = buildElterngeldApplicationPdf(model);
     await documentService.addDocument({
-      title: 'Elterngeld-Antragsvorbereitung (PDF)',
+      title: 'Elterngeld-Antragsvorbereitung – Ausfüllhilfe (PDF)',
       createdAt: new Date().toISOString(),
       mimeType: 'application/pdf',
       blob,
@@ -37,7 +37,7 @@ describe('Elterngeld Antragsvorbereitung-PDF Speicherung', () => {
     expect(addDocumentSpy).toHaveBeenCalledTimes(1);
     const payload = addDocumentSpy.mock.calls[0][0];
     expect(payload.mimeType).toBe('application/pdf');
-    expect(payload.title).toBe('Elterngeld-Antragsvorbereitung (PDF)');
+    expect(payload.title).toBe('Elterngeld-Antragsvorbereitung – Ausfüllhilfe (PDF)');
     expect(payload.blob).toBeInstanceOf(Blob);
     expect((payload.blob as Blob).size).toBeGreaterThan(500);
   });

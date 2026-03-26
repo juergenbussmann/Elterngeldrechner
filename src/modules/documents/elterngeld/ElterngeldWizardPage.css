@@ -49,6 +49,14 @@
   gap: 1rem;
 }
 
+/* Gestapelte Dokumenten-Cards: gleiche vertikale Logik wie .checklists__rubric (1.75rem) */
+.elterngeld-documents-data-stack {
+  scroll-margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
 /* Mobile UX: Buttons mind. 48px Höhe */
 .elterngeld-screen .next-steps__button,
 .elterngeld-screen .btn--softpill {
@@ -1274,6 +1282,14 @@
 
 .elterngeld-step__section-title:first-of-type {
   margin-top: 0;
+}
+
+/* Unterüberschriften innerhalb einer Card (z. B. Ausfüllhilfe Abschnitt A) */
+.elterngeld-step__section-title--nested {
+  margin: 0.75rem 0 0.35rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
 }
 
 .elterngeld-step__parent-block {

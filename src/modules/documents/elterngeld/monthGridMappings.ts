@@ -11,9 +11,13 @@
 
 import type { ElterngeldCalculationPlan } from './calculation';
 import { getCombinedMonthState } from './calculation';
-import type { ParentCalculationResult } from './calculation';
+import type { CalculationResult, ParentCalculationResult } from './calculation';
 import type { MonthGridItem } from './ui/MonthGrid';
-import type { ElterngeldApplication, MonthDistributionEntry } from './types/elterngeldTypes';
+import type {
+  ElterngeldApplication,
+  MonthDistributionEntry,
+  MonthModeForDistribution,
+} from './types/elterngeldTypes';
 
 const MODE_LABELS: Record<string, string> = {
   none: '–',
@@ -223,4 +227,103 @@ export function getMonthGridItemsFromResults(
     });
   }
   return result;
+}
+
+function normalizeDistributionMode(value: string | undefined): MonthModeForDistribution {
+  if (value === 'basis' || value === 'plus' || value === 'partnerBonus' || value === 'none') {
+    return value;
+  }
+  return 'none';
+}
+
+function expandConcreteMonthDistribution(
+  distribution: MonthDistributionEntry[],
+  maxMonths: number
+): MonthDistributionEntry[] {
+  const byMonth = new Map(distribution.map((d) => [d.month, d]));
+  const out: MonthDistributionEntry[] = [];
+  for (let m = 1; m <= maxMonths; m++) {
+    const e = byMonth.get(m);
+    if (e) {
+      out.push({
+        month: m,
+        modeA: normalizeDistributionMode(e.modeA),
+        modeB: normalizeDistributionMode(e.modeB ?? 'none'),
+      });
+    } else {
+      out.push({ month: m, modeA: 'none', modeB: 'none' });
+    }
+  }
+  return out;
+}
+
+function documentDistributionFromLiveResult(
+  result: CalculationResult,
+  maxMonths: number,
+  hasPartner: boolean
+): MonthDistributionEntry[] {
+  const parentA = result.parents[0];
+  const parentB = result.parents[1];
+  const byMonthA = new Map(parentA?.monthlyResults.map((r) => [r.month, r]) ?? []);
+  const byMonthB = new Map(parentB?.monthlyResults.map((r) => [r.month, r]) ?? []);
+  const out: MonthDistributionEntry[] = [];
+  for (let m = 1; m <= maxMonths; m++) {
+    const modeA = normalizeDistributionMode(byMonthA.get(m)?.mode);
+    const modeB =
+      hasPartner && parentB ? normalizeDistributionMode(byMonthB.get(m)?.mode) : ('none' as const);
+    out.push({ month: m, modeA, modeB });
+  }
+  return out;
+}
+
+function documentDistributionFromCounts(values: ElterngeldApplication, maxMonths: number): MonthDistributionEntry[] {
+  const hasPartner = values.applicantMode === 'both_parents';
+  const countA = parseInt(String(values.benefitPlan.parentAMonths || ''), 10) || 0;
+  const countB = hasPartner ? parseInt(String(values.benefitPlan.parentBMonths || ''), 10) || 0 : 0;
+  const model = values.benefitPlan.model;
+  const partnershipBonus = values.benefitPlan.partnershipBonus;
+  const out: MonthDistributionEntry[] = [];
+  for (let m = 1; m <= maxMonths; m++) {
+    const motherHas = m <= countA;
+    const partnerHas = hasPartner && m <= countB;
+    let modeA: MonthModeForDistribution = 'none';
+    let modeB: MonthModeForDistribution = 'none';
+    if (motherHas && partnerHas && partnershipBonus) {
+      modeA = 'partnerBonus';
+      modeB = 'partnerBonus';
+    } else if (motherHas && partnerHas) {
+      modeA = model === 'plus' ? 'plus' : 'basis';
+      modeB = model === 'plus' ? 'plus' : 'basis';
+    } else if (motherHas) {
+      modeA = model === 'plus' ? 'plus' : 'basis';
+    } else if (partnerHas) {
+      modeB = partnershipBonus ? 'partnerBonus' : model === 'plus' ? 'plus' : 'basis';
+    }
+    out.push({ month: m, modeA, modeB });
+  }
+  return out;
+}
+
+/**
+ * Effektive Monatsverteilung für Dokumente, Ausfüllhilfe und PDFs: übernimmt concreteMonthDistribution,
+ * sonst valides calculatePlan-Ergebnis, sonst dieselbe Count-Logik wie MonthGrid-Fallback.
+ */
+export function resolveDocumentMonthDistribution(
+  values: ElterngeldApplication,
+  liveResult: CalculationResult | null | undefined,
+  maxMonths: number
+): MonthDistributionEntry[] {
+  const dist = values.benefitPlan.concreteMonthDistribution;
+  if (dist && dist.length > 0) {
+    return expandConcreteMonthDistribution(dist, maxMonths);
+  }
+  if (
+    liveResult &&
+    liveResult.validation.errors.length === 0 &&
+    (liveResult.parents[0]?.monthlyResults?.length ?? 0) > 0
+  ) {
+    const hasPartner = values.applicantMode === 'both_parents';
+    return documentDistributionFromLiveResult(liveResult, maxMonths, hasPartner);
+  }
+  return documentDistributionFromCounts(values, maxMonths);
 }

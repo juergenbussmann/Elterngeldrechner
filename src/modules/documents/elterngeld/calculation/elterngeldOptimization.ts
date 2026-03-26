@@ -167,6 +167,14 @@ export function buildOptimizationResult(
   const top3 = selectTop3(candidates, goal);
   let suggestions = top3.map((c) => candidateToSuggestion(c, goal, currentDuration, currentTotal, currentResult));
 
+  /**
+   * Fachregel (alle Ziele): Gleiche Bezugsdauer und geringere Gesamtauszahlung wird nicht angeboten.
+   * Trade-offs mit geänderter Dauer bleiben möglich (weniger Geld, aber z. B. länger/kürzer).
+   */
+  suggestions = suggestions.filter(
+    (s) => !(s.optimizedDurationMonths === currentDuration && s.optimizedTotal < currentTotal)
+  );
+
   /** Bei maxMoney/partnerBonus: Vorschläge mit vernachlässigbarem Zuwachs ausfiltern – verhindert Drift bei wiederholter Optimierung. */
   if (goal === 'maxMoney' || goal === 'partnerBonus') {
     suggestions = suggestions.filter(
@@ -295,7 +303,12 @@ function candidateToSuggestion(
       optimizedMetricValue = optimizedTotal;
   }
 
-  const { title, explanation } = getSuggestionTitleAndExplanation(goal, strategyType);
+  const { title, explanation } = getSuggestionTitleAndExplanation(goal, strategyType, {
+    optimizedTotal,
+    currentTotal,
+    optimizedDuration,
+    currentDuration,
+  });
 
   return {
     goal: goal as 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus',
@@ -319,7 +332,13 @@ function candidateToSuggestion(
 
 function getSuggestionTitleAndExplanation(
   goal: 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus',
-  strategyType: string | null
+  strategyType: string | null,
+  moneyAndDuration?: {
+    optimizedTotal: number;
+    currentTotal: number;
+    optimizedDuration: number;
+    currentDuration: number;
+  }
 ): { title: string; explanation: string } {
   const altLabels: Record<string, { title: string; explanation: string }> = {
     motherOnly: { title: 'Nur Mutter bezieht Elterngeld', explanation: 'Vater bezieht kein Elterngeld, alle Monate bei Mutter.' },
@@ -327,17 +346,59 @@ function getSuggestionTitleAndExplanation(
     withoutPartTime: { title: 'Einfachere Aufteilung ohne Teilzeit', explanation: 'Kein Partnerschaftsbonus, nur Basiselterngeld.' },
     withPartTime: { title: 'Mit Partnerschaftsbonus', explanation: 'Beide in Teilzeit – Bonusmonate werden genutzt.' },
   };
-  if (strategyType && altLabels[strategyType]) return altLabels[strategyType];
+  if (strategyType && altLabels[strategyType]) {
+    const alt = altLabels[strategyType];
+    if (
+      moneyAndDuration &&
+      moneyAndDuration.optimizedTotal < moneyAndDuration.currentTotal &&
+      moneyAndDuration.optimizedDuration !== moneyAndDuration.currentDuration
+    ) {
+      return {
+        title: alt.title,
+        explanation: `${alt.explanation} Die geschätzte Gesamtauszahlung kann dabei niedriger sein (andere Bezugsdauer).`,
+      };
+    }
+    return altLabels[strategyType];
+  }
+
+  const tradeoffLessMoneyOtherDuration =
+    moneyAndDuration &&
+    moneyAndDuration.optimizedTotal < moneyAndDuration.currentTotal &&
+    moneyAndDuration.optimizedDuration !== moneyAndDuration.currentDuration;
 
   switch (goal) {
     case 'maxMoney':
+      if (tradeoffLessMoneyOtherDuration) {
+        return {
+          title: 'Alternative mit anderer Bezugsdauer',
+          explanation:
+            'Die Bezugsdauer unterscheidet sich vom aktuellen Plan; die geschätzte Summe kann niedriger ausfallen (bewusster Trade-off).',
+        };
+      }
       return { title: 'Maximale Auszahlung', explanation: 'Diese Variante erhöht die geschätzte Gesamtauszahlung.' };
     case 'longerDuration':
       return { title: 'Längere Bezugsdauer', explanation: 'Diese Variante verteilt den Bezug auf mehr Monate.' };
     case 'frontLoad':
+      if (tradeoffLessMoneyOtherDuration) {
+        return {
+          title: 'Schwerpunkt frühe Monate',
+          explanation:
+            'Andere Aufteilung mit geänderter Bezugsdauer; die Gesamtsumme kann gegenüber dem Ist-Plan niedriger sein.',
+        };
+      }
       return { title: 'Am Anfang mehr Geld', explanation: 'Diese Variante konzentriert höhere Auszahlungen in die ersten Lebensmonate.' };
     case 'partnerBonus':
-      return { title: 'Partnerschaftsbonus nutzen', explanation: 'Diese Variante nutzt überlappende ElterngeldPlus-Monate günstiger.' };
+      if (tradeoffLessMoneyOtherDuration) {
+        return {
+          title: 'Alternative mit Partnerschaftsbezug',
+          explanation:
+            'Nutzung oder Aufteilung des Bonusbereichs mit anderer Bezugsdauer; die Gesamtauszahlung kann geringer sein.',
+        };
+      }
+      return {
+        title: 'Partnerschaftsbonus nutzen',
+        explanation: 'Diese Variante nutzt überlappende ElterngeldPlus-Monate günstiger.',
+      };
     default:
       return { title: 'Optimierte Strategie', explanation: '' };
   }

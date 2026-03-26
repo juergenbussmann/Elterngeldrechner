@@ -32,7 +32,7 @@ const DOCUMENT_OUTPUT_KIND_COPY: Record<string, { title: string; description: st
   [ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND]: {
     title: 'Antragsvorbereitung (PDF)',
     description:
-      'Strukturierte Übersicht deiner Angaben für die spätere Beantragung: Felder zu Kind, Bezug und Antragstellern. Kein Originalformular der Elterngeldstelle — nur für ausgewählte Bundesländer freigeschaltet.',
+      'Entspricht der Ausfüllhilfe-PDF unten; der Eintrag dient nur der Konfiguration pro Bundesland.',
   },
   landesformular: {
     title: 'Landesformular (geplant)',
@@ -42,18 +42,6 @@ const DOCUMENT_OUTPUT_KIND_COPY: Record<string, { title: string; description: st
 };
 
 function kindRow(kind: string, index: number): ElterngeldDocumentOutputRow {
-  if (kind === ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND) {
-    const copy = DOCUMENT_OUTPUT_KIND_COPY[kind];
-    return {
-      id: `output-kind-${kind}-${index}`,
-      title: copy.title,
-      description: copy.description,
-      status: 'available',
-      statusLabel: STATUS_LABEL.available,
-      action: 'applicationPdf',
-    };
-  }
-
   const copy = DOCUMENT_OUTPUT_KIND_COPY[kind];
   const title = copy?.title ?? `Ausgabe (${kind})`;
   const description =
@@ -73,9 +61,9 @@ export function getElterngeldDocumentOutputRows(model: ElterngeldDocumentModel):
 
   rows.push({
     id: 'output-summary-pdf',
-    title: 'Zusammenfassung (PDF)',
+    title: 'Kurzüberblick (PDF)',
     description:
-      'Deine Angaben, der geplante Bezug, Orientierungswerte (falls möglich) und die Unterlagen-Checkliste als PDF. Wird in „Dokumente“ gespeichert.',
+      'Kompakte Zusammenfassung: Grunddaten, Bezugsüberblick (Anzahl Monate, Modell, Bonus), ggf. Schätzung, kurze Checkliste und Fristen — ohne Monatsliste. Wird als „Elterngeld-Vorbereitung – Kurzüberblick“ gespeichert.',
     status: 'available',
     statusLabel: STATUS_LABEL.available,
     action: 'summaryPdf',
@@ -91,21 +79,20 @@ export function getElterngeldDocumentOutputRows(model: ElterngeldDocumentModel):
     action: 'scrollChecklist',
   });
 
-  if (model.documentOutputKinds.length > 0) {
-    model.documentOutputKinds.forEach((kind, index) => {
-      rows.push(kindRow(kind, index));
-    });
-  } else {
-    rows.push({
-      id: 'output-form-state',
-      title: 'Antragsvorbereitung (PDF)',
-      description:
-        'Für dein Bundesland ist diese PDF-Antragshilfe in der App noch nicht freigeschaltet. Nutze die Zusammenfassung (PDF) und die offiziellen Formulare deiner Elterngeldstelle.',
-      status: 'planned',
-      statusLabel: 'Für dein Bundesland noch nicht in der App',
-      action: 'none',
-    });
-  }
+  rows.push({
+    id: 'output-application-fill-helper',
+    title: 'Ausfüllhilfe für den Antrag (PDF)',
+    description:
+      'Ausführliche Formularhilfe (Abschnitte A–E): Monatsaufstellung je Lebensmonat, erste/zweite Elternperson, Bezugsarten — kein amtliches Formular. Wird als „Elterngeld-Antragsvorbereitung – Ausfüllhilfe (PDF)“ gespeichert.',
+    status: 'available',
+    statusLabel: STATUS_LABEL.available,
+    action: 'applicationPdf',
+  });
+
+  model.documentOutputKinds.forEach((kind, index) => {
+    if (kind === ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND) return;
+    rows.push(kindRow(kind, index));
+  });
 
   if (model.stateNotes?.trim()) {
     rows.push({

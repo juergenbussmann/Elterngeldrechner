@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { calculatePlan } from './calculationEngine';
 import { buildOptimizationResult } from './elterngeldOptimization';
 import type { ElterngeldCalculationPlan } from './types';
+import { shouldShowVariant } from '../steps/optimizationExplanation';
 
 function createPlan(overrides: Partial<ElterngeldCalculationPlan>): ElterngeldCalculationPlan {
   return {
@@ -127,10 +128,22 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
 
       expect(outcome).not.toBeNull();
       if ('suggestions' in outcome) {
-        // Szenariobasiert: Auch bei optimaler Summe bleiben andere Szenarien sichtbar (z.B. längere Dauer, gemeinsame Aufteilung)
         expect(outcome.status).toBe('checked_but_not_better');
         expect(outcome.suggestions.length).toBeGreaterThan(0);
-        expect(outcome.suggestions.every((s) => s.optimizedTotal <= result.householdTotal)).toBe(true);
+        const bezugMonths = new Set<number>();
+        for (const p of result.parents) {
+          for (const r of p.monthlyResults) {
+            if (r.mode !== 'none' || r.amount > 0) bezugMonths.add(r.month);
+          }
+        }
+        const currentDuration = bezugMonths.size;
+        for (const s of outcome.suggestions) {
+          expect(s.currentDurationMonths).toBe(currentDuration);
+          if (s.optimizedDurationMonths === currentDuration) {
+            expect(s.optimizedTotal).toBeGreaterThanOrEqual(result.householdTotal);
+          }
+          expect(shouldShowVariant(s, result, 'maxMoney')).toBe(true);
+        }
       }
     });
   });

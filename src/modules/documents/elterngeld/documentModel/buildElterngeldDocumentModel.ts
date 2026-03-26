@@ -4,11 +4,15 @@
  * calculatePlan-Ergebnis ab — keine eigene Berechnungslogik.
  */
 
-import type { ElterngeldApplication } from '../types/elterngeldTypes';
+import type { ElterngeldApplication, MonthDistributionEntry } from '../types/elterngeldTypes';
+import { resolveDocumentMonthDistribution } from '../monthGridMappings';
 import { applicationToCalculationPlan } from '../applicationToCalculationPlan';
 import { calculatePlan, type CalculationResult } from '../calculation';
-import { GERMAN_STATES } from '../stateConfig';
+import { resolveBundeslandForDocuments } from '../bundesland/elterngeldBundeslandRegistry';
+import type { BundeslandTier } from '../bundesland/bundeslandTypes';
 import { getElterngeldDeadlineInfo, type ElterngeldDeadlineInfo } from '../elterngeldDeadlines';
+import { buildElterngeldFormSectionA } from './buildElterngeldFormSections';
+import type { ElterngeldDocumentFormSection } from './elterngeldDocumentFormTypes';
 
 /** Gemeinsame Basis-Checkliste für alle Bundesländer (eine Quelle für UI + PDF). */
 export const ELTERNGELD_BASE_DOCUMENT_CHECKLIST: readonly string[] = [
@@ -28,6 +32,8 @@ export interface ElterngeldDocumentCalculationSnapshot {
 export interface ElterngeldDocumentModel {
   stateCode: string;
   stateDisplayName: string;
+  isKnownBundesland: boolean;
+  bundeslandTier: BundeslandTier;
   applicantMode: ElterngeldApplication['applicantMode'];
   parentA: ElterngeldApplication['parentA'];
   parentB: ElterngeldApplication['parentB'];
@@ -41,6 +47,13 @@ export interface ElterngeldDocumentModel {
   /** Freitext aus StateConfig.notes, falls gesetzt. */
   stateNotes: string | undefined;
   calculation: ElterngeldDocumentCalculationSnapshot | null;
+  /** Aufgelöste Monatsverteilung für Ausfüllhilfe und PDFs (inkl. Fallback aus Berechnung oder Count-Logik). */
+  documentMonthDistribution: MonthDistributionEntry[];
+  /**
+   * Aus vorhandenen App-Daten aufgelöste Formular-Abschnitte (nur Labels + Werte).
+   * Keine zusätzlichen fachlichen Felder.
+   */
+  formSections: ElterngeldDocumentFormSection[];
 }
 
 function mergeChecklistItems(
@@ -82,21 +95,25 @@ export function buildElterngeldDocumentModel(
   values: ElterngeldApplication,
   liveResult?: CalculationResult | null
 ): ElterngeldDocumentModel {
-  const stateEntry = values.state?.trim()
-    ? GERMAN_STATES.find((s) => s.stateCode === values.state)
-    : undefined;
-  const stateDisplayName = stateEntry?.displayName || values.state?.trim() || '–';
-  const extras = stateEntry?.additionalDocumentHints;
-  const checklistItems = mergeChecklistItems(ELTERNGELD_BASE_DOCUMENT_CHECKLIST, extras);
-  const documentOutputKinds = stateEntry?.documentOutputKinds ?? [];
+  const bl = resolveBundeslandForDocuments(values.state);
+  const checklistItems = mergeChecklistItems(
+    ELTERNGELD_BASE_DOCUMENT_CHECKLIST,
+    bl.additionalDocumentHints ? [...bl.additionalDocumentHints] : undefined
+  );
+  const documentOutputKinds = [...bl.documentOutputKinds];
 
   const resolved = resolveCalculationResult(values, liveResult);
   const calculation =
     resolved && !resolved.validation.errors.length ? buildCalculationSnapshot(resolved) : null;
+  const maxMonths = values.benefitPlan.model === 'plus' ? 24 : 14;
+  const documentMonthDistribution = resolveDocumentMonthDistribution(values, resolved, maxMonths);
+  const formSections: ElterngeldDocumentFormSection[] = [buildElterngeldFormSectionA(values, bl)];
 
   return {
-    stateCode: values.state ?? '',
-    stateDisplayName,
+    stateCode: bl.stateCode,
+    stateDisplayName: bl.displayName,
+    isKnownBundesland: bl.isKnownBundesland,
+    bundeslandTier: bl.tier,
     applicantMode: values.applicantMode,
     parentA: values.parentA,
     parentB: values.parentB,
@@ -105,7 +122,9 @@ export function buildElterngeldDocumentModel(
     deadlines: getElterngeldDeadlineInfo(values),
     checklistItems,
     documentOutputKinds,
-    stateNotes: stateEntry?.notes,
+    stateNotes: bl.stateNotes,
     calculation,
+    documentMonthDistribution,
+    formSections,
   };
 }

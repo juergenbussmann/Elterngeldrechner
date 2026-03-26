@@ -1,16 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../stateConfig', () => ({
-  GERMAN_STATES: [
-    {
-      stateCode: 'Z9',
-      displayName: 'Testbundesland',
-      additionalDocumentHints: ['Zusatznachweis laut Land'],
-      documentOutputKinds: ['landesformular'],
-      notes: 'Hinweis nur für Tests.',
+vi.mock('../bundesland/elterngeldBundeslandRegistry', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../bundesland/elterngeldBundeslandRegistry')>();
+  return {
+    ...actual,
+    resolveBundeslandForDocuments: (raw: string | undefined) => {
+      if (raw === 'Z9') {
+        return {
+          stateCode: 'Z9',
+          displayName: 'Testbundesland',
+          isKnownBundesland: true,
+          tier: 'generic' as const,
+          additionalDocumentHints: ['Zusatznachweis laut Land'],
+          stateNotes: 'Hinweis nur für Tests.',
+          documentOutputKinds: ['landesformular'],
+        };
+      }
+      return actual.resolveBundeslandForDocuments(raw);
     },
-  ],
-}));
+  };
+});
 
 import { buildElterngeldDocumentModel } from './buildElterngeldDocumentModel';
 import { INITIAL_ELTERNGELD_APPLICATION } from '../types/elterngeldTypes';

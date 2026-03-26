@@ -302,7 +302,24 @@ describe('buildDecisionContext', () => {
     const result = calculatePlan(plan);
     const altPlan = JSON.parse(JSON.stringify(plan)) as ElterngeldCalculationPlan;
     setMonth(altPlan, 0, 1, 'plus');
+    setMonth(altPlan, 0, 2, 'plus');
+    setMonth(altPlan, 0, 3, 'plus');
+    setMonth(altPlan, 1, 1, 'plus');
+    setMonth(altPlan, 1, 2, 'plus');
+    setMonth(altPlan, 1, 3, 'plus');
     const altResult = calculatePlan(altPlan);
+    const countDur = (r: typeof result) => {
+      const m = new Set<number>();
+      for (const p of r.parents) {
+        for (const x of p.monthlyResults) {
+          if (x.mode !== 'none' || x.amount > 0) m.add(x.month);
+        }
+      }
+      return m.size;
+    };
+    const dCur = countDur(result);
+    const dOpt = countDur(altResult);
+    expect(dOpt).not.toBe(dCur);
     const resultSet: OptimizationResultSet = {
       goal: 'maxMoney',
       status: 'improved',
@@ -321,8 +338,8 @@ describe('buildDecisionContext', () => {
           deltaValue: altResult.householdTotal - result.householdTotal,
           currentTotal: result.householdTotal,
           optimizedTotal: altResult.householdTotal,
-          currentDurationMonths: 2,
-          optimizedDurationMonths: 2,
+          currentDurationMonths: dCur,
+          optimizedDurationMonths: dOpt,
           plan: altPlan,
           result: altResult,
         },

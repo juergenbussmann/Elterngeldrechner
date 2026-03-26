@@ -75,9 +75,20 @@ export function elterngeldPdfConcreteMonthLines(
 
 export const ELTERNGELD_PDF_MARGIN = 25;
 export const ELTERNGELD_PDF_PAGE_WIDTH = 210;
+/** Untere Grenze für Inhalt (A4 abzüglich Rand/Puffer), verhindert abgeschnittene Zeilen. */
+export const ELTERNGELD_PDF_SAFE_BOTTOM_MM = 272;
 export const ELTERNGELD_PDF_TEXT_WIDTH = ELTERNGELD_PDF_PAGE_WIDTH - 2 * ELTERNGELD_PDF_MARGIN;
 export const ELTERNGELD_PDF_LINE_HEIGHT = 6;
 
+export function elterngeldPdfEnsurePageSpace(doc: jsPDF, y: number, reserveMm = 36): number {
+  if (y <= ELTERNGELD_PDF_SAFE_BOTTOM_MM - reserveMm) return y;
+  doc.addPage();
+  return ELTERNGELD_PDF_MARGIN;
+}
+
+/**
+ * Mehrzeiliger Text mit automatischem Seitenumbruch (Zeile für Zeile, jsPDF).
+ */
 export function elterngeldPdfAddWrappedText(
   doc: jsPDF,
   text: string,
@@ -87,9 +98,18 @@ export function elterngeldPdfAddWrappedText(
   fontSize: number
 ): number {
   const lines = doc.splitTextToSize(text, maxWidth);
-  doc.setFontSize(fontSize);
-  doc.text(lines, x, y);
-  return y + lines.length * (fontSize * 0.4);
+  const lineHeight = fontSize * 0.4;
+  let currentY = y;
+  for (const line of lines) {
+    if (currentY + lineHeight > ELTERNGELD_PDF_SAFE_BOTTOM_MM) {
+      doc.addPage();
+      currentY = ELTERNGELD_PDF_MARGIN;
+    }
+    doc.setFontSize(fontSize);
+    doc.text(line, x, currentY);
+    currentY += lineHeight;
+  }
+  return currentY;
 }
 
 export function elterngeldPdfFormatCurrency(amount: number): string {

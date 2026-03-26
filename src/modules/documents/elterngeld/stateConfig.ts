@@ -1,9 +1,10 @@
 /**
- * Bundesland-Konfiguration für Elterngeld.
- * Struktur vorbereitet für spätere Erweiterungen.
+ * Bundesland-Anzeige für den Wizard (Dropdown) — Angaben stammen aus germanStates;
+ * bundeslandspezifische Extras kommen ausschließlich über resolveBundeslandForDocuments.
  */
 
-import { ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND } from './documentModel/elterngeldOutputKindConstants';
+import { GERMAN_BUNDESLAENDER } from './bundesland/germanStates';
+import { resolveBundeslandForDocuments } from './bundesland/elterngeldBundeslandRegistry';
 
 export interface StateConfig {
   stateCode: string;
@@ -11,31 +12,24 @@ export interface StateConfig {
   notes?: string;
   applicationInfoUrl?: string;
   supportsDigitalFlow?: boolean;
-  /** Zusätzliche Checklisten-Punkte nur für dieses Bundesland (optional). */
   additionalDocumentHints?: string[];
-  /** Optionale Kennzeichnung von Ausgabearten (konfigurativ, keine Logik). */
   documentOutputKinds?: string[];
 }
 
-export const GERMAN_STATES: StateConfig[] = [
-  { stateCode: 'BW', displayName: 'Baden-Württemberg' },
-  { stateCode: 'BY', displayName: 'Bayern' },
-  { stateCode: 'BE', displayName: 'Berlin' },
-  { stateCode: 'BB', displayName: 'Brandenburg' },
-  { stateCode: 'HB', displayName: 'Bremen' },
-  { stateCode: 'HH', displayName: 'Hamburg' },
-  { stateCode: 'HE', displayName: 'Hessen' },
-  { stateCode: 'MV', displayName: 'Mecklenburg-Vorpommern' },
-  { stateCode: 'NI', displayName: 'Niedersachsen' },
-  {
-    stateCode: 'NW',
-    displayName: 'Nordrhein-Westfalen',
-    documentOutputKinds: [ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND],
-  },
-  { stateCode: 'RP', displayName: 'Rheinland-Pfalz' },
-  { stateCode: 'SL', displayName: 'Saarland' },
-  { stateCode: 'SN', displayName: 'Sachsen' },
-  { stateCode: 'ST', displayName: 'Sachsen-Anhalt' },
-  { stateCode: 'SH', displayName: 'Schleswig-Holstein' },
-  { stateCode: 'TH', displayName: 'Thüringen' },
-];
+export const GERMAN_STATES: StateConfig[] = GERMAN_BUNDESLAENDER.map((m) => {
+  const r = resolveBundeslandForDocuments(m.stateCode);
+  const out: StateConfig = {
+    stateCode: m.stateCode,
+    displayName: m.displayName,
+  };
+  if (r.additionalDocumentHints?.length) {
+    out.additionalDocumentHints = [...r.additionalDocumentHints];
+  }
+  if (r.stateNotes) out.notes = r.stateNotes;
+  if (r.applicationInfoUrl) out.applicationInfoUrl = r.applicationInfoUrl;
+  if (r.supportsDigitalFlow) out.supportsDigitalFlow = r.supportsDigitalFlow;
+  if (r.documentOutputKinds.length) {
+    out.documentOutputKinds = [...r.documentOutputKinds];
+  }
+  return out;
+});

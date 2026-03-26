@@ -91,7 +91,7 @@ type Props = {
   onBackToPlan?: () => void;
   onOpenOptimization?: () => void;
   onNavigateToCalculation?: () => void;
-  /** Erster Schritt der linearen Ausgabestrecke (PDF-Übersicht). */
+  /** Erster Schritt der Dokumentenstrecke (Datenübersicht). */
   onProceedToDocuments?: () => void;
   liveResult?: CalculationResult | null;
   optimizationSummary?: OptimizationSummary;
@@ -149,7 +149,8 @@ export const StepSummary: React.FC<Props> = ({
     <Card className="still-daily-checklist__card elterngeld-summary-card">
       <h3 className="elterngeld-step__title">Zusammenfassung</h3>
       <p className="elterngeld-step__hint elterngeld-summary__intro-hint">
-        Kurzüberblick zu Schätzung und Dauer – als Nächstes erstellst du im folgenden Schritt deine Dokumente.
+        Kurzüberblick zu Schätzung und Dauer – als Nächstes prüfst du die Daten für die PDFs und speicherst sie in
+        „Dokumente“.
       </p>
 
       {result && (
@@ -246,7 +247,7 @@ export const StepSummary: React.FC<Props> = ({
         {onProceedToDocuments && (
           <>
             <p className="elterngeld-step__hint elterngeld-summary__forms-hint elterngeld-summary__next-documents-hint">
-              Als Nächstes: PDF-Übersicht erstellen — danach Checkliste und Antragsvorbereitung.
+              Als Nächstes: Datenübersicht, danach Kurzüberblick und Ausfüllhilfe als zwei getrennte PDFs speichern.
             </p>
             <Button
               type="button"
@@ -255,7 +256,7 @@ export const StepSummary: React.FC<Props> = ({
               className="next-steps__button btn--softpill elterngeld-summary__action-primary"
               onClick={onProceedToDocuments}
             >
-              Weiter zur PDF-Übersicht
+              Weiter zur Datenübersicht
             </Button>
           </>
         )}

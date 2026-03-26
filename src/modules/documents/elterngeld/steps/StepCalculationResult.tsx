@@ -573,7 +573,7 @@ function AdoptConfirmDialog({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Optimierungsvorschlag übernehmen" variant="softpill" scrollableContent>
-      <div className="elterngeld-adopt-confirm">
+      <div className="elterngeld-screen elterngeld-optimization-overlay-content elterngeld-adopt-confirm">
         <p className="elterngeld-adopt-confirm__intro">
           Dieser Vorschlag verändert deinen aktuellen Plan.
         </p>
@@ -605,7 +605,7 @@ function AdoptConfirmDialog({
             ))}
           </ul>
         </div>
-        <div className="elterngeld-adopt-confirm__actions next-steps__stack">
+        <div className="elterngeld-adopt-confirm__actions next-steps__stack elterngeld-optimization-goal__actions">
           <Button
             type="button"
             variant="primary"

@@ -6,7 +6,7 @@ import { Button } from '../../../shared/ui/Button';
 import '../../phase/ui/PhaseOnboardingPanel.css';
 import './BegleitungPlusUpsellPanel.css';
 import type { FeatureKey } from '../../../config/begleitungPlus';
-import { useNativeBilling } from '../../billing';
+import { purchaseSubscription } from '../../billing';
 import type { PlanId } from '../planTypes';
 import { PLAN_OPTIONS } from '../planTypes';
 import { subscribeToPlan } from '../subscribeToPlan';
@@ -15,6 +15,8 @@ export interface BegleitungPlusUpsellPanelProps {
   onClose: () => void;
   reason?: string;
   feature?: FeatureKey;
+  /** Monatsabo → Upgrade nur Jahresabo (Elterngeld-Flow); Plan-Auswahl ausgeblendet. */
+  yearlyUpgradeForElterngeld?: boolean;
 }
 
 const PLUS_BENEFITS = [
@@ -31,30 +33,86 @@ const BASIS_BENEFITS = [
 export const BegleitungPlusUpsellPanel: React.FC<BegleitungPlusUpsellPanelProps> = ({
   onClose,
   feature,
+  yearlyUpgradeForElterngeld,
 }) => {
   const { t } = useI18n();
   const { showToast } = useNotifications();
   const { resolvedMode } = useThemeController();
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>(
+    yearlyUpgradeForElterngeld ? 'yearly' : 'monthly'
+  );
 
   useEffect(() => {
     console.error('[BILLING_TEST] paywall opened');
   }, []);
 
   const handleSubscribe = async () => {
-    const result = await subscribeToPlan(selectedPlan);
+    if (yearlyUpgradeForElterngeld) {
+      const result = await purchaseSubscription('yearly');
+      if (result.success) {
+        onClose();
+        return;
+      }
+      const visibleMessage = result.errorMessage ?? result.errorKey ?? 'billing.purchaseFailed';
+      const planLabel = t('billing.plan.yearly');
+      showToast(visibleMessage, { params: { planLabel }, kind: 'info' });
+      if (
+        ['billing.subscriptionComingSoon', 'billing.integrationPending'].includes(
+          String(visibleMessage)
+        )
+      ) {
+        onClose();
+      }
+      return;
+    }
+
+    const plan: PlanId = selectedPlan;
+    const result = await subscribeToPlan(plan);
     if (result.success) {
       onClose();
       return;
     }
     if (result.stubMessageKey) {
-      const planLabel = t(selectedPlan === 'monthly' ? 'billing.plan.monthly' : 'billing.plan.yearly');
+      const planLabel = t(plan === 'monthly' ? 'billing.plan.monthly' : 'billing.plan.yearly');
       showToast(result.stubMessageKey, { params: { planLabel }, kind: 'info' });
       if (['billing.subscriptionComingSoon', 'billing.integrationPending'].includes(result.stubMessageKey)) {
         onClose();
       }
     }
   };
+
+  if (yearlyUpgradeForElterngeld) {
+    return (
+      <div className="begleitung-plus-sheet" data-color-scheme={resolvedMode} data-bp-scope>
+        <p className="begleitung-plus-sheet__badge">{t('begleitungPlus.badge')}</p>
+        <h2 className="topics-menu-panel__title">{t('begleitungPlus.title')}</h2>
+        <p className="phase-onboarding-panel__subtitle">{t('begleitungPlus.elterngeldYearly.hintPlanner')}</p>
+        <p className="begleitung-plus-sheet__price">
+          <strong>{t('begleitungPlus.plan.displayYearly')}</strong>
+          <br />
+          <span className="begleitung-plus-sheet__price-savings">{t('begleitungPlus.priceSavings')}</span>
+        </p>
+        <p className="phase-onboarding-panel__hint">{t('begleitungPlus.elterngeldYearly.hintFullApp')}</p>
+        {feature != null ? <p className="phase-onboarding-panel__hint">{t('begleitungPlus.featureHint')}</p> : null}
+        <ul className="begleitung-plus-sheet__benefits">
+          {PLUS_BENEFITS.map((key) => (
+            <li key={key}>{t(key)}</li>
+          ))}
+        </ul>
+        <div className="begleitung-plus__actions">
+          <Button type="button" variant="primary" fullWidth onClick={handleSubscribe}>
+            {t('begleitungPlus.elterngeldYearly.ctaUpgrade')}
+          </Button>
+        </div>
+        <p className="begleitung-plus-sheet__microcopy">{t('begleitungPlus.microcopy')}</p>
+        <div className="begleitung-plus__actions">
+          <Button type="button" variant="secondary" fullWidth onClick={onClose}>
+            {t('common.close')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="begleitung-plus-sheet" data-color-scheme={resolvedMode} data-bp-scope>

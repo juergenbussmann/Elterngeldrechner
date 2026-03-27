@@ -40,6 +40,8 @@ import type { OptimizationGoal } from './calculation/elterngeldOptimization';
 import { ElterngeldFlowStepper } from './ElterngeldFlowStepper';
 import { ElterngeldSelectButton } from './ui/ElterngeldSelectButton';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
+import { useBegleitungPlus } from '../../../core/begleitungPlus';
+import { ElterngeldFlowAccessBlocked } from './ElterngeldFlowAccessBlocked';
 import './ElterngeldWizardPage.css';
 import './ElterngeldFlowStepper.css';
 import './ui/elterngeld-ui.css';
@@ -95,6 +97,16 @@ function hasDataConflict(
 }
 
 export const ElterngeldCalculationPage: React.FC = () => {
+  const { isPlus, isYearly, planType } = useBegleitungPlus();
+  console.log('ENTRY CHECK', { isPlus, planType, isYearly });
+  if (!isPlus || !isYearly) {
+    console.log('GATING CHECK', { isPlus, planType, isYearly });
+    return <ElterngeldFlowAccessBlocked variant={isPlus ? 'monthly' : 'free'} />;
+  }
+  return <ElterngeldCalculationPageBody />;
+};
+
+const ElterngeldCalculationPageBody: React.FC = () => {
   const { profile } = usePhase();
   const { showToast } = useNotifications();
   const { goTo } = useNavigation();

@@ -6,7 +6,7 @@
 
 import type { PlanId } from './planTypes';
 import { BILLING_STUB_ACTIVATE, BILLING_ENABLED, isNativeAndroid } from '../../config/billing';
-import { activatePlus } from './begleitungPlusStore';
+import { activatePlusWithPlan } from './begleitungPlusStore';
 import { purchaseSubscription, useNativeBilling } from '../billing';
 
 const SUB_DEBUG = import.meta.env.DEV;
@@ -43,7 +43,7 @@ export async function subscribeToPlan(plan: PlanId): Promise<SubscribeResult> {
     if (import.meta.env.DEV) {
       console.debug('[billing] Stub: subscribeToPlan (DEV activate)', { plan });
     }
-    activatePlus();
+    activatePlusWithPlan(plan);
     return { success: true };
   }
 

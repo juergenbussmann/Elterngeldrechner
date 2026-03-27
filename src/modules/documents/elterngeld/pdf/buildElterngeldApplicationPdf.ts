@@ -11,7 +11,7 @@ import {
   ANHANG_DEADLINES_TITLE,
   APPLICATION_FORM_DOCUMENT_TITLE,
   getApplicationFormIntroParagraph,
-  APPLICATION_FORM_SECTION_C_TEXT,
+  APPLICATION_FORM_SECTION_C_LINES,
   CALCULATION_UNAVAILABLE_BODY,
   CALCULATION_UNAVAILABLE_TITLE,
   SECTION_ANHANG_TITLE,
@@ -19,7 +19,6 @@ import {
   SECTION_B_NO_DISTRIBUTION_HINT,
   SECTION_B_TITLE,
   SECTION_C_TITLE,
-  SECTION_D_MISSING_CATEGORIES,
   SECTION_D_MISSING_HEADING,
   SECTION_D_TITLE,
   SECTION_E_LINES,
@@ -189,19 +188,16 @@ export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): B
   y = majorSectionHeading(doc, SECTION_C_TITLE, y, true);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  y = elterngeldPdfAddWrappedText(
-    doc,
-    APPLICATION_FORM_SECTION_C_TEXT,
-    ELTERNGELD_PDF_MARGIN,
-    y,
-    ELTERNGELD_PDF_TEXT_WIDTH,
-    10
-  );
+  for (const line of APPLICATION_FORM_SECTION_C_LINES) {
+    y = elterngeldPdfEnsurePageSpace(doc, y, 14);
+    y = elterngeldPdfAddWrappedText(doc, line, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+    y += 2;
+  }
   y += 10;
 
   // ——— D. Fehlende Angaben ———
   y = majorSectionHeading(doc, SECTION_D_TITLE, y, true);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   y = elterngeldPdfAddWrappedText(
     doc,
@@ -211,13 +207,6 @@ export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): B
     ELTERNGELD_PDF_TEXT_WIDTH,
     10
   );
-  doc.setFont('helvetica', 'normal');
-  y += 5;
-  for (const c of SECTION_D_MISSING_CATEGORIES) {
-    y = elterngeldPdfEnsurePageSpace(doc, y, 14);
-    y = elterngeldPdfAddWrappedText(doc, `• ${c}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
-    y += 2;
-  }
   y += 8;
 
   // ——— E. Wichtiger Hinweis ———

@@ -15,6 +15,25 @@ import * as calculationPlanStorage from './infra/calculationPlanStorage';
 import * as elterngeldPreparationStorage from './infra/elterngeldPreparationStorage';
 import { INITIAL_ELTERNGELD_APPLICATION } from './types/elterngeldTypes';
 
+vi.mock('../../../core/begleitungPlus', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../core/begleitungPlus')>();
+  return {
+    ...actual,
+    useBegleitungPlus: () => ({
+      isPlus: true,
+      planType: 'yearly' as const,
+      isYearly: true,
+      hasYearlyAccess: () => true,
+      hasFeature: () => true,
+      limits: { appointmentsMax: Number.POSITIVE_INFINITY, contactsMax: Number.POSITIVE_INFINITY },
+      entitlements: { isPremium: true, planType: 'yearly' as const },
+      activate: vi.fn(),
+      deactivate: vi.fn(),
+    }),
+    hasYearlyAccess: () => true,
+  };
+});
+
 vi.mock('../../../core/phase/usePhase', () => ({
   usePhase: () => ({ profile: { dueDateIso: '2025-06-15', birthDateIso: null } }),
 }));

@@ -112,7 +112,7 @@ export const StepDocumentsDataOverview: React.FC<Props> = ({ values, liveResult 
             </span>
           </div>
           <div className="elterngeld-plan__summary-row">
-            <span className="elterngeld-plan__summary-label">Beschäftigung (Sie)</span>
+            <span className="elterngeld-plan__summary-label">Beschäftigung</span>
             <span className="elterngeld-plan__summary-value">
               {EMPLOYMENT_LABEL[model.parentA.employmentType]}
             </span>
@@ -134,7 +134,7 @@ export const StepDocumentsDataOverview: React.FC<Props> = ({ values, liveResult 
                 </span>
               </div>
               <div className="elterngeld-plan__summary-row">
-                <span className="elterngeld-plan__summary-label">Beschäftigung (Partner)</span>
+                <span className="elterngeld-plan__summary-label">Beschäftigung</span>
                 <span className="elterngeld-plan__summary-value">
                   {EMPLOYMENT_LABEL[model.parentB.employmentType]}
                 </span>
@@ -153,17 +153,17 @@ export const StepDocumentsDataOverview: React.FC<Props> = ({ values, liveResult 
       </Card>
 
       <Card className="still-daily-checklist__card">
-        <h4 className="elterngeld-step__section-title">Einkommen (Angaben)</h4>
+        <h4 className="elterngeld-step__section-title">Einkommen</h4>
         <div className="elterngeld-plan__summary-rows">
           <div className="elterngeld-plan__summary-row">
-            <span className="elterngeld-plan__summary-label">Einkommen vor Geburt (Sie)</span>
+            <span className="elterngeld-plan__summary-label">Sie</span>
             <span className="elterngeld-plan__summary-value">
               {model.parentA.incomeBeforeBirth.trim() || '–'}
             </span>
           </div>
           {showPartnerBlock && model.parentB && (
             <div className="elterngeld-plan__summary-row">
-              <span className="elterngeld-plan__summary-label">Einkommen vor Geburt (Partner)</span>
+              <span className="elterngeld-plan__summary-label">Partner</span>
               <span className="elterngeld-plan__summary-value">
                 {model.parentB.incomeBeforeBirth.trim() || '–'}
               </span>

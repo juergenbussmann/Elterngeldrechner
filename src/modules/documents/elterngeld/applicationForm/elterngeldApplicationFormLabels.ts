@@ -129,18 +129,24 @@ export const CALCULATION_UNAVAILABLE_TITLE = 'Keine belastbare Schätzung verfü
 export const CALCULATION_UNAVAILABLE_BODY =
   'Die App konnte dazu keine Beträge berechnen – etwa weil Angaben fehlen oder die Prüfung in der App nicht erfolgreich war.';
 
-export const APPLICATION_FORM_SECTION_C_TEXT =
-  'Halten Sie beim Ausfüllen Ihres echten Antrags Abschnitt A und B dieser Ausfüllhilfe bereit. Ordnen Sie die dortigen Angaben thematisch zu: zuerst zu Kind und Eltern, dann zu Einkommen und zur geplanten Aufteilung des Elterngelds. Wenn eine Monatsliste in Abschnitt B steht, entspricht sie der Reihenfolge und Aufteilung Ihrer Planung in der App – tragen Sie sie im Antrag entsprechend ein, soweit dessen Aufbau das vorsieht. Die geschätzten Beträge dienen nur zur Orientierung; maßgeblich ist später die Prüfung durch die Elterngeldstelle.';
-
-export const SECTION_D_MISSING_HEADING = 'Diese Angaben müssen Sie im Antrag zusätzlich ergänzen';
-
-export const SECTION_D_MISSING_CATEGORIES = [
-  'Persönliche Daten',
-  'Bankverbindung',
-  'Steuer- und Versicherungsdaten',
-  'Detaillierte Einkommensangaben',
-  'Nachweise',
+/** Abschnitt C – kurze Blöcke (Reihenfolge für Vorschau und PDF). */
+export const APPLICATION_FORM_SECTION_C_LINES = [
+  'Bereiten Sie beim Ausfüllen Ihres Antrags folgende Angaben vor:',
+  '1. Grundlagen',
+  '• Angaben zu Kind und Eltern (Abschnitt A und B)',
+  '2. Einkommen',
+  '• Einkommen vor der Geburt',
+  '3. Planung',
+  '• Aufteilung der geplanten Monate',
+  'Übertragung in den Antrag',
+  '• Übernehmen Sie die Angaben entsprechend Ihrer Planung in die vorgesehenen Felder',
+  '• Falls im Antrag eine Monatsliste enthalten ist, orientieren Sie sich an der Reihenfolge Ihrer Planung in der App',
+  'Hinweis',
+  '• Die Beträge sind eine unverbindliche Schätzung',
+  '• Die endgültige Prüfung erfolgt durch die Elterngeldstelle',
 ] as const;
+
+export const SECTION_D_MISSING_HEADING = 'Diese Angaben müssen Sie im Antrag zusätzlich ergänzen.';
 
 export const SECTION_E_LINES = [
   'Dieses Dokument ist eine Ausfüllhilfe und kein offizieller Antrag.',

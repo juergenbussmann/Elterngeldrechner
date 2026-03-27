@@ -13,7 +13,7 @@ import {
   PACKAGE_IDS_MONTHLY,
   PACKAGE_IDS_ANNUAL,
 } from '../../config/billing';
-import { activatePlus, deactivatePlus } from '../begleitungPlus/begleitungPlusStore';
+import { activatePlusWithPlan, deactivatePlus } from '../begleitungPlus/begleitungPlusStore';
 import type { PlanId } from '../begleitungPlus/planTypes';
 
 /** Android + BILLING_ENABLED: echte Store-Calls. Web: immer false. */
@@ -66,10 +66,6 @@ export async function initializeBilling(): Promise<void> {
   }
 }
 
-function applyEntitlementFromCustomerInfo(expiresAt?: string): void {
-  activatePlus(expiresAt);
-}
-
 function clearEntitlement(): void {
   deactivatePlus();
 }
@@ -82,12 +78,74 @@ function clearEntitlement(): void {
  */
 function getActiveEntitlements(
   raw: unknown
-): Record<string, { expirationDate: string | null }> | undefined {
+): Record<string, Record<string, unknown> & { expirationDate?: string | null }> | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const o = raw as Record<string, unknown>;
   const inner = (o.customerInfo ?? o) as Record<string, unknown>;
-  const ent = inner?.entitlements as { active?: Record<string, { expirationDate: string | null }> } | undefined;
+  const ent = inner?.entitlements as
+    | { active?: Record<string, Record<string, unknown> & { expirationDate?: string | null }> }
+    | undefined;
   return ent?.active;
+}
+
+function normalizeIdFragment(id: string): string {
+  return id.trim().toLowerCase().replace(/^[^:]*:/, '');
+}
+
+function productIdMatchesPackageList(productId: string, ids: readonly string[]): boolean {
+  const n = productId.trim().toLowerCase();
+  if (!n) return false;
+  for (const raw of ids) {
+    const id = String(raw).toLowerCase();
+    const frag = normalizeIdFragment(id);
+    if (n === id || n.includes(frag) || frag.includes(n)) return true;
+  }
+  return false;
+}
+
+/**
+ * Leitet monthly/yearly aus den von RevenueCat gelieferten Entitlement-Feldern ab.
+ */
+function inferPlanTypeFromBegleitungEntitlement(ent: unknown): 'monthly' | 'yearly' {
+  if (!ent || typeof ent !== 'object') {
+    return 'monthly';
+  }
+  const e = ent as Record<string, unknown>;
+
+  const pkgRaw = e.packageType ?? e.periodType;
+  const pkg = typeof pkgRaw === 'string' ? pkgRaw.trim().toUpperCase() : '';
+  if (pkg === 'ANNUAL' || pkg === 'YEARLY' || pkg === 'TWELVE_MONTH' || pkg === 'LIFETIME') {
+    return 'yearly';
+  }
+  if (pkg === 'MONTHLY') {
+    return 'monthly';
+  }
+
+  const productIdentifier =
+    (typeof e.productIdentifier === 'string' && e.productIdentifier) ||
+    (typeof e.productId === 'string' && e.productId) ||
+    '';
+
+  if (productIdentifier) {
+    const isAnnual = productIdMatchesPackageList(productIdentifier, PACKAGE_IDS_ANNUAL);
+    const isMonthly = productIdMatchesPackageList(productIdentifier, PACKAGE_IDS_MONTHLY);
+    if (isAnnual && !isMonthly) return 'yearly';
+    if (isMonthly && !isAnnual) return 'monthly';
+    if (isAnnual) return 'yearly';
+    if (isMonthly) return 'monthly';
+  }
+
+  if (import.meta.env.DEV) {
+    console.debug('[billing] inferPlanType fallback monthly; entitlement fields', {
+      keys: Object.keys(e),
+      productIdentifier: e.productIdentifier,
+      packageType: e.packageType,
+      periodType: e.periodType,
+      unsubscribeDetectedAt: e.unsubscribeDetectedAt,
+    });
+  }
+
+  return 'monthly';
 }
 
 /**
@@ -97,9 +155,11 @@ function syncFromCustomerInfo(raw: unknown): boolean {
   const active = getActiveEntitlements(raw);
   const ent = active?.[ENTITLEMENT_BEGLEITUNG_PLUS];
   if (ent) {
-    applyEntitlementFromCustomerInfo(ent.expirationDate ?? undefined);
+    const planType = inferPlanTypeFromBegleitungEntitlement(ent);
+    const exp = ent.expirationDate ?? undefined;
+    activatePlusWithPlan(planType, exp ?? undefined);
     if (import.meta.env.DEV) {
-      console.debug('[billing] Entitlement begleitung_plus aktiv');
+      console.debug('[billing] Entitlement begleitung_plus aktiv', { planType, expirationDate: exp });
     }
     return true;
   }

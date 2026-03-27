@@ -30,6 +30,8 @@ import { mergePlanIntoPreparation } from './planToApplicationMerge';
 import { isPartnerBonusPartTimeHoursEligible } from './partnerBonusEligibility';
 import { saveElterngeldWizardPdfBundle } from './saveElterngeldWizardPdfBundle';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
+import { useBegleitungPlus } from '../../../core/begleitungPlus';
+import { ElterngeldFlowAccessBlocked } from './ElterngeldFlowAccessBlocked';
 import './ElterngeldWizardPage.css';
 import './ElterngeldFlowStepper.css';
 import './ui/elterngeld-ui.css';
@@ -49,6 +51,16 @@ const WIZARD_STEPS = [
 const TOTAL_STEPS = 8; /* Intro + 7 Wizard-Schritte */
 
 export const ElterngeldWizardPage: React.FC = () => {
+  const { isPlus, isYearly, planType } = useBegleitungPlus();
+  console.log('ENTRY CHECK', { isPlus, planType, isYearly });
+  if (!isPlus || !isYearly) {
+    console.log('GATING CHECK', { isPlus, planType, isYearly });
+    return <ElterngeldFlowAccessBlocked variant={isPlus ? 'monthly' : 'free'} />;
+  }
+  return <ElterngeldWizardPageBody />;
+};
+
+const ElterngeldWizardPageBody: React.FC = () => {
   const { profile, actions } = usePhase();
   const { goTo } = useNavigation();
   const { showToast } = useNotifications();

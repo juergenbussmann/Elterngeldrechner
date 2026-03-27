@@ -10,7 +10,7 @@
  */
 
 import type { Entitlements } from './entitlements';
-import { DEFAULT_FREE_ENTITLEMENTS } from './entitlements';
+import { DEFAULT_FREE_ENTITLEMENTS, normalizeStoredEntitlements } from './entitlements';
 
 const STORAGE_KEY = 'app_begleitung_plus_v1';
 
@@ -18,11 +18,7 @@ function parseEntitlements(raw: string | null): Entitlements {
   if (!raw) return DEFAULT_FREE_ENTITLEMENTS;
   try {
     const parsed = JSON.parse(raw) as Partial<Entitlements>;
-    return {
-      isPremium: Boolean(parsed?.isPremium),
-      activatedAt: parsed?.activatedAt,
-      expiresAt: parsed?.expiresAt,
-    };
+    return normalizeStoredEntitlements(parsed);
   } catch {
     return DEFAULT_FREE_ENTITLEMENTS;
   }
@@ -51,13 +47,14 @@ export function setEntitlements(entitlements: Entitlements): void {
 const BEGLEITUNG_PLUS_CHANGED = 'begleitung-plus-changed';
 
 /**
- * Setzt Premium im Cache.
- * Production Android: nur von billingService (Kauf/Sync) – Dev/Admin sind no-op.
+ * Setzt Premium im Cache inkl. Plan-Typ (z. B. nach RevenueCat-Sync).
+ * Production Android: nur von billingService (Kauf/Sync) – Dev/Admin nutzen eigene Pfade.
  */
-export function activatePlus(expiresAt?: string): void {
+export function activatePlusWithPlan(planType: 'monthly' | 'yearly', expiresAt?: string): void {
   const now = new Date().toISOString();
   setEntitlements({
     isPremium: true,
+    planType,
     activatedAt: now,
     expiresAt,
   });
@@ -66,10 +63,19 @@ export function activatePlus(expiresAt?: string): void {
   }
 }
 
+/**
+ * Setzt Premium im Cache (monatlich als Default, kompatibel zu älteren Aufrufern).
+ * Production Android: nur falls nicht durch Store ersetzt.
+ */
+export function activatePlus(expiresAt?: string): void {
+  activatePlusWithPlan('monthly', expiresAt);
+}
+
 /** Entfernt Premium aus dem Cache. Wird von Billing-Sync aufgerufen, wenn kein gültiges Abo. */
 export function deactivatePlus(): void {
   setEntitlements({
     isPremium: false,
+    planType: 'none',
   });
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(BEGLEITUNG_PLUS_CHANGED));
@@ -81,6 +87,7 @@ export function activatePlusDev(): void {
   if (!import.meta.env.DEV) return;
   setEntitlements({
     isPremium: true,
+    planType: 'monthly',
     activatedAt: new Date().toISOString(),
   });
   if (typeof window !== 'undefined') {
@@ -93,6 +100,7 @@ export function deactivatePlusDev(): void {
   if (!import.meta.env.DEV) return;
   setEntitlements({
     isPremium: false,
+    planType: 'none',
   });
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(BEGLEITUNG_PLUS_CHANGED));
@@ -105,6 +113,7 @@ export function activatePlusAdmin(): void {
   const now = new Date().toISOString();
   setEntitlements({
     isPremium: true,
+    planType: 'monthly',
     activatedAt: now,
   });
   if (typeof window !== 'undefined') {
@@ -117,6 +126,7 @@ export function deactivatePlusAdmin(): void {
   if (import.meta.env.PROD) return;
   setEntitlements({
     isPremium: false,
+    planType: 'none',
   });
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(BEGLEITUNG_PLUS_CHANGED));

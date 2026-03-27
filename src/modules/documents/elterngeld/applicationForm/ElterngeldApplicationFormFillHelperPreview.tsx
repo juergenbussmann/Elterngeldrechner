@@ -11,7 +11,7 @@ import {
   ANHANG_DEADLINES_TITLE,
   APPLICATION_FORM_DOCUMENT_TITLE,
   getApplicationFormIntroParagraph,
-  APPLICATION_FORM_SECTION_C_TEXT,
+  APPLICATION_FORM_SECTION_C_LINES,
   CALCULATION_UNAVAILABLE_BODY,
   CALCULATION_UNAVAILABLE_TITLE,
   formatConcreteMonthLines,
@@ -21,7 +21,6 @@ import {
   SECTION_B_NO_DISTRIBUTION_HINT,
   SECTION_B_TITLE,
   SECTION_C_TITLE,
-  SECTION_D_MISSING_CATEGORIES,
   SECTION_D_MISSING_HEADING,
   SECTION_D_TITLE,
   SECTION_E_LINES,
@@ -145,7 +144,11 @@ export const ElterngeldApplicationFormFillHelperPreview: React.FC<
 
       <Card className="still-daily-checklist__card">
         <h4 className="elterngeld-step__section-title">{SECTION_C_TITLE}</h4>
-        <p className="elterngeld-step__hint elterngeld-summary__forms-hint">{APPLICATION_FORM_SECTION_C_TEXT}</p>
+        <div className="elterngeld-step__hint elterngeld-summary__forms-hint">
+          {APPLICATION_FORM_SECTION_C_LINES.map((line, i) => (
+            <p key={`section-c-${i}`}>{line}</p>
+          ))}
+        </div>
       </Card>
 
       <Card className="still-daily-checklist__card">
@@ -153,11 +156,6 @@ export const ElterngeldApplicationFormFillHelperPreview: React.FC<
         <p className="elterngeld-step__hint elterngeld-summary__forms-hint elterngeld-summary__hint-text">
           {SECTION_D_MISSING_HEADING}
         </p>
-        <ul className="elterngeld-step__doc-list">
-          {SECTION_D_MISSING_CATEGORIES.map((c) => (
-            <li key={c}>{c}</li>
-          ))}
-        </ul>
       </Card>
 
       <Card className="still-daily-checklist__card">

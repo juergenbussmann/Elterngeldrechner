@@ -25,6 +25,8 @@ import {
 import { getParentLeaveLetterContent } from './buildParentLeaveDocument';
 import { buildParentLeavePdf } from './buildParentLeavePdf';
 import { addDocument } from '../application/service';
+import { useBegleitungPlus } from '../../../core/begleitungPlus';
+import { ElterngeldFlowAccessBlocked } from '../elterngeld/ElterngeldFlowAccessBlocked';
 import './ParentLeaveFormPage.css';
 import '../../checklists/styles/softpill-buttons-in-cards.css';
 import '../../checklists/styles/softpill-cards.css';
@@ -161,6 +163,22 @@ const FormField: React.FC<{
 };
 
 export const ParentLeaveFormPage: React.FC = () => {
+  const { isPlus, isYearly, planType } = useBegleitungPlus();
+  console.log('ENTRY CHECK', { isPlus, planType, isYearly });
+  if (!isPlus || !isYearly) {
+    console.log('GATING CHECK', { isPlus, planType, isYearly });
+    return (
+      <ElterngeldFlowAccessBlocked
+        variant={isPlus ? 'monthly' : 'free'}
+        screenTitleKey="documents.parentalLeave.accessGate.title"
+        plusUpsellReason="parental_leave_yearly_gate"
+      />
+    );
+  }
+  return <ParentLeaveFormPageBody />;
+};
+
+const ParentLeaveFormPageBody: React.FC = () => {
   const { profile, actions } = usePhase();
   const { goTo } = useNavigation();
   const { t } = useI18n();

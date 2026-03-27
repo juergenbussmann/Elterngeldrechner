@@ -7,9 +7,8 @@ import { useI18n } from '../../shared/lib/i18n';
 import { useNavigation } from '../../shared/lib/navigation/useNavigation';
 import { getModuleSettings } from '../modules/moduleHost';
 import { getModuleById } from '../../shared/lib/modules';
-import '../../modules/checklists/styles/softpill-buttons-in-cards.css';
-import '../../modules/checklists/styles/softpill-cards.css';
-import '../../modules/still-daily-checklist/ui/StillDailyChecklistPage.css';
+import '../../styles/softpill-buttons-in-cards.css';
+import '../../styles/softpill-cards.css';
 
 const ANSICHT_MODULE_ID = 'std.themePrefs';
 

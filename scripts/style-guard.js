@@ -20,7 +20,7 @@ const WHITELIST = [
   'src/shared/ui/ModuleLayout/moduleLayout.css',
   'src/screens/Start.tsx',
   'src/screens/start.css',
-  'src/core/router/AppRoutes.tsx', // Phase-Screens (Schwangerschaft/Geburt/Stillen)
+  'src/core/router/AppRoutes.tsx',
   'src/core/begleitungPlus/ui/BegleitungPlusUpsellPanel.css', // Legacy Panel
 ];
 

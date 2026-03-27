@@ -1,11 +1,10 @@
 import React from 'react';
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
-import { Card } from '../../../shared/ui/Card';
 import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
 import './DocumentsFamilyOverviewPage.css';
-import '../../checklists/styles/softpill-buttons-in-cards.css';
-import '../../checklists/styles/softpill-cards.css';
+import '../../../styles/softpill-buttons-in-cards.css';
+import '../../../styles/softpill-cards.css';
 
 const ENTRY_OPTIONS = [
   {

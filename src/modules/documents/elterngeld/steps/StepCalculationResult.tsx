@@ -17,7 +17,6 @@ import {
 } from './PartnerBonusCheckDialog';
 import { getMonthGridItemsFromResults } from '../monthGridMappings';
 import {
-  validatePartnerBonus,
   type CalculationResult,
   type MonthlyResult,
   type ElterngeldCalculationPlan,
@@ -44,12 +43,7 @@ import type { MonthMode } from '../calculation';
 import { isPlanEmpty } from '../infra/calculationPlanStorage';
 import { getAdoptionStatus } from './adoptionStatus';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
-import {
-  ADOPTION_EXPLICIT_PART_TIME_HINT,
-  isAdoptionExplicitPartTimeSatisfied,
-  validatePartnerBonusWithExplicitUserHours,
-  variantHasPartnerschaftsbonus,
-} from './adoptionExplicitPartTime';
+import { getOptimizationAdoptUiState } from './optimizationAdoptUi';
 
 const MODE_LABELS: Record<string, string> = {
   none: '–',
@@ -125,40 +119,6 @@ function getSuggestionDedupKey(s: OptimizationSuggestion): string {
 
 function formatMonthsLabel(n: number, singular: string, plural: string): string {
   return n === 1 ? singular : plural;
-}
-
-/**
- * Übernahme-Freigabe (PB-Varianten): (1) fehlende explizite Teilzeit, (2) validatePartnerBonus auf Plan
- * mit **Nutzern**-Stunden (kein Optimizer-Fallback), (3) sonstige PB-Varianten ohne PB wie zuvor validatePartnerBonus(Variante).
- */
-function getOptimizationAdoptUiState(
-  variantPlan: ElterngeldCalculationPlan,
-  ctx: { userPlan: ElterngeldCalculationPlan; application?: ElterngeldApplication | null }
-): { allowed: boolean; hint: string | null } {
-  const fallbackPbHint =
-    'Vor der Übernahme bitte die Voraussetzungen für den Partnerschaftsbonus anpassen (z. B. Teilzeit zwischen 24 und 32 Stunden pro Woche).';
-
-  if (!variantHasPartnerschaftsbonus(variantPlan)) {
-    const { isValid, warnings } = validatePartnerBonus(variantPlan);
-    if (!isValid) {
-      return { allowed: false, hint: warnings[0] ?? fallbackPbHint };
-    }
-    return { allowed: true, hint: null };
-  }
-
-  if (!isAdoptionExplicitPartTimeSatisfied(variantPlan, ctx.userPlan, ctx.application ?? null)) {
-    return { allowed: false, hint: ADOPTION_EXPLICIT_PART_TIME_HINT };
-  }
-
-  const pbExplicit = validatePartnerBonusWithExplicitUserHours(
-    variantPlan,
-    ctx.userPlan,
-    ctx.application ?? null
-  );
-  if (!pbExplicit.isValid) {
-    return { allowed: false, hint: pbExplicit.warnings[0] ?? fallbackPbHint };
-  }
-  return { allowed: true, hint: null };
 }
 
 function formatStateLabel(who: CombinedWho, mode: MonthMode): string {
@@ -1620,6 +1580,12 @@ type Props = {
   onNavigateToInput?: (target: NavigateToInputTarget) => void;
   /** Schließt Optimierung und führt sichtbar in die Monatsaufteilungs-Bearbeitung (wird aus onNavigateToInput abgeleitet) */
   onNavigateToMonthEditing?: () => void;
+  /** Wizard/Overlay: z. B. Teilzeit-Dialog statt nur Sprung zum Monatsplan */
+  onNavigateToPartTimeSettings?: () => void;
+  /** false: keine PB-Optimierungs-/Teilzeit-„Mit Bonus“-Variante (24–32 h) */
+  partnerBonusHoursEligible?: boolean;
+  /** Nach Änderung der Wochenstunden im Overlay (Hinweis bei unveränderten Varianten-Kennzahlen) */
+  partTimeEditGeneration?: number;
   /** Wendet Schnellaktion für Partnerschaftsbonus an (nur Ergebnis-Ansicht) */
   onApplyPartnerBonusFix?: (month: number, fix: 'switchToPlus' | 'setBoth' | 'setBonusMonth') => void;
   /** Setzt mehrere Monate als Bonusmonate (ElterngeldPlus + Beide) */
@@ -1648,6 +1614,9 @@ export const StepCalculationResult: React.FC<Props> = ({
   onBackFromOptimization,
   onNavigateToInput,
   onNavigateToMonthEditing,
+  onNavigateToPartTimeSettings,
+  partnerBonusHoursEligible = true,
+  partTimeEditGeneration = 0,
   onApplyPartnerBonusFix,
   onApplyPartnerBonusFixMultiple,
   onApplyCreatePartnerOverlap,
@@ -1876,7 +1845,8 @@ export const StepCalculationResult: React.FC<Props> = ({
                   onBackToOptimization={onBackFromOptimization}
                   onNavigateToMonthEditing={onNavigateToMonthEditing ?? (onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined)}
                   onNavigateToPartTimeSettings={
-                    onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined
+                    onNavigateToPartTimeSettings ??
+                    (onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined)
                   }
                   originalPlanForOptimization={originalPlanForOptimization}
                   originalResultForOptimization={originalResultForOptimization}
@@ -1884,6 +1854,8 @@ export const StepCalculationResult: React.FC<Props> = ({
                   lastAdoptedResult={lastAdoptedResult}
                   onResolvedResultChange={setDisplayResultForMonths}
                   optimizationGoal={optimizationGoal}
+                  partnerBonusHoursEligible={partnerBonusHoursEligible}
+                  partTimeEditGeneration={partTimeEditGeneration}
                   elterngeldApplicationForAdoption={elterngeldApplicationForAdoption}
                 />
               </>

@@ -6,7 +6,6 @@
 
 /* Datumsfelder an App-Design angleichen (gleiche Höhe, Radius, Rahmen wie ui-control) */
 .elterngeld-screen input[type="date"],
-.elterngeld-calculation-input input[type="date"],
 .elterngeld-step__label input[type="date"] {
   width: 100%;
   padding: var(--ui-pad-control, 0.5rem 0.75rem);
@@ -22,13 +21,11 @@
 }
 
 .elterngeld-screen input[type="date"]:hover,
-.elterngeld-calculation-input input[type="date"]:hover,
 .elterngeld-step__label input[type="date"]:hover {
   border-color: var(--ui-border-hover, #d4d4d8);
 }
 
 .elterngeld-screen input[type="date"]:focus,
-.elterngeld-calculation-input input[type="date"]:focus,
 .elterngeld-step__label input[type="date"]:focus {
   outline: none;
   border-color: var(--ui-border-focus, #2563eb);
@@ -36,7 +33,6 @@
 }
 
 .elterngeld-screen input[type="date"]:disabled,
-.elterngeld-calculation-input input[type="date"]:disabled,
 .elterngeld-step__label input[type="date"]:disabled {
   cursor: not-allowed;
   background: var(--color-surface-muted, #f4f4f5);
@@ -712,21 +708,6 @@
   background: linear-gradient(180deg, var(--pill-bg-top-hover, rgba(37, 99, 235, 0.05)), var(--pill-bg-bottom-hover, rgba(37, 99, 235, 0.03)));
 }
 
-.elterngeld-calculation__month-panel {
-  max-width: 22rem;
-}
-
-.elterngeld-calculation__month-options {
-  margin-bottom: 1rem;
-}
-
-.elterngeld-calculation__month-panel-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
 .elterngeld-step__options {
   display: flex;
   flex-direction: column;
@@ -747,16 +728,6 @@
 
 .elterngeld-step__summary-section-title {
   margin-top: 0.75rem;
-}
-
-.elterngeld-flow-stepper {
-  margin-top: 0.5rem;
-}
-
-/* Im Optimierungskontext: Stepper zurücknehmen, damit der lokale Entscheidungsflow führt */
-.elterngeld-calculation__in-optimization .elterngeld-flow-stepper {
-  opacity: 0.7;
-  margin-bottom: 0.5rem;
 }
 
 .elterngeld-progress {
@@ -1304,349 +1275,11 @@
   scroll-margin-top: calc(56px + env(safe-area-inset-top, 0px));
 }
 
-#elterngeld-plan-month-grid,
-#elterngeld-input-month-grid {
+#elterngeld-plan-month-grid {
   scroll-margin-top: calc(56px + env(safe-area-inset-top, 0px));
 }
 
-/* ===== Elterngeld-Berechnung ===== */
-.elterngeld-calculation__subtitle {
-  font-size: 0.9rem;
-  color: #444;
-  margin: 0 0 1rem 0;
-}
-
-.elterngeld-calculation__storage-hint {
-  font-size: 0.8rem;
-  color: #444;
-  margin: 0 0 1rem 0;
-}
-
-.elterngeld-calculation__conflict-card {
-  margin-bottom: 1rem;
-}
-
-.elterngeld-calculation__conflict-text {
-  margin: 0 0 1rem 0;
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
-
-.elterngeld-calculation__conflict-hint {
-  margin: 0.75rem 0 0 0;
-  font-size: 0.85rem;
-  color: #444;
-  line-height: 1.4;
-}
-
-.elterngeld-calculation__conflict-action--reset {
-  color: var(--color-text-secondary, #505050);
-}
-
-.elterngeld-calculation__conflict-actions .btn {
-  width: 100%;
-}
-
-@media (min-width: 480px) {
-  .elterngeld-calculation__conflict-actions {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .elterngeld-calculation__conflict-actions .btn {
-    width: auto;
-    flex: 1;
-    min-width: 12rem;
-  }
-}
-
-.elterngeld-calculation-input {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.elterngeld-calculation__months {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.elterngeld-calculation__month-row {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.5rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--color-border, #e4e4e7);
-}
-
-@media (min-width: 480px) {
-  .elterngeld-calculation__month-row {
-    grid-template-columns: 4.5rem 1fr 1fr 1fr;
-    align-items: end;
-  }
-}
-
-.elterngeld-calculation__month-row--active {
-  background: rgba(255, 250, 244, 0.5);
-}
-
-.elterngeld-calculation__month-row--no-bezug {
-  opacity: 0.9;
-}
-
-.elterngeld-calculation__months-section {
-  margin-top: 1rem;
-}
-
-.elterngeld-calculation__months-section-title {
-  margin: 0 0 0.35rem 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.elterngeld-calculation__no-bezug-details {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border, #e4e4e7);
-}
-
-.elterngeld-calculation__no-bezug-summary {
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  list-style: none;
-  padding: 0.35rem 0;
-}
-
-.elterngeld-calculation__no-bezug-summary::-webkit-details-marker {
-  display: none;
-}
-
-.elterngeld-calculation__no-bezug-summary::before {
-  content: '▶';
-  display: inline-block;
-  margin-right: 0.4rem;
-  font-size: 0.7rem;
-  transition: transform 0.2s;
-}
-
-.elterngeld-calculation__no-bezug-details[open] .elterngeld-calculation__no-bezug-summary::before {
-  transform: rotate(90deg);
-}
-
-.elterngeld-calculation__months--compact .elterngeld-calculation__month-row {
-  grid-template-columns: 4.5rem 1fr;
-}
-
-@media (min-width: 480px) {
-  .elterngeld-calculation__months--compact .elterngeld-calculation__month-row {
-    align-items: end;
-  }
-}
-
-.elterngeld-calculation__month-hint {
-  font-size: 0.8rem;
-  font-weight: normal;
-  color: var(--color-text-secondary, #333);
-}
-
-.elterngeld-calculation__month-label {
-  font-size: 0.9rem;
-  min-width: 0;
-}
-
-.elterngeld-calculation__mode-field {
-  min-width: 0;
-}
-
-.elterngeld-calculation__mode-field.elterngeld-select-btn-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.elterngeld-calculation__mode-field .elterngeld-select-btn {
-  flex: 1;
-  min-width: 7rem;
-}
-
-.elterngeld-calculation__inline-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.8rem;
-  min-width: 0;
-}
-
-.elterngeld-calculation__inline-label input {
-  width: 100%;
-  min-width: 0;
-}
-
-.elterngeld-calculation__inline-label span {
-  color: var(--color-text-secondary, #333);
-}
-
-.elterngeld-copy-action {
-  display: block;
-  margin-top: 0.25rem;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 0.8rem;
-  color: var(--color-primary, #2563eb);
-  cursor: pointer;
-  text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.elterngeld-copy-action:hover {
-  color: var(--color-primary-hover, #1d4ed8);
-}
-
-.elterngeld-calculation__copy-hint {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary, #333);
-  margin-top: 0.25rem;
-  margin-bottom: 0;
-}
-
-/* ===== Gemeinsame Monatsmatrix ===== */
-.elterngeld-matrix__timelines {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-@media (min-width: 600px) {
-  .elterngeld-matrix__timelines {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-}
-
-.elterngeld-matrix__timeline-block {
-  flex: 1;
-  min-width: 0;
-}
-
-.elterngeld-matrix__timeline-label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-}
-
-.elterngeld-matrix {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.elterngeld-matrix__month-row {
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-border, #e4e4e7);
-  background: var(--color-surface, #fff);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  scroll-margin-top: calc(56px + env(safe-area-inset-top, 0px));
-}
-
-.elterngeld-matrix__month-row--active {
-  background: rgba(255, 250, 244, 0.6);
-  border-color: rgba(170, 126, 84, 0.2);
-}
-
-.elterngeld-matrix__month-row--no-bezug {
-  opacity: 0.92;
-}
-
-.elterngeld-matrix__month-heading {
-  margin: 0 0 0.75rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.elterngeld-matrix__parents {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-@media (min-width: 600px) {
-  .elterngeld-matrix__parents {
-    flex-direction: row;
-    gap: 1.5rem;
-  }
-}
-
-.elterngeld-matrix__parent-block {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--color-border, #e4e4e7);
-}
-
-.elterngeld-matrix__parent-block--no-bezug {
-  background: rgba(248, 250, 252, 0.9);
-  border-color: rgba(226, 232, 240, 0.9);
-}
-
-.elterngeld-matrix__parent-block--maternity {
-  border-left: 3px solid var(--color-primary, #2563eb);
-}
-
-.elterngeld-matrix__maternity-badge {
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--color-primary, #2563eb);
-  background: rgba(37, 99, 235, 0.08);
-  padding: 0.15rem 0.4rem;
-  border-radius: 6px;
-}
-
-.elterngeld-matrix__no-bezug-hint {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--color-text-secondary, #333);
-  line-height: 1.4;
-}
-
-.elterngeld-matrix__parent-label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text-secondary, #505050);
-}
-
-.elterngeld-matrix__parent-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.elterngeld-matrix__month-row--compact .elterngeld-matrix__parent-fields {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.elterngeld-matrix__month-row--compact .elterngeld-calculation__mode-field {
-  flex: 1;
-  min-width: 10rem;
-}
-
+/* ===== Ergebnis & Optimierung (StepCalculationResult, Overlays) ===== */
 .elterngeld-calculation-result {
   display: flex;
   flex-direction: column;
@@ -1942,13 +1575,6 @@
   line-height: 1.4;
 }
 
-.elterngeld-calculation__maternity-hint {
-  background: rgba(37, 99, 235, 0.06);
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border-left: 3px solid var(--color-primary, #2563eb);
-}
-
 .elterngeld-calculation__breakdown-dl {
   margin: 0;
   display: grid;
@@ -2182,12 +1808,6 @@
 
 .elterngeld-calculation__optimization-block--adopted .btn--softpill {
   margin-top: 0.5rem;
-}
-
-.elterngeld-calculation__optimization-goal {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.9rem;
-  color: #444;
 }
 
 /* OptimizationOverlay – minimal notwendige Styles (Portal: gleicher Rhythmus wie .elterngeld-screen) */
@@ -2756,26 +2376,6 @@
   margin: 0 0 0.5rem 0;
 }
 
-.elterngeld-calculation__strategy-list {
-  margin: 0;
-  padding-left: 1.25rem;
-}
-
-.elterngeld-calculation__strategy-list li {
-  margin-bottom: 0.25rem;
-}
-
-.elterngeld-calculation__comparison-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 1rem 0 0.5rem 0;
-}
-
-.elterngeld-calculation__optimization-card--no-better {
-  border-color: rgba(120, 96, 76, 0.2);
-  background: rgba(120, 96, 76, 0.04);
-}
-
 .elterngeld-calculation__suggestion-hint {
   font-size: 0.85rem;
   color: var(--color-text-secondary, #333);
@@ -2786,49 +2386,6 @@
   overflow-wrap: break-word;
   word-wrap: break-word;
   min-width: 0;
-}
-
-.elterngeld-calculation__adopted-hint {
-  font-size: 0.85rem;
-  color: var(--color-success, #16a34a);
-  margin: 0 0 0.75rem 0;
-  padding: 0.5rem 0.75rem;
-  background: rgba(34, 197, 94, 0.08);
-  border-radius: 8px;
-}
-
-.elterngeld-calculation__adopt-button {
-  margin-bottom: 1rem;
-}
-
-.elterngeld-calculation__optimization-adopted-hint {
-  border-color: rgba(34, 197, 94, 0.3);
-  background: rgba(34, 197, 94, 0.06);
-}
-
-.elterngeld-calculation__adopted-hint--compact {
-  padding: 0.75rem 1rem;
-}
-
-.elterngeld-calculation__adopted-hint--compact .elterngeld-calculation__optimization-adopted-text {
-  margin-bottom: 0.5rem;
-}
-
-.elterngeld-calculation__revert-btn {
-  color: var(--color-text-secondary, #505050);
-}
-
-.elterngeld-calculation__revert-btn:hover {
-  color: var(--color-primary, #2563eb);
-}
-
-.elterngeld-calculation__optimization-adopted-text {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.95rem;
-}
-
-.elterngeld-calculation__optimization-adopted-hint .btn--softpill {
-  margin-bottom: 0;
 }
 
 .elterngeld-calculation__result-basis {
@@ -2846,152 +2403,6 @@
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
-}
-
-/* ===== Variantenvergleich ===== */
-.elterngeld-comparison {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.elterngeld-comparison__summary {
-  border-color: var(--color-primary, #2563eb);
-  background: rgba(37, 99, 235, 0.05);
-}
-
-.elterngeld-comparison__totals {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 0.5rem;
-}
-
-@media (min-width: 480px) {
-  .elterngeld-comparison__totals {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-  }
-}
-
-.elterngeld-comparison__total-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.elterngeld-comparison__total-label {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary, #505050);
-}
-
-.elterngeld-comparison__total-value {
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.elterngeld-comparison__diff {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.elterngeld-comparison__diff--more {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-
-.elterngeld-comparison__diff--less {
-  background: rgba(239, 68, 68, 0.06);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.elterngeld-comparison__diff-label {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary, #505050);
-}
-
-.elterngeld-comparison__diff-value {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.elterngeld-comparison__table-wrap {
-  overflow-x: auto;
-  margin-top: 0.5rem;
-  -webkit-overflow-scrolling: touch;
-}
-
-.elterngeld-comparison__table {
-  font-size: 0.9rem;
-  table-layout: fixed;
-  min-width: 280px;
-}
-
-.elterngeld-comparison__col-month {
-  width: 56px;
-  min-width: 56px;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.elterngeld-comparison__table th.elterngeld-comparison__col-month,
-.elterngeld-comparison__table td.elterngeld-comparison__col-month {
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
-}
-
-.elterngeld-comparison__col-person {
-  width: 80px;
-  min-width: 80px;
-  white-space: nowrap;
-}
-
-.elterngeld-comparison__table th.elterngeld-comparison__col-person,
-.elterngeld-comparison__table td.elterngeld-comparison__col-person {
-  padding-left: 0.35rem;
-  padding-right: 0.35rem;
-}
-
-.elterngeld-comparison__col-amount {
-  min-width: 4rem;
-}
-
-.elterngeld-comparison__table .elterngeld-comparison__col-amount {
-  text-align: right;
-}
-
-.elterngeld-comparison__th-wrap {
-  white-space: normal;
-  line-height: 1.2;
-  hyphens: auto;
-}
-
-.elterngeld-comparison__th-no-hyphen {
-  hyphens: none;
-  word-break: normal;
-}
-
-.elterngeld-comparison__table th.elterngeld-comparison__col-month.elterngeld-comparison__th-wrap {
-  white-space: normal;
-}
-
-.elterngeld-comparison__row--diff {
-  background: rgba(37, 99, 235, 0.04);
-}
-
-.elterngeld-comparison__cell--more {
-  color: var(--color-success, #16a34a);
-  font-weight: 500;
-}
-
-.elterngeld-comparison__cell--less {
-  color: var(--color-error, #dc2626);
-  font-weight: 500;
 }
 
 .elterngeld-summary__intro-hint {

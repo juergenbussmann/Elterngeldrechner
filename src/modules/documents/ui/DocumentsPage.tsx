@@ -10,8 +10,8 @@ import type { DocumentItem } from '../domain/types';
 import { addDocument, deleteDocument, listDocuments } from '../application/service';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
 import './DocumentsPage.css';
-import '../../checklists/styles/softpill-buttons-in-cards.css';
-import '../../checklists/styles/softpill-cards.css';
+import '../../../styles/softpill-buttons-in-cards.css';
+import '../../../styles/softpill-cards.css';
 
 const useObjectUrl = (blob?: Blob): string => {
   const [url, setUrl] = React.useState('');

@@ -2,8 +2,8 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { SectionHeader } from '../../shared/ui/SectionHeader';
 import { useI18n } from '../../shared/lib/i18n';
-import '../../modules/checklists/styles/softpill-buttons-in-cards.css';
-import '../../modules/checklists/styles/softpill-cards.css';
+import '../../styles/softpill-buttons-in-cards.css';
+import '../../styles/softpill-cards.css';
 
 export const SettingsLayout: React.FC = () => {
   const { t } = useI18n();

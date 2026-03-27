@@ -13,6 +13,7 @@ import '../styles/dark-theme-overrides.css';
 import '../styles/layout.css';
 import '../styles/home-landing.css';
 import '../styles/overrides-checklists-softpill.css';
+import '../styles/still-daily-checklist-layout.css';
 
 
 const DESKTOP_MIN_WIDTH = 1024;

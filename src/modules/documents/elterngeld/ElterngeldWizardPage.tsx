@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
 import { usePhase } from '../../../core/phase/usePhase';
-import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
 import { getInitialBirthDateValues } from '../../../shared/lib/birthDateFields';
 import { useNotifications } from '../../../shared/lib/notifications';
 import type { ElterngeldApplication } from './types/elterngeldTypes';
@@ -27,16 +26,16 @@ import { OptimizationOverlay } from './steps/OptimizationOverlay';
 import { ResultReviewOverlay } from './steps/ResultReviewOverlay';
 import { buildOptimizationResult } from './calculation/elterngeldOptimization';
 import { mergePlanIntoPreparation } from './planToApplicationMerge';
+import type { NavigateToInputTarget } from './steps/StepCalculationResult';
 import { isPartnerBonusPartTimeHoursEligible } from './partnerBonusEligibility';
 import { saveElterngeldWizardPdfBundle } from './saveElterngeldWizardPdfBundle';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
 import { useBegleitungPlus } from '../../../core/begleitungPlus';
 import { ElterngeldFlowAccessBlocked } from './ElterngeldFlowAccessBlocked';
 import './ElterngeldWizardPage.css';
-import './ElterngeldFlowStepper.css';
 import './ui/elterngeld-ui.css';
-import '../../checklists/styles/softpill-buttons-in-cards.css';
-import '../../checklists/styles/softpill-cards.css';
+import '../../../styles/softpill-buttons-in-cards.css';
+import '../../../styles/softpill-cards.css';
 
 const WIZARD_STEPS = [
   { id: 'geburtKind', title: 'Geburt & Kind' },
@@ -51,10 +50,8 @@ const WIZARD_STEPS = [
 const TOTAL_STEPS = 8; /* Intro + 7 Wizard-Schritte */
 
 export const ElterngeldWizardPage: React.FC = () => {
-  const { isPlus, isYearly, planType } = useBegleitungPlus();
-  console.log('ENTRY CHECK', { isPlus, planType, isYearly });
+  const { isPlus, isYearly } = useBegleitungPlus();
   if (!isPlus || !isYearly) {
-    console.log('GATING CHECK', { isPlus, planType, isYearly });
     return <ElterngeldFlowAccessBlocked variant={isPlus ? 'monthly' : 'free'} />;
   }
   return <ElterngeldWizardPageBody />;
@@ -62,7 +59,6 @@ export const ElterngeldWizardPage: React.FC = () => {
 
 const ElterngeldWizardPageBody: React.FC = () => {
   const { profile, actions } = usePhase();
-  const { goTo } = useNavigation();
   const { showToast } = useNotifications();
   const [wizardStarted, setWizardStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -92,6 +88,34 @@ const ElterngeldWizardPageBody: React.FC = () => {
 
   const openOptimizationFromPlan = useCallback((open: boolean) => {
     setShowOptimizationOverlay(open);
+  }, []);
+
+  const navigateFromResultReview = useCallback((target: NavigateToInputTarget) => {
+    setShowResultReviewOverlay(false);
+    if ('focusMonth' in target) {
+      const planIdx = WIZARD_STEPS.findIndex((s) => s.id === 'plan');
+      if (planIdx >= 0) {
+        setStepIndex(planIdx);
+        setScrollToId('elterngeld-plan-month-grid');
+      }
+      return;
+    }
+    if ('focusSection' in target) {
+      const sec = target.focusSection;
+      if (sec === 'grunddaten') {
+        const i = WIZARD_STEPS.findIndex((s) => s.id === 'geburtKind');
+        if (i >= 0) setStepIndex(i);
+      } else if (sec === 'einkommen') {
+        const i = WIZARD_STEPS.findIndex((s) => s.id === 'einkommen');
+        if (i >= 0) setStepIndex(i);
+      } else if (sec === 'monatsplan') {
+        const i = WIZARD_STEPS.findIndex((s) => s.id === 'plan');
+        if (i >= 0) {
+          setStepIndex(i);
+          setScrollToId('elterngeld-plan-month-grid');
+        }
+      }
+    }
   }, []);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
   const valuesRef = useRef(values);
@@ -420,6 +444,13 @@ const ElterngeldWizardPageBody: React.FC = () => {
             onClose={() => setShowResultReviewOverlay(false)}
             values={values}
             result={liveResult}
+            plan={planForOptimization}
+            partnerBonusHoursEligible={partnerBonusHoursEligible}
+            onApplicationChange={setValues}
+            onAdoptOptimization={(adoptPlan) => {
+              setValues((prev) => mergePlanIntoPreparation(prev, adoptPlan));
+            }}
+            onNavigateToInput={navigateFromResultReview}
           />
         )}
       </section>

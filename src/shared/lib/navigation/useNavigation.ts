@@ -24,16 +24,6 @@ const deriveScreenIdFromPath = (path: string): string => {
     return 'home';
   }
 
-  if (normalized === '/knowledge') {
-    return 'knowledge';
-  }
-  if (normalized === '/checklists' || normalized.startsWith('/checklists/')) {
-    return 'checklists';
-  }
-  if (normalized === '/appointments') {
-    return 'appointments';
-  }
-
   if (normalized.startsWith('/notifications')) {
     return 'notifications';
   }
@@ -66,8 +56,6 @@ export interface GoToOptions {
 
 export interface NavigationApi {
   goTo: (target: NavigationTarget, options?: GoToOptions) => void;
-  /** Navigiert zu einem Knowledge-Artikel mit state.from für korrektes Back-Verhalten */
-  navigateToTopic: (topicId: string, fromPath: string) => void;
   goBack: () => void;
   openSettings: () => void;
   openModuleSettings: (moduleId: string) => void;
@@ -85,13 +73,6 @@ export const useNavigation = (): NavigationApi => {
       trackScreenView(deriveScreenIdFromPath(path));
     },
     [navigate]
-  );
-
-  const navigateToTopic = useCallback(
-    (topicId: string, fromPath: string) => {
-      goTo(`/knowledge/${topicId}`, { state: { from: fromPath } });
-    },
-    [goTo]
   );
 
   const goBack = useCallback(() => {
@@ -133,7 +114,6 @@ export const useNavigation = (): NavigationApi => {
 
   return {
     goTo,
-    navigateToTopic,
     goBack,
     openSettings,
     openModuleSettings,

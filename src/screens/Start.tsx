@@ -1,34 +1,25 @@
 /**
- * STARTSEITE – GESCHÜTZTER BEREICH
- * ================================
- * Diese Startseite ist bewusst individuell gebaut.
- * NICHT an andere Screens angleichen.
- * Keine automatischen Refactors, keine Vereinheitlichung.
- * Layout, Abstände und visuelles Verhalten sind final abgestimmt.
+ * STARTSEITE – geschützter Bereich
+ * Ein Einstieg zum Elterngeld-Wizard (screen-placeholder, ui-card, bestehende Stacks).
  */
-import React, { useEffect, useRef } from 'react';
-import './start.css';
+import React from 'react';
+import { Card } from '../shared/ui/Card';
+import { Button } from '../shared/ui/Button';
+import { SectionHeader } from '../shared/ui/SectionHeader';
 import { useNavigation } from '../shared/lib/navigation/useNavigation';
 import { useDocumentHead, buildCanonicalUrl } from '../shared/lib/seo';
-import { logLayoutMetrics } from '../debug/layoutDebug';
-import { useHeroCompactGuard } from '../shared/hooks/useHeroCompactGuard';
-import { usePhase } from '../core/phase/usePhase';
-import { getChildDateContext } from '../shared/lib/childDateContext';
-import { getParentalLeaveReminderState } from '../core/reminders/parentalLeaveReminder';
+import '../styles/softpill-buttons-in-cards.css';
+import '../styles/softpill-cards.css';
+
+const ELTERNGELD_INTRO_BULLETS = [
+  'dein voraussichtliches Elterngeld schätzen und planen',
+  'Monate zwischen Eltern aufteilen',
+  'typische Grenzen und den Partnerschaftsbonus prüfen',
+  'eine Übersicht für den Antrag erstellen',
+] as const;
 
 export function Start() {
   const { goTo } = useNavigation();
-  const { profile } = usePhase();
-
-  const child = getChildDateContext(profile);
-  const parentalLeaveReminder = getParentalLeaveReminderState(profile);
-  const heroRef = useRef<HTMLElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const tilesRef = useRef<HTMLElement>(null);
-  const compactActive = useHeroCompactGuard({
-    tilesRef,
-    gap: 8,
-  });
 
   useDocumentHead({
     title: 'Stillberatung – Wissen rund ums Stillen',
@@ -37,120 +28,46 @@ export function Start() {
     canonicalUrl: buildCanonicalUrl('/'),
   });
 
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      document.body.classList.add('debug-layout');
-      logLayoutMetrics();
-
-      return () => {
-        document.body.classList.remove('debug-layout');
-      };
-    }
-  }, []);
-
   return (
-    <main
-      ref={heroRef}
-      className="start"
-      data-compact={compactActive ? 'on' : 'off'}
-    >
-      {/* Background: Babybild + Shade – bewusst positioniert, keine Fullscreen-Umstellung, keine harte Trennung */}
-      <div className="start__bg" aria-hidden="true">
-        <div className="start__bg-image" />
-        <div className="start__bg-shade" />
-      </div>
+    <div className="home-screen screen-placeholder">
+      <section className="home-section">
+        <SectionHeader as="h1" title="Willkommen" />
+        <p className="home-section__placeholder-text">Schön, dass du hier bist!</p>
+      </section>
 
-      <div ref={contentRef} className="start__content">
-        <div className="start__hero-content">
-          <div className="start__hero-inner">
-            {/* Header: Logo/Text-Rhythmus bewusst abgestimmt, keine transforms / keine Verschiebungen */}
-            <header className="start__header">
-              <img
-                src="/brand/Logo-ohne-Schrift.png"
-                alt="Stillberatung Logo"
-                className="start__logo"
-              />
-              <div className="start__title">
-                <span>Stillberatung</span>
-                <span>Jacqueline Tinz</span>
-              </div>
-            </header>
-            <section className="start__welcome">
-              <h1>Willkommen</h1>
-              <p className="start__welcome-sub">Schön, dass du hier bist!</p>
-              <p className="start__welcome-text">
-                Diese App begleitet dich auf deiner einzigartigen Reise von der Schwangerschaft über die
-                Geburt bis in die Stillzeit und darüber hinaus – mit Checklisten, Notizen und klarer
-                Struktur.
-              </p>
-            </section>
+      <section className="next-steps settings__global-stack">
+        <Card className="ui-card">
+          <div className="form-screen__section">
+            <h3 className="home-section__knowledge-card-title">Elterngeld planen</h3>
+            <p className="home-section__knowledge-card-description">
+              Mit diesem Planer kannst du dein voraussichtliches Elterngeld schätzen und planen. Dauer: ca. 2–3 Minuten
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              className="btn--softpill"
+              onClick={() => goTo('/documents/elterngeld')}
+            >
+              Jetzt planen
+            </Button>
           </div>
-        </div>
+        </Card>
 
-        <nav
-          ref={tilesRef}
-          className="start__buttons"
-          aria-label="Phasen auswählen"
-        >
-          <button
-            type="button"
-            className="start__button start__button--pregnancy"
-            aria-label="In der Schwangerschaft"
-            onClick={() => goTo('/phase/pregnancy')}
-          />
-          <button
-            type="button"
-            className="start__button start__button--birth"
-            aria-label="Bei der Geburt"
-            onClick={() => goTo('/phase/birth')}
-          />
-          <button
-            type="button"
-            className="start__button start__button--breastfeeding"
-            aria-label="Stillen"
-            onClick={() => goTo('/phase/breastfeeding')}
-          />
-        </nav>
-      </div>
-
-      {/* CTA-Zone: muss immer sichtbar bleiben, darf nicht vom Footer überlagert werden */}
-      {(child.effectiveDate === null || parentalLeaveReminder.shouldShowCTA || parentalLeaveReminder.shouldShowMissingDateLink) && (
-        <div className="start__cta-zone">
-          <div className="start__cta">
-            {child.effectiveDate === null ? (
-              <>
-                <p className="start__cta-hint">Bitte geben Sie einen Geburtstermin oder ein Geburtsdatum an.</p>
-                <button
-                  type="button"
-                  className="start__cta-link"
-                  onClick={() => goTo('/onboarding/due-date')}
-                >
-                  Geburtstermin hinterlegen
-                </button>
-              </>
-            ) : parentalLeaveReminder.shouldShowCTA ? (
-              <>
-                <p className="start__cta-hint">{parentalLeaveReminder.hintText ?? 'Bald könnte wichtig werden'}</p>
-                <button
-                  type="button"
-                  className="start__cta-button"
-                  onClick={() => goTo('/documents/parental-leave')}
-                >
-                  Elternzeit-Antrag stellen
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="start__cta-link"
-                onClick={() => goTo('/onboarding/due-date')}
-              >
-                Geburtstermin hinterlegen
-              </button>
-            )}
+        <Card className="ui-card">
+          <div className="form-screen__section">
+            <h3 className="home-section__knowledge-card-title">Was dich erwartet</h3>
+            <p className="home-section__knowledge-card-description">Mit diesem Planer kannst du:</p>
+            <ul className="home-section__checklist-items">
+              {ELTERNGELD_INTRO_BULLETS.map((line) => (
+                <li key={line} className="home-section__checklist-item-label">
+                  {line}
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      )}
-    </main>
+        </Card>
+      </section>
+    </div>
   );
 }

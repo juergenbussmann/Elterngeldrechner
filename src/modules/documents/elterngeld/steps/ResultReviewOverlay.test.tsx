@@ -1,11 +1,11 @@
 /**
  * @vitest-environment jsdom
- * „Ergebnis prüfen“: reine Übersicht, kein Optimierungs-Overlay / keine Varianten-CTAs.
+ * Ergebnis-Review im Wizard: volle StepCalculationResult-Kette inkl. optionalem Ziel für Alternativen.
  */
 
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '../../../../shared/lib/i18n';
 import { ResultReviewOverlay } from './ResultReviewOverlay';
 import { applicationToCalculationPlan } from '../applicationToCalculationPlan';
@@ -29,7 +29,7 @@ function minimalValues(): ElterngeldApplication {
 }
 
 describe('ResultReviewOverlay', () => {
-  it('zeigt Ergebnistitel und Kennzahlen, aber keine Optimierungs-UI', () => {
+  it('zeigt Ergebnistitel, Zielwahl und Kern-StepCalculationResult (Disclaimer)', () => {
     const values = minimalValues();
     const plan = applicationToCalculationPlan(values);
     const result = calculatePlan(plan);
@@ -38,21 +38,46 @@ describe('ResultReviewOverlay', () => {
     }
 
     renderWithI18n(
-      <ResultReviewOverlay isOpen={true} onClose={() => {}} values={values} result={result} />
+      <ResultReviewOverlay
+        isOpen={true}
+        onClose={() => {}}
+        values={values}
+        result={result}
+        plan={plan}
+        onApplicationChange={() => {}}
+        onAdoptOptimization={() => {}}
+        onNavigateToInput={() => {}}
+      />
     );
 
     expect(screen.getByText(/Ergebnis prüfen/i)).toBeTruthy();
-    expect(screen.getByRole('heading', { name: /Kennzahlen/i })).toBeTruthy();
-    const dialog = screen.getByRole('dialog');
-    const wrap = dialog.querySelector('#elterngeld-plan-month-grid.elterngeld-plan__month-grid-wrap');
-    expect(wrap).toBeTruthy();
-    expect(wrap?.querySelector('.elterngeld-month-grid')).toBeTruthy();
-    expect(dialog.querySelector('.elterngeld-plan-card .elterngeld-plan__month-grid-wrap')).toBeTruthy();
-    const firstTile = wrap?.querySelector('.elterngeld-tile');
-    expect(firstTile?.tagName.toLowerCase()).toBe('button');
-    expect(screen.queryByText(/Was ist dir wichtiger/i)).toBeNull();
-    expect(screen.queryByRole('button', { name: /Varianten vergleichen/i })).toBeNull();
-    expect(screen.queryByText(/Aufteilung prüfen/i)).toBeNull();
-    expect(document.querySelector('.elterngeld-calculation__optimization-block')).toBeNull();
+    expect(screen.getByText(/Ziel für Alternativen/i)).toBeTruthy();
+    expect(screen.getByText(/Orientierung für deine Planung/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /mehr Geld insgesamt/i })).toBeTruthy();
+  });
+
+  it('zeigt nach Zielwahl den Optimierungs-Vergleich (StepOptimizationBlock)', () => {
+    const values = minimalValues();
+    const plan = applicationToCalculationPlan(values);
+    const result = calculatePlan(plan);
+    if (result.validation.errors.length > 0) {
+      return;
+    }
+
+    renderWithI18n(
+      <ResultReviewOverlay
+        isOpen={true}
+        onClose={() => {}}
+        values={values}
+        result={result}
+        plan={plan}
+        onApplicationChange={() => {}}
+        onAdoptOptimization={() => {}}
+        onNavigateToInput={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /mehr Geld insgesamt/i }));
+    expect(screen.getByText(/Vergleich zum aktuellen Plan/i)).toBeTruthy();
   });
 });

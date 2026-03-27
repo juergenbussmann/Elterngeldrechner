@@ -37,8 +37,8 @@ export function Demo() {
         variant="plain"
         title={t('demo.nextSteps')}
         items={[
-          { label: t('nav.checklists'), to: '/checklists' },
-          { label: t('nav.notes'), to: '/notes' },
+          { label: t('documents.elterngeld.title'), to: '/documents/elterngeld' },
+          { label: t('nav.settings'), to: '/settings' },
         ]}
       />
     </div>

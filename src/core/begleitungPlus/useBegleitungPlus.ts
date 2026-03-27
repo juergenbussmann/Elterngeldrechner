@@ -2,13 +2,13 @@
  * Begleitung Plus – Hook für Feature-Flags und Limits.
  * Production Android: activate/deactivate sind no-op (nur Store darf Premium setzen).
  *
- * Dev-Override für Abo (nur import.meta.env.DEV): import.meta.env.VITE_DEV_PLAN überschreibt zur Laufzeit
- * die sichtbaren Entitlements im Hook und in hasYearlyAccess() – ohne localStorage, ohne Events, ohne Billing.
+ * Dev-Override (nur wenn VITE_DEV_PLAN gesetzt und nicht leer): überschreibt Hook + hasYearlyAccess()
+ * gegenüber localStorage. Ohne Variable: es gilt der Store (inkl. Default bei leerem Storage).
  *
  * PowerShell:
  *   Jahresabo: $env:VITE_DEV_PLAN="yearly"; npm run dev
  *   Monatsabo: $env:VITE_DEV_PLAN="monthly"; npm run dev
- *   Kein Abo: Remove-Item Env:VITE_DEV_PLAN -ErrorAction SilentlyContinue; npm run dev
+ *   Kein Abo (erzwingen): $env:VITE_DEV_PLAN="none"; npm run dev
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -22,6 +22,7 @@ import { isNativeAndroid } from '../../config/billing';
 import {
   getEntitlements,
   activatePlus,
+  activatePlusWithPlan,
   deactivatePlus,
 } from './begleitungPlusStore';
 import type { Entitlements, PlanType } from './entitlements';
@@ -49,10 +50,17 @@ function devSimulatedEntitlements(plan: DevPlanSim): Entitlements {
   return { isPremium: true, planType: 'yearly' };
 }
 
-/** Jahresabo-Zugriff (z. B. Elterngeld-Flow). In DEV: VITE_DEV_PLAN=yearly, sonst Store. */
+/** Explizit gesetztes VITE_DEV_PLAN steuert Entitlements nur, wenn die Variable nicht leer ist. */
+function devPlanEnvOverrides(): boolean {
+  if (!import.meta.env.DEV) return false;
+  const raw = import.meta.env.VITE_DEV_PLAN as string | undefined;
+  return typeof raw === 'string' && raw.length > 0;
+}
+
+/** Jahresabo-Zugriff (z. B. Elterngeld-Flow). Mit gesetztem VITE_DEV_PLAN: Simulation; sonst Store. */
 export function hasYearlyAccess(): boolean {
-  if (import.meta.env.DEV) {
-    const devPlan = import.meta.env.VITE_DEV_PLAN;
+  if (import.meta.env.DEV && devPlanEnvOverrides()) {
+    const devPlan = import.meta.env.VITE_DEV_PLAN as string;
     return parseDevPlanSim(devPlan) === 'yearly';
   }
   const e = getEntitlements();
@@ -68,16 +76,15 @@ export type UseBegleitungPlusResult = {
   limits: FreeLimits;
   entitlements: Entitlements;
   activate: (expiresAt?: string) => void;
+  /** Plus mit Jahresplan (z. B. Elterngeld-Wizard); schreibt Store + feuert Event. */
+  activateYearly: () => void;
   deactivate: () => void;
 };
 
 export function useBegleitungPlus(): UseBegleitungPlusResult {
-  console.log('DEV MODE:', import.meta.env.DEV);
-  console.log('DEV PLAN:', import.meta.env.VITE_DEV_PLAN);
-
   const isDev = import.meta.env.DEV;
-  const devPlan = import.meta.env.VITE_DEV_PLAN;
-  const devPlanSim = isDev ? parseDevPlanSim(devPlan) : null;
+  const devPlanSim =
+    isDev && devPlanEnvOverrides() ? parseDevPlanSim(import.meta.env.VITE_DEV_PLAN as string) : null;
 
   const [entitlements, setState] = useState<Entitlements>(() => getEntitlements());
 
@@ -115,24 +122,17 @@ export function useBegleitungPlus(): UseBegleitungPlusResult {
     setState(getEntitlements());
   }, []);
 
+  const activateYearly = useCallback(() => {
+    if (BLOCK_LOCAL_ACTIVATE) return;
+    activatePlusWithPlan('yearly');
+    setState(getEntitlements());
+  }, []);
+
   const deactivate = useCallback(() => {
     if (BLOCK_LOCAL_ACTIVATE) return;
     deactivatePlus();
     setState(getEntitlements());
   }, []);
-
-  if (isDev) {
-    console.log('DEV OVERRIDE ACTIVE', {
-      isPlus,
-      planType,
-      isYearly,
-    });
-  }
-  console.log('useBegleitungPlus RETURN', {
-    isPlus,
-    planType,
-    isYearly,
-  });
 
   return {
     isPlus,
@@ -143,6 +143,7 @@ export function useBegleitungPlus(): UseBegleitungPlusResult {
     limits,
     entitlements: effectiveEntitlements,
     activate,
+    activateYearly,
     deactivate,
   };
 }

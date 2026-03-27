@@ -28,8 +28,8 @@ import { addDocument } from '../application/service';
 import { useBegleitungPlus } from '../../../core/begleitungPlus';
 import { ElterngeldFlowAccessBlocked } from '../elterngeld/ElterngeldFlowAccessBlocked';
 import './ParentLeaveFormPage.css';
-import '../../checklists/styles/softpill-buttons-in-cards.css';
-import '../../checklists/styles/softpill-cards.css';
+import '../../../styles/softpill-buttons-in-cards.css';
+import '../../../styles/softpill-cards.css';
 
 const QuickSelectYears: React.FC<{
   startDate: string;

@@ -7,8 +7,8 @@ import { useI18n } from '../../shared/lib/i18n';
 import { useNavigation } from '../../shared/lib/navigation/useNavigation';
 import { useBegleitungPlus } from '../../core/begleitungPlus';
 import { activatePlusDev, deactivatePlusDev, activatePlusAdmin, deactivatePlusAdmin } from '../../core/begleitungPlus';
-import '../../modules/checklists/styles/softpill-buttons-in-cards.css';
-import '../../modules/checklists/styles/softpill-cards.css';
+import '../../styles/softpill-buttons-in-cards.css';
+import '../../styles/softpill-cards.css';
 
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN ?? '';
 

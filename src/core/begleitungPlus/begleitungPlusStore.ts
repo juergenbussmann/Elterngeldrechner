@@ -10,12 +10,16 @@
  */
 
 import type { Entitlements } from './entitlements';
-import { DEFAULT_FREE_ENTITLEMENTS, normalizeStoredEntitlements } from './entitlements';
+import {
+  DEFAULT_FREE_ENTITLEMENTS,
+  DEFAULT_ENTITLEMENTS_WHEN_NO_STORAGE,
+  normalizeStoredEntitlements,
+} from './entitlements';
 
 const STORAGE_KEY = 'app_begleitung_plus_v1';
 
 function parseEntitlements(raw: string | null): Entitlements {
-  if (!raw) return DEFAULT_FREE_ENTITLEMENTS;
+  if (!raw) return DEFAULT_ENTITLEMENTS_WHEN_NO_STORAGE;
   try {
     const parsed = JSON.parse(raw) as Partial<Entitlements>;
     return normalizeStoredEntitlements(parsed);

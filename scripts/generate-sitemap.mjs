@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Generates public/sitemap.xml from indexable routes and knowledge index.
+ * Generates public/sitemap.xml from indexable routes (Elterngeld-Fokus).
  * Run: node scripts/generate-sitemap.mjs
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,22 +12,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const BASE_URL = 'https://www.stillberatung-jt.de';
 
-const indexPath = join(ROOT, 'src/modules/knowledge/content/de/index.json');
-const index = JSON.parse(readFileSync(indexPath, 'utf8'));
-const knowledgeIds = index.items.map((item) => item.id);
-
 const today = new Date().toISOString().slice(0, 10);
 
 const entries = [
   { loc: '/', priority: '1.0', changefreq: 'monthly' },
-  { loc: '/phase/breastfeeding', priority: '1.0', changefreq: 'monthly' },
-  { loc: '/phase/pregnancy', priority: '0.8', changefreq: 'monthly' },
-  { loc: '/phase/birth', priority: '0.8', changefreq: 'monthly' },
-  ...knowledgeIds.map((id) => ({
-    loc: `/knowledge/${id}`,
-    priority: '0.6',
-    changefreq: 'monthly',
-  })),
+  { loc: '/documents/elterngeld', priority: '1.0', changefreq: 'monthly' },
+  { loc: '/documents', priority: '0.8', changefreq: 'monthly' },
+  { loc: '/settings', priority: '0.5', changefreq: 'monthly' },
 ];
 
 const urlBlocks = entries

@@ -16,15 +16,11 @@ export type FooterMenuItem = {
 export const footerMenu: FooterMenuItem[] = [
   { id: 'home', route: '/', labelKey: 'nav.home', icon: 'home' },
   {
-    id: 'stillDaily',
-    route: '/checklists',
-    labelKey: 'stillDaily.menuTitle',
-    icon: 'check',
+    id: 'elterngeld',
+    route: '/documents/elterngeld',
+    labelKey: 'documents.elterngeld.title',
+    icon: 'documents',
   },
-  { id: 'appointments', route: '/appointments', labelKey: 'nav.appointments', icon: 'appointments' },
-  { id: 'documents', route: '/documents', labelKey: 'documents.title', icon: 'documents' },
-  { id: 'contacts', route: '/contacts', labelKey: 'nav.contacts', icon: 'contacts' },
-  { id: 'notes', route: '/notes', labelKey: 'nav.notes', icon: 'notes' },
   { id: 'settings', route: '/settings', labelKey: 'nav.settings', icon: 'settings' },
 ];
 

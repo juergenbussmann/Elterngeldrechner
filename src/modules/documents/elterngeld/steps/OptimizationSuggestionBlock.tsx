@@ -78,6 +78,9 @@ export interface OptimizationSuggestionBlockProps {
   optimizedPlan: ElterngeldCalculationPlan;
   hasPartner: boolean;
   onAdopt: () => void;
+  /** Entspricht getOptimizationAdoptUiState (Wizard: keine Übernahme ohne valide Teilzeit/PB). */
+  adoptDisabled?: boolean;
+  adoptHint?: string | null;
 }
 
 export const OptimizationSuggestionBlock: React.FC<OptimizationSuggestionBlockProps> = ({
@@ -85,6 +88,8 @@ export const OptimizationSuggestionBlock: React.FC<OptimizationSuggestionBlockPr
   optimizedPlan,
   hasPartner,
   onAdopt,
+  adoptDisabled = false,
+  adoptHint = null,
 }) => {
   const changeLines = getPlanChangeLines(currentPlan, optimizedPlan, hasPartner);
 
@@ -112,9 +117,15 @@ export const OptimizationSuggestionBlock: React.FC<OptimizationSuggestionBlockPr
         variant="primary"
         className="btn--softpill elterngeld-optimization-suggestion__btn"
         onClick={onAdopt}
+        disabled={adoptDisabled}
       >
         Vorschlag übernehmen
       </Button>
+      {adoptDisabled && adoptHint && (
+        <p className="elterngeld-step__notice elterngeld-step__notice--tip elterngeld-optimization-suggestion__adopt-hint" role="status">
+          {adoptHint}
+        </p>
+      )}
     </div>
   );
 };

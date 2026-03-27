@@ -6,8 +6,6 @@ import { useNavigation } from '../shared/lib/navigation/useNavigation';
 import { useI18n } from '../shared/lib/i18n';
 import { Button } from '../shared/ui/Button';
 import { useTheme } from './theme/ThemeProvider';
-import { getAppNavItems } from './nav/navHost';
-
 const normalizeRoute = (route: string): string => (route.startsWith('/') ? route : `/${route}`);
 
 type IconSvgProps = {
@@ -127,18 +125,10 @@ export const AppFooter: React.FC = () => {
   const { components } = useTheme();
   const navTokens = components.navBar;
 
-  const moduleNavItems = React.useMemo<FooterMenuItem[]>(() => {
-    return getAppNavItems().map((item) => ({
-      id: item.id,
-      route: normalizeRoute(item.to),
-      labelKey: item.label,
-      icon: item.icon ?? '•',
-    }));
-  }, []);
-
+  /** Nur appConfig-Footer; keine Modul-Einträge (Knowledge, Checklisten, …). */
   const navItems = React.useMemo<FooterMenuItem[]>(
-    () => [...footerMenu, ...moduleNavItems],
-    [moduleNavItems],
+    () => footerMenu.map((item) => ({ ...item, route: normalizeRoute(item.route) })),
+    [],
   );
 
   return (

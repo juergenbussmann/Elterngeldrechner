@@ -42,7 +42,7 @@ const AppShellContent: React.FC = () => {
   const theme = useTheme();
   const headerTokens = theme.components.header;
   const navigate = useNavigate();
-  const { state: panelState, closePanel, openBottomSheet, openLeftPanel } = usePanels();
+  const { state: panelState, closePanel, openBottomSheet } = usePanels();
   const isHome = location.pathname === '/';
 
   const mergeModuleActions = (config?: ScreenConfig) => {
@@ -186,9 +186,6 @@ const AppShellContent: React.FC = () => {
         // Fallback für Legacy-Code
         goBack();
         return;
-      case 'openTopicsMenu':
-        openLeftPanel('topicsMenu');
-        return;
       default:
         return;
     }
@@ -221,7 +218,7 @@ const AppShellContent: React.FC = () => {
             <h1 className="app-shell__title">{title}</h1>
           </div>
           <div className="app-shell__header-right">
-            {!location.pathname.startsWith('/checklists/meine') && <PhaseLabel />}
+            <PhaseLabel />
             <HeaderActionsBar actions={headerActions.primary} onAction={handleActionClick} />
             <HeaderActionsMenu actions={headerActions.menu} onAction={handleActionClick} />
           </div>

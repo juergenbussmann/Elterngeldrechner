@@ -1,3 +1,6 @@
+/* Layout-Hilfen für .still-daily-checklist__* (z. B. Karten im Wizard, Einstellungen).
+   Aus ehem. StillDailyChecklistPage.css; visueller Softpill-Look: overrides-checklists-softpill.css */
+
 .still-daily-checklist {
   display: flex;
   flex-direction: column;

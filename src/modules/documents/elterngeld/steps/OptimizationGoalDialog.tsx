@@ -1,7 +1,5 @@
 /**
- * Zieloptionen für die Berechnungsseite (Goal-Card).
- * Der zweite Optimierungseinstieg über einen separaten Dialog wurde entfernt.
- * Einziger gültiger Optimierungsweg: begleiteter Flow im Wizard (OptimizationOverlay).
+ * Zieloptionen für buildOptimizationResult im Wizard (OptimizationOverlay, ResultReviewOverlay).
  */
 
 export const MAIN_GOAL_OPTIONS: {

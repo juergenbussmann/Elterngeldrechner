@@ -5,12 +5,15 @@ import { useI18n } from '../../shared/lib/i18n';
 import { useNavigation } from '../../shared/lib/navigation/useNavigation';
 import { getModuleSettings } from '../modules/moduleHost';
 import { assertGlobalSettingsSectionsAbsent } from '../quality/qualityGate';
-import '../../modules/checklists/styles/softpill-buttons-in-cards.css';
-import '../../modules/checklists/styles/softpill-cards.css';
+import { useBegleitungPlus } from '../begleitungPlus';
+import '../../styles/softpill-buttons-in-cards.css';
+import '../../styles/softpill-cards.css';
 
 export const GlobalSettingsScreen: React.FC = () => {
   const { t } = useI18n();
   const { openModuleSettings, goTo } = useNavigation();
+  const { isPlus, isYearly, activateYearly, deactivate } = useBegleitungPlus();
+  const plusTestOn = isPlus && isYearly;
 
   const settingsEnabledModules = useMemo(() => getModuleSettings(), []);
 
@@ -21,6 +24,21 @@ export const GlobalSettingsScreen: React.FC = () => {
     <section className="next-steps settings__global-stack">
       <Card className="still-daily-checklist__card">
         <div className="next-steps__stack settings__module-stack">
+          <label className="settings-checkbox" htmlFor="settings-plus-test-toggle">
+            <input
+              id="settings-plus-test-toggle"
+              type="checkbox"
+              checked={plusTestOn}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  activateYearly();
+                } else {
+                  deactivate();
+                }
+              }}
+            />
+            <span>Plus freischalten (Test)</span>
+          </label>
           {settingsEnabledModules.map(({ module }) => (
             <Button
               key={module.id}

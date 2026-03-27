@@ -1,6 +1,5 @@
 import React from 'react';
 import type { PanelType } from '../core/panels/PanelHost';
-import { TopicsMenuPanel } from '../core/panels/TopicsMenuPanel';
 import { ExportPanel } from '../core/export/ui/ExportPanel';
 import { CalendarBulkExportResultPanel } from '../core/calendar/ui/CalendarBulkExportResultPanel';
 import { PhaseOnboardingPanel } from '../core/phase/ui/PhaseOnboardingPanel';
@@ -18,11 +17,6 @@ export type PanelRegistryEntry = {
  * (bijv. Fit4Seniors) kunnen hier later worden geregistreerd.
  */
 export const panelRegistry: PanelRegistryEntry[] = [
-  {
-    id: 'topicsMenu',
-    type: 'left',
-    component: TopicsMenuPanel,
-  },
   {
     id: 'export',
     type: 'bottom',

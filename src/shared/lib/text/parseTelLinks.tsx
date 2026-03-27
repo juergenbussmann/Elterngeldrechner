@@ -6,9 +6,9 @@ import { Link } from 'react-router-dom';
  *
  * Supported formats:
  * 1) Tel: [Text](tel:01601749534) or (Text)(tel:01601749534) or tel:01601749534
- * 2) Internal: [Anchor-Text](/path) – z.B. [Grundlagen zum Stillen](/phase/breastfeeding)
+ * 2) Internal: [Anchor-Text](/path) – z.B. [Elterngeld](/documents/elterngeld)
  *
- * Security: Only /phase/* and /knowledge/* paths allowed for internal links.
+ * Security: Only /documents/* paths allowed for internal links.
  */
 const TARGET_TEL = 'tel:01601749534';
 const DISPLAY_TEXT = 'Jacqueline Tinz: 01601749534';
@@ -30,13 +30,12 @@ function findAllMatches(text: string): LinkMatch[] {
     if (idx >= 0) matches.push({ start: idx, end: idx + m[0].length, type: 'tel' });
   }
 
-  // Internal links: [Anchor](/path) – nur /phase/ und /knowledge/
-  const internalPattern = /\[([^\]]+)\]\((\/(?:phase|knowledge)\/[^)]*)\)/g;
+  const internalPattern = /\[([^\]]+)\]\((\/documents[^)]*)\)/g;
   for (const m of text.matchAll(internalPattern)) {
     const idx = m.index ?? -1;
     if (idx >= 0) {
       const path = m[2];
-      if (path.startsWith('/phase/') || path.startsWith('/knowledge/')) {
+      if (path.startsWith('/documents')) {
         matches.push({
           start: idx,
           end: idx + m[0].length,

@@ -18,6 +18,15 @@ export const DEFAULT_FREE_ENTITLEMENTS: Entitlements = {
 };
 
 /**
+ * Erststart / kein localStorage-Eintrag: Plus mit Jahresplan als Default.
+ * Bestehende gespeicherte Werte bleiben unverändert (werden nicht überschrieben).
+ */
+export const DEFAULT_ENTITLEMENTS_WHEN_NO_STORAGE: Entitlements = {
+  isPremium: true,
+  planType: 'yearly',
+};
+
+/**
  * Normalisiert rohe/legacy gespeicherte Werte.
  * Nur isPremium ohne planType → bei Premium planType 'monthly' (bestehende Nutzer).
  */

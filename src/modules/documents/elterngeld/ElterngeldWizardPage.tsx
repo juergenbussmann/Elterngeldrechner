@@ -141,18 +141,17 @@ const ElterngeldWizardPageBody: React.FC = () => {
     if (step.id !== 'summary') setShowResultReviewOverlay(false);
   }, [step.id]);
 
+  const planForOptimization = useMemo(() => applicationToCalculationPlan(values), [values]);
+
   const liveResult = useMemo(() => {
-    const birthDate = values.child.birthDate?.trim() || values.child.expectedBirthDate?.trim();
+    const birthDate = planForOptimization.childBirthDate?.trim();
     if (!birthDate) return null;
     try {
-      const plan = applicationToCalculationPlan(values);
-      return calculatePlan(plan);
+      return calculatePlan(planForOptimization);
     } catch {
       return null;
     }
-  }, [values]);
-
-  const planForOptimization = useMemo(() => applicationToCalculationPlan(values), [values]);
+  }, [planForOptimization]);
 
   const partnerBonusHoursEligible = useMemo(() => isPartnerBonusPartTimeHoursEligible(values), [values]);
 
@@ -187,27 +186,35 @@ const ElterngeldWizardPageBody: React.FC = () => {
 
   const handleBack = useCallback(() => {
     setCalculationError(null);
-    setStepIndex((i) => Math.max(i - 1, 0));
-  }, []);
+    if (stepIndex === 0) {
+      setWizardStarted(false);
+      return;
+    }
+    setStepIndex((i) => i - 1);
+  }, [stepIndex]);
 
   // Profil → Formular: Wenn Profil sich ändert (z.B. in Einstellungen), Kind-Datumsfelder nachziehen
   useEffect(() => {
-    const expected = getInitialBirthDateValues(profile, undefined);
+    const nextChild = getInitialBirthDateValues(profile, undefined);
+    const hasValidBirthDate =
+      nextChild.birthDate?.trim() || nextChild.expectedBirthDate?.trim();
+    if (!hasValidBirthDate) return;
+
     const current = valuesRef.current.child;
     const currentBirth = current.birthDate?.trim() || '';
     const currentExpected = current.expectedBirthDate?.trim() || '';
     const needsUpdate =
-      (expected.birthDate !== currentBirth) || (expected.expectedBirthDate !== currentExpected);
-    if (needsUpdate) {
-      setValues((prev) => ({
-        ...prev,
-        child: {
-          ...prev.child,
-          birthDate: expected.birthDate,
-          expectedBirthDate: expected.expectedBirthDate,
-        },
-      }));
-    }
+      nextChild.birthDate !== currentBirth || nextChild.expectedBirthDate !== currentExpected;
+    if (!needsUpdate) return;
+
+    setValues((prev) => ({
+      ...prev,
+      child: {
+        ...prev.child,
+        birthDate: nextChild.birthDate,
+        expectedBirthDate: nextChild.expectedBirthDate,
+      },
+    }));
   }, [profile]);
 
   useEffect(() => {
@@ -330,9 +337,8 @@ const ElterngeldWizardPageBody: React.FC = () => {
                 setScrollToId(idToScroll ?? null);
               }
             }}
-            showOptimizationOverlay={showOptimizationOverlay}
             onShowOptimizationOverlay={openOptimizationFromPlan}
-            optimizationSummary={optimizationSummary}
+            partnerBonusHoursEligible={partnerBonusHoursEligible}
             onApplyBonusFix={() =>
               showToast('Ich habe die Monate für den Partnerschaftsbonus angepasst.', {
                 kind: 'success',
@@ -371,7 +377,6 @@ const ElterngeldWizardPageBody: React.FC = () => {
               variant="secondary"
               className="next-steps__button btn--softpill elterngeld-actions__secondary"
               onClick={handleBack}
-              disabled={stepIndex === 0}
             >
               Zurück
             </Button>

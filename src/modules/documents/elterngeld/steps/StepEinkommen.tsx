@@ -34,33 +34,35 @@ export const StepEinkommen: React.FC<Props> = ({ values, onChange }) => {
 
   return (
     <>
-      <Card className="still-daily-checklist__card">
-        <h3 className="elterngeld-step__title">Mutter</h3>
-        <label className="elterngeld-step__label">
-          <span>Nettoeinkommen vor Geburt</span>
-          <TextInput
-            type="text"
-            value={values.parentA.incomeBeforeBirth}
-            onChange={(e) => updateParentA(e.target.value)}
-            placeholder="z. B. 2500"
-          />
-        </label>
-      </Card>
-
-      {showPartner && (
+      <div className="elterngeld-step__fields">
         <Card className="still-daily-checklist__card">
-          <h3 className="elterngeld-step__title">Partner / Partnerin</h3>
+          <h3 className="elterngeld-step__title">Mutter</h3>
           <label className="elterngeld-step__label">
             <span>Nettoeinkommen vor Geburt</span>
             <TextInput
               type="text"
-              value={values.parentB!.incomeBeforeBirth}
-              onChange={(e) => updateParentB(e.target.value)}
+              value={values.parentA.incomeBeforeBirth}
+              onChange={(e) => updateParentA(e.target.value)}
               placeholder="z. B. 2500"
             />
           </label>
         </Card>
-      )}
+
+        {showPartner && (
+          <Card className="still-daily-checklist__card">
+            <h3 className="elterngeld-step__title">Partner / Partnerin</h3>
+            <label className="elterngeld-step__label">
+              <span>Nettoeinkommen vor Geburt</span>
+              <TextInput
+                type="text"
+                value={values.parentB!.incomeBeforeBirth}
+                onChange={(e) => updateParentB(e.target.value)}
+                placeholder="z. B. 2500"
+              />
+            </label>
+          </Card>
+        )}
+      </div>
 
       <p className="elterngeld-step__hint elterngeld-step__hint--section">
         Das Elterngeld beträgt ungefähr 65 % des Nettoeinkommens.

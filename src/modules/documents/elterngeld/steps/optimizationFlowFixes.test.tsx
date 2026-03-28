@@ -43,50 +43,35 @@ const baseValues: ElterngeldApplication = {
 };
 
 describe('Optimierungsflow-Fixes', () => {
-  describe('Widerspruchsfreie Einordnung', () => {
-    it('zeigt „Dein Plan funktioniert“ ohne semantischen Konflikt mit Optimierung', () => {
+  describe('Einheitlicher Optimierungsblock im Plan-Schritt', () => {
+    it('zeigt StepOptimizationBlock (Schritt-Flow) bei gültigem Plan', () => {
       renderWithI18n(
         <StepPlan
           values={baseValues}
           onChange={() => {}}
-          optimizationSummary={{ hasAnySuggestions: true, partnerBonusSuggestion: null }}
           onShowOptimizationOverlay={() => {}}
         />
       );
 
-      const statusText = screen.getByText(/Dein Plan funktioniert/i);
-      expect(statusText).toBeTruthy();
-      expect(statusText.textContent).toMatch(/funktioniert.*optimieren|optimieren.*funktioniert/);
+      expect(screen.getByText(/Schritt \d+ von \d+/i)).toBeTruthy();
+      expect(
+        screen.getByText(/Die Optimierung basiert auf deinen erfassten Einkommensangaben/i)
+      ).toBeTruthy();
     });
 
-    it('Optimierung-Button heißt „Optimierung ansehen“ (nicht „anwenden“)', () => {
+    it('Monatsraster steht vor dem Optimierungs-Schrittfortschritt', () => {
       renderWithI18n(
         <StepPlan
           values={baseValues}
           onChange={() => {}}
-          optimizationSummary={{ hasAnySuggestions: true, partnerBonusSuggestion: null }}
           onShowOptimizationOverlay={() => {}}
         />
       );
 
-      const btn = screen.getByRole('button', { name: /Optimierung ansehen/i });
-      expect(btn).toBeTruthy();
-    });
-
-    it('Optimierungsbutton steht nach dem Monats-/Leistungsblock', () => {
-      const { container } = renderWithI18n(
-        <StepPlan
-          values={baseValues}
-          onChange={() => {}}
-          optimizationSummary={{ hasAnySuggestions: true, partnerBonusSuggestion: null }}
-          onShowOptimizationOverlay={() => {}}
-        />
-      );
       const monthGrid = document.getElementById('elterngeld-plan-month-grid');
-      const optBtn = screen.getByRole('button', { name: /Optimierung ansehen/i });
+      const progress = screen.getByRole('progressbar');
       expect(monthGrid).toBeTruthy();
-      expect(optBtn).toBeTruthy();
-      const compare = monthGrid!.compareDocumentPosition(optBtn);
+      const compare = monthGrid!.compareDocumentPosition(progress);
       expect(compare & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
   });

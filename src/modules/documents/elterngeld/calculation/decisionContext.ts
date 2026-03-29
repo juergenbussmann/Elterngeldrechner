@@ -434,7 +434,7 @@ function getRecommendedReasonText(
 function getDecisionQuestion(goal: OptimizationGoal): string {
   switch (goal) {
     case 'maxMoney':
-      return 'Wie soll die Aufteilung optimiert werden?';
+      return 'Worauf sollen die Planvorschläge achten?';
     case 'longerDuration':
       return 'Soll die Bezugsdauer verlängert werden?';
     case 'frontLoad':
@@ -495,7 +495,7 @@ export function buildDecisionContext(
     id: 'current',
     distinctnessKey: currentKey,
     label: 'Aktueller Plan',
-    description: 'Dein Plan bleibt unverändert – keine automatische Umwandlung und kein Optimierungs-Eingriff.',
+    description: 'Dein Plan bleibt unverändert – keine automatische Umwandlung und kein automatischer Planvorschlag.',
     strategyType: 'current',
     recommended: false,
     recommendedReason: null,
@@ -560,6 +560,11 @@ export function buildDecisionContext(
     }
     const isFirstNonCurrent = options.filter((o) => o.strategyType !== 'current').length === 0;
     const recommendedReasonText = getRecommendedReasonText(strategyType, goal, s);
+    /** Auch sichtbare Mehrwerte jenseits von status „improved“ (z. B. längere Laufzeit oder mehr Bonusmonate). */
+    const meritsRecommendation =
+      s.status === 'improved' ||
+      s.optimizedDurationMonths > baseDuration ||
+      countPartnerBonusMonths(s.result) > baseBonus;
 
     options.push({
       id: `opt-${options.length}`,
@@ -569,8 +574,8 @@ export function buildDecisionContext(
       strategyType,
       scenarioLabel: scenarioLabel ?? undefined,
       matchesUserPriority: matchesUserPriority || undefined,
-      recommended: s.status === 'improved' && isFirstNonCurrent,
-      recommendedReason: s.status === 'improved' && isFirstNonCurrent ? recommendedReasonText : null,
+      recommended: meritsRecommendation && isFirstNonCurrent,
+      recommendedReason: meritsRecommendation && isFirstNonCurrent ? recommendedReasonText : null,
       impact: {
         financialDelta: s.optimizedTotal - baseTotal,
         durationDelta: s.optimizedDurationMonths - baseDuration,

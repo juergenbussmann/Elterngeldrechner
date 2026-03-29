@@ -1,8 +1,8 @@
 {
-  "packageId": "de.stillberatung.jt",
+  "packageId": "de.elterngeldrechner.app",
   "host": "69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app",
-  "name": "Stillberatung",
-  "launcherName": "Stillberatung",
+  "name": "Elterngeldrechner",
+  "launcherName": "Elterngeldrechner",
   "display": "standalone",
   "themeColor": "#D48C8C",
   "themeColorDark": "#000000",

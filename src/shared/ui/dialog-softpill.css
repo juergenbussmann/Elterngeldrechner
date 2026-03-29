@@ -58,7 +58,7 @@
 }
 
 /*
- * Elterngeld-Overlays (Aufteilung prüfen / Ergebnis prüfen): per Portal unter body,
+ * Elterngeld-Overlays (z. B. Planvorschläge): per Portal unter body,
  * daher kein .screen-placeholder – overrides-checklists-softpill greift nicht.
  * Hier dieselbe Card-/Button-Surface-Hierarchie wie im Wizard (pill-Tokens).
  */

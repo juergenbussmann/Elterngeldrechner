@@ -284,5 +284,23 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
         expect(top.optimizedDurationMonths).toBeGreaterThanOrEqual(2);
       }
     });
+
+    it('G2: Bereits 24 Bezugsmonate (Plus) – kein „länger verteilt“ ohne strikt mehr Monate', () => {
+      const plan = createPlan({});
+      plan.parents[0].incomeBeforeNet = 3000;
+      plan.parents[1].incomeBeforeNet = 3000;
+      for (let m = 1; m <= 24; m++) {
+        setMonth(plan, 0, m, 'plus');
+      }
+
+      const result = calculatePlan(plan);
+      const outcome = buildOptimizationResult(plan, result, 'longerDuration');
+
+      expect(outcome).not.toBeNull();
+      if ('suggestions' in outcome) {
+        expect(outcome.suggestions.some((s) => s.status === 'improved')).toBe(false);
+        expect(outcome.suggestions.filter((s) => s.optimizedDurationMonths <= 24)).toHaveLength(0);
+      }
+    });
   });
 });

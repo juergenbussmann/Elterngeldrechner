@@ -38,6 +38,7 @@ import {
   getOptimizationBreakdown,
   shouldShowVariant,
 } from './optimizationExplanation';
+import { OPTIMIZATION_GOAL_CHOICE_HINT } from './OptimizationGoalDialog';
 import type { CombinedWho } from '../calculation/monthCombinedState';
 import type { MonthMode } from '../calculation';
 import { isPlanEmpty } from '../infra/calculationPlanStorage';
@@ -115,6 +116,52 @@ function getSuggestionDedupKey(s: OptimizationSuggestion): string {
     )
     .join('|');
   return `${s.goal}-${total}-${duration}-${bonus}-${modeSig}`;
+}
+
+function planHasPlusOrPartnerBonus(plan: ElterngeldCalculationPlan): boolean {
+  return plan.parents.some((p) =>
+    p.months.some((m) => m.mode === 'plus' || m.mode === 'partnerBonus')
+  );
+}
+
+function OptimizationLeistungLaufzeitHint({
+  optimizationGoal,
+  onLeistungAnpassen,
+}: {
+  optimizationGoal?: OptimizationGoal;
+  onLeistungAnpassen?: () => void;
+}) {
+  return (
+    <div
+      className="elterngeld-calculation__leistung-laufzeit-hint elterngeld-step__notice elterngeld-step__notice--tip"
+      role="region"
+      aria-label="Hinweis zu Leistung und Laufzeit"
+    >
+      <p className="elterngeld-calculation__leistung-laufzeit-hint-p">
+        Die Laufzeit deiner Varianten hängt von der gewählten Leistung ab.
+      </p>
+      <p className="elterngeld-calculation__leistung-laufzeit-hint-p">
+        Mit ElterngeldPlus kannst du dein Elterngeld über mehr Monate verteilen.
+      </p>
+      {optimizationGoal === 'longerDuration' && (
+        <p className="elterngeld-calculation__leistung-laufzeit-hint-p elterngeld-calculation__leistung-laufzeit-hint-p--emph">
+          Für längere Laufzeiten kannst du ElterngeldPlus nutzen.
+        </p>
+      )}
+      {onLeistungAnpassen && (
+        <div className="elterngeld-calculation__leistung-laufzeit-hint-actions">
+          <Button
+            type="button"
+            variant="secondary"
+            className="btn--softpill next-steps__button"
+            onClick={onLeistungAnpassen}
+          >
+            Leistung anpassen
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function formatMonthsLabel(n: number, singular: string, plural: string): string {
@@ -445,6 +492,8 @@ type StepOptimizationBlockProps = {
   onBackToOptimization?: () => void;
   /** Schließt Overlay/Ansicht und führt sichtbar in die Monatsaufteilungs-Bearbeitung. */
   onNavigateToMonthEditing?: () => void;
+  /** Optional: direkt zur Leistungswahl Basis/ElterngeldPlus (z. B. Wizard-Scroll zu `#elterngeld-plan-leistung`). */
+  onNavigateToLeistungSettings?: () => void;
   /** Führt zur Stundeneingabe (Vorbereitung: Eltern & Arbeit; Rechner: Eingabe Monatsplan). */
   onNavigateToPartTimeSettings?: () => void;
   /** Startet direkt bei der Strategie-/Ziel-Auswahl (Step 3). */
@@ -532,7 +581,7 @@ function AdoptConfirmDialog({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Optimierungsvorschlag übernehmen" variant="softpill" scrollableContent>
+    <Modal isOpen={isOpen} onClose={onClose} title="Planvorschlag übernehmen" variant="softpill" scrollableContent>
       <div className="elterngeld-screen elterngeld-optimization-overlay-content elterngeld-adopt-confirm">
         <p className="elterngeld-adopt-confirm__intro">
           Dieser Vorschlag verändert deinen aktuellen Plan.
@@ -591,11 +640,16 @@ function AdoptConfirmDialog({
   );
 }
 
-function getOptionImpactLines(opt: DecisionOption, formatCurrency: (n: number) => string, formatCurrencySigned: (n: number) => string): string[] {
+function getOptionImpactLines(
+  opt: DecisionOption,
+  formatCurrency: (n: number) => string,
+  formatCurrencySigned: (n: number) => string,
+  options?: { omitDurationLine?: boolean }
+): string[] {
   const { impact } = opt;
   const lines: string[] = [];
   if (impact.financialDelta !== 0) lines.push(formatCurrencySigned(impact.financialDelta));
-  if (impact.durationDelta !== 0) {
+  if (!options?.omitDurationLine && impact.durationDelta !== 0) {
     const unit = formatMonthsLabel(Math.abs(impact.durationDelta), 'Monat', 'Monate');
     lines.push(impact.durationDelta > 0 ? `+${impact.durationDelta} ${unit}` : `${impact.durationDelta} ${unit}`);
   }
@@ -619,6 +673,7 @@ export function StepOptimizationBlock({
   onDiscardOptimization,
   onBackToOptimization,
   onNavigateToMonthEditing,
+  onNavigateToLeistungSettings,
   onNavigateToPartTimeSettings,
   skipToStrategyStep,
   hideDiscardButton,
@@ -791,17 +846,25 @@ export function StepOptimizationBlock({
       <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--comparison">
         {!hasAnyAlternatives ? (
           <>
+            <OptimizationLeistungLaufzeitHint
+              optimizationGoal={optimizationGoal}
+              onLeistungAnpassen={onNavigateToLeistungSettings ?? onNavigateToMonthEditing}
+            />
             <h3 className="elterngeld-step__title">Dein aktueller Plan passt gut zu deinem Ziel.</h3>
             {onBackToOptimization && (
               <Button type="button" variant="secondary" className="btn--softpill" onClick={onBackToOptimization}>
-                Optimierung schließen
+                Planvorschläge schließen
               </Button>
             )}
           </>
         ) : (
         <div className="elterngeld-step-flow">
+          <OptimizationLeistungLaufzeitHint
+            optimizationGoal={optimizationGoal}
+            onLeistungAnpassen={onNavigateToLeistungSettings ?? onNavigateToMonthEditing}
+          />
           <p className="elterngeld-calculation__data-basis-hint">
-            Die Optimierung basiert auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
+            Die Planvorschläge basieren auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
           </p>
           {!skipToStrategyStep && (
             <p className="elterngeld-calculation__adoption-hint">
@@ -818,9 +881,20 @@ export function StepOptimizationBlock({
             </p>
           )}
           {optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) && (
-            <p className="elterngeld-step__hint" role="status">
-              Dein gewähltes Ziel: <strong>{SCENARIO_SHORT_LABELS[optimizationGoal] ?? optimizationGoal}</strong>
-            </p>
+            <div
+              className="elterngeld-calculation__chosen-goal-banner elterngeld-step__notice elterngeld-step__notice--tip"
+              role="status"
+            >
+              <p className="elterngeld-calculation__chosen-goal-title">
+                Gewähltes Ziel:{' '}
+                <strong>{SCENARIO_SHORT_LABELS[optimizationGoal] ?? optimizationGoal}</strong>
+              </p>
+              {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal] && (
+                <p className="elterngeld-calculation__chosen-goal-detail">
+                  {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal]}
+                </p>
+              )}
+            </div>
           )}
           <div className="elterngeld-step-flow__progress" role="progressbar" aria-valuenow={currentStepIndex + 1} aria-valuemin={1} aria-valuemax={decisionSteps.length}>
             <span className="elterngeld-step-flow__progress-label">
@@ -1012,7 +1086,7 @@ export function StepOptimizationBlock({
               )}
               {onBackToOptimization && (
                 <Button type="button" variant="secondary" className="btn--softpill" onClick={onBackToOptimization}>
-                  Optimierung schließen
+                  Planvorschläge schließen
                 </Button>
               )}
             </div>
@@ -1109,14 +1183,14 @@ function OptimizationComparisonBlock({
                 className="btn--softpill"
                 onClick={onBackToOptimization}
               >
-                Optimierung schließen
+                Planvorschläge schließen
               </Button>
             )}
           </>
         ) : (
           <>
             <p className="elterngeld-calculation__data-basis-hint">
-              Die Optimierung basiert auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
+              Die Planvorschläge basieren auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
             </p>
             <p className="elterngeld-calculation__adoption-hint">
               Vergleich zum aktuellen Plan. Änderungen gelten erst nach Übernahme – dein Plan bleibt unverändert.
@@ -1235,7 +1309,7 @@ function OptimizationComparisonBlock({
                     className="btn--softpill"
                     onClick={onBackToOptimization}
                   >
-                    Optimierung schließen
+                    Planvorschläge schließen
                   </Button>
                 )}
               </div>
@@ -1272,7 +1346,14 @@ export function OptionCard({
   adoptUserPlan: ElterngeldCalculationPlan;
   adoptApplication?: ElterngeldApplication | null;
 }) {
-  const impactLines = getOptionImpactLines(opt, formatCurrency, formatCurrencySigned);
+  const durationDelta = opt.impact.durationDelta;
+  const durationCallout =
+    durationDelta !== 0
+      ? `${durationDelta > 0 ? '+' : ''}${durationDelta} ${formatMonthsLabel(Math.abs(durationDelta), 'Monat', 'Monate')} Bezugsdauer`
+      : null;
+  const impactLines = getOptionImpactLines(opt, formatCurrency, formatCurrencySigned, {
+    omitDurationLine: durationDelta !== 0,
+  });
   const planChangeLines =
     opt.strategyType === 'current'
       ? []
@@ -1293,6 +1374,16 @@ export function OptionCard({
   const cardContent = (
     <>
       <span className="elterngeld-calculation__suggestion-title">{opt.label}</span>
+      {durationCallout && (
+        <span className="elterngeld-calculation__suggestion-duration-callout-wrap">
+          <span className="elterngeld-calculation__suggestion-duration-callout" aria-label="Änderung der Bezugsdauer">
+            {durationCallout}
+          </span>
+          {durationDelta > 0 && planHasPlusOrPartnerBonus(opt.plan) && (
+            <span className="elterngeld-calculation__suggestion-duration-plus-note">basierend auf ElterngeldPlus</span>
+          )}
+        </span>
+      )}
       {(impactLines.length > 0 || hasStructuralOnly) && (
         <span className="elterngeld-calculation__suggestion-delta">
           {hasStructuralOnly && (
@@ -1580,6 +1671,8 @@ type Props = {
   onNavigateToInput?: (target: NavigateToInputTarget) => void;
   /** Schließt Optimierung und führt sichtbar in die Monatsaufteilungs-Bearbeitung (wird aus onNavigateToInput abgeleitet) */
   onNavigateToMonthEditing?: () => void;
+  /** Optional: Sprung zur Leistungswahl Basis/Plus (z. B. Wizard) */
+  onNavigateToLeistungSettings?: () => void;
   /** Wizard/Overlay: z. B. Teilzeit-Dialog statt nur Sprung zum Monatsplan */
   onNavigateToPartTimeSettings?: () => void;
   /** false: keine PB-Optimierungs-/Teilzeit-„Mit Bonus“-Variante (24–32 h) */
@@ -1614,6 +1707,7 @@ export const StepCalculationResult: React.FC<Props> = ({
   onBackFromOptimization,
   onNavigateToInput,
   onNavigateToMonthEditing,
+  onNavigateToLeistungSettings,
   onNavigateToPartTimeSettings,
   partnerBonusHoursEligible = true,
   partTimeEditGeneration = 0,
@@ -1844,6 +1938,7 @@ export const StepCalculationResult: React.FC<Props> = ({
                   onDiscardOptimization={onDiscardOptimization}
                   onBackToOptimization={onBackFromOptimization}
                   onNavigateToMonthEditing={onNavigateToMonthEditing ?? (onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined)}
+                  onNavigateToLeistungSettings={onNavigateToLeistungSettings}
                   onNavigateToPartTimeSettings={
                     onNavigateToPartTimeSettings ??
                     (onNavigateToInput ? () => onNavigateToInput({ focusSection: 'monatsplan' }) : undefined)

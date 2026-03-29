@@ -21,11 +21,11 @@ plugins {
 }
 
 def twaManifest = [
-    applicationId: 'de.stillberatung.jt',
+    applicationId: 'de.elterngeldrechner.app',
     hostName: '69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app', // Live domain
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
-    name: 'Stillberatung', // The application name.
-    launcherName: 'Stillberatung', // The name shown on the Android Launcher.
+    name: 'Elterngeldrechner', // The application name.
+    launcherName: 'Elterngeldrechner', // The name shown on the Android Launcher.
     themeColor: '#D48C8C', // The color used for the status bar.
     themeColorDark: '#000000', // The color used for the dark status bar.
     navigationColor: '#000000', // The color used for the navigation bar.
@@ -60,9 +60,9 @@ configurations.all {
 
 android {
     compileSdk 36
-    namespace "de.stillberatung.jt"
+    namespace "de.elterngeldrechner.app"
     defaultConfig {
-        applicationId "de.stillberatung.jt"
+        applicationId "de.elterngeldrechner.app"
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 41

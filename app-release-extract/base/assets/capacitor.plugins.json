@@ -1,6 +1,0 @@
-[
-	{
-		"pkg": "@capgo/native-purchases",
-		"classpath": "ee.forgr.nativepurchases.NativePurchasesPlugin"
-	}
-]

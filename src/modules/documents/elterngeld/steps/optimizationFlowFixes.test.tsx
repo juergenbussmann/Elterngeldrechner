@@ -43,36 +43,19 @@ const baseValues: ElterngeldApplication = {
 };
 
 describe('Optimierungsflow-Fixes', () => {
-  describe('Einheitlicher Optimierungsblock im Plan-Schritt', () => {
-    it('zeigt StepOptimizationBlock (Schritt-Flow) bei gültigem Plan', () => {
-      renderWithI18n(
-        <StepPlan
-          values={baseValues}
-          onChange={() => {}}
-          onShowOptimizationOverlay={() => {}}
-        />
-      );
+  describe('Plan-Schritt ohne vorgezogene Optimierung', () => {
+    it('zeigt nur Planung – kein Optimierungs-Schrittflow im Monats-Schritt', () => {
+      renderWithI18n(<StepPlan values={baseValues} onChange={() => {}} />);
 
-      expect(screen.getByText(/Schritt \d+ von \d+/i)).toBeTruthy();
-      expect(
-        screen.getByText(/Die Optimierung basiert auf deinen erfassten Einkommensangaben/i)
-      ).toBeTruthy();
+      expect(screen.getByRole('heading', { name: /Monate planen/i })).toBeTruthy();
+      expect(screen.queryByText(/Die Planvorschläge basieren auf deinen erfassten Einkommensangaben/i)).toBeNull();
+      expect(screen.queryByText(/Schritt \d+ von \d+/i)).toBeNull();
     });
 
-    it('Monatsraster steht vor dem Optimierungs-Schrittfortschritt', () => {
-      renderWithI18n(
-        <StepPlan
-          values={baseValues}
-          onChange={() => {}}
-          onShowOptimizationOverlay={() => {}}
-        />
-      );
+    it('Monatsraster ist vorhanden', () => {
+      renderWithI18n(<StepPlan values={baseValues} onChange={() => {}} />);
 
-      const monthGrid = document.getElementById('elterngeld-plan-month-grid');
-      const progress = screen.getByRole('progressbar');
-      expect(monthGrid).toBeTruthy();
-      const compare = monthGrid!.compareDocumentPosition(progress);
-      expect(compare & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(document.getElementById('elterngeld-plan-month-grid')).toBeTruthy();
     });
   });
 
@@ -91,7 +74,7 @@ describe('Optimierungsflow-Fixes', () => {
 
   describe('Einkommen / Datengrundlage', () => {
     it('Data-Basis-Text ist definiert', () => {
-      const text = 'Die Optimierung basiert auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.';
+      const text = 'Die Planvorschläge basieren auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.';
       expect(text).toMatch(/Einkommen|Grenzen|Obergrenzen/);
     });
   });

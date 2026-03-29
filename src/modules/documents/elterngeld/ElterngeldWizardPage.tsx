@@ -23,10 +23,8 @@ import { StepSummary } from './steps/StepSummary';
 import { StepDocumentsDataOverview } from './steps/StepDocumentsDataOverview';
 import { StepDocumentsPdfBundle } from './steps/StepDocumentsPdfBundle';
 import { OptimizationOverlay } from './steps/OptimizationOverlay';
-import { ResultReviewOverlay } from './steps/ResultReviewOverlay';
 import { buildOptimizationResult } from './calculation/elterngeldOptimization';
 import { mergePlanIntoPreparation } from './planToApplicationMerge';
-import type { NavigateToInputTarget } from './steps/StepCalculationResult';
 import { isPartnerBonusPartTimeHoursEligible } from './partnerBonusEligibility';
 import { saveElterngeldWizardPdfBundle } from './saveElterngeldWizardPdfBundle';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
@@ -80,42 +78,9 @@ const ElterngeldWizardPageBody: React.FC = () => {
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [scrollToId, setScrollToId] = useState<string | null>(null);
   const [showOptimizationOverlay, setShowOptimizationOverlay] = useState(false);
-  const [showResultReviewOverlay, setShowResultReviewOverlay] = useState(false);
 
   const closeOptimizationOverlay = useCallback(() => {
     setShowOptimizationOverlay(false);
-  }, []);
-
-  const openOptimizationFromPlan = useCallback((open: boolean) => {
-    setShowOptimizationOverlay(open);
-  }, []);
-
-  const navigateFromResultReview = useCallback((target: NavigateToInputTarget) => {
-    setShowResultReviewOverlay(false);
-    if ('focusMonth' in target) {
-      const planIdx = WIZARD_STEPS.findIndex((s) => s.id === 'plan');
-      if (planIdx >= 0) {
-        setStepIndex(planIdx);
-        setScrollToId('elterngeld-plan-month-grid');
-      }
-      return;
-    }
-    if ('focusSection' in target) {
-      const sec = target.focusSection;
-      if (sec === 'grunddaten') {
-        const i = WIZARD_STEPS.findIndex((s) => s.id === 'geburtKind');
-        if (i >= 0) setStepIndex(i);
-      } else if (sec === 'einkommen') {
-        const i = WIZARD_STEPS.findIndex((s) => s.id === 'einkommen');
-        if (i >= 0) setStepIndex(i);
-      } else if (sec === 'monatsplan') {
-        const i = WIZARD_STEPS.findIndex((s) => s.id === 'plan');
-        if (i >= 0) {
-          setStepIndex(i);
-          setScrollToId('elterngeld-plan-month-grid');
-        }
-      }
-    }
   }, []);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
   const valuesRef = useRef(values);
@@ -135,10 +100,6 @@ const ElterngeldWizardPageBody: React.FC = () => {
       setDocumentsBundleSaved(false);
     }
     prevStepIdRef.current = step.id;
-  }, [step.id]);
-
-  useEffect(() => {
-    if (step.id !== 'summary') setShowResultReviewOverlay(false);
   }, [step.id]);
 
   const planForOptimization = useMemo(() => applicationToCalculationPlan(values), [values]);
@@ -337,7 +298,6 @@ const ElterngeldWizardPageBody: React.FC = () => {
                 setScrollToId(idToScroll ?? null);
               }
             }}
-            onShowOptimizationOverlay={openOptimizationFromPlan}
             partnerBonusHoursEligible={partnerBonusHoursEligible}
             onApplyBonusFix={() =>
               showToast('Ich habe die Monate für den Partnerschaftsbonus angepasst.', {
@@ -352,10 +312,8 @@ const ElterngeldWizardPageBody: React.FC = () => {
             values={values}
             onBackToPlan={() => setStepIndex(WIZARD_STEPS.findIndex((s) => s.id === 'plan'))}
             onOpenOptimization={() => setShowOptimizationOverlay(true)}
-            onNavigateToCalculation={() => setShowResultReviewOverlay(true)}
             onProceedToDocuments={handleNext}
             liveResult={liveResult}
-            optimizationSummary={optimizationSummary}
           />
         )}
         {step.id === 'documentsDataOverview' && (
@@ -415,7 +373,7 @@ const ElterngeldWizardPageBody: React.FC = () => {
           </Button>
         </div>
 
-        {(step.id === 'plan' || step.id === 'summary') &&
+        {step.id === 'summary' &&
           liveResult &&
           liveResult.validation.errors.length === 0 && (
             <OptimizationOverlay
@@ -441,23 +399,16 @@ const ElterngeldWizardPageBody: React.FC = () => {
                   setScrollToId('elterngeld-plan-month-grid');
                 }
               }}
+              onNavigateToLeistungSettings={() => {
+                closeOptimizationOverlay();
+                const planIdx = WIZARD_STEPS.findIndex((s) => s.id === 'plan');
+                if (planIdx >= 0) {
+                  setStepIndex(planIdx);
+                  setScrollToId('elterngeld-plan-leistung');
+                }
+              }}
             />
           )}
-        {step.id === 'summary' && liveResult && liveResult.validation.errors.length === 0 && (
-          <ResultReviewOverlay
-            isOpen={showResultReviewOverlay}
-            onClose={() => setShowResultReviewOverlay(false)}
-            values={values}
-            result={liveResult}
-            plan={planForOptimization}
-            partnerBonusHoursEligible={partnerBonusHoursEligible}
-            onApplicationChange={setValues}
-            onAdoptOptimization={(adoptPlan) => {
-              setValues((prev) => mergePlanIntoPreparation(prev, adoptPlan));
-            }}
-            onNavigateToInput={navigateFromResultReview}
-          />
-        )}
       </section>
     </div>
   );

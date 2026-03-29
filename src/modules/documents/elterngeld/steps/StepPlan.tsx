@@ -6,7 +6,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
-import { Modal } from '../../../../shared/ui/Modal';
 import { MonthGrid } from '../ui/MonthGrid';
 import { MonthSummary } from '../ui/MonthSummary';
 import { getMonthGridItemsFromValues } from '../monthGridMappings';
@@ -16,8 +15,6 @@ import { mergePlanIntoPreparation } from '../planToApplicationMerge';
 import { isPartnerBonusPartTimeHoursEligible } from '../partnerBonusEligibility';
 import { calculatePlan, validatePartnerBonus, applyCombinedSelection } from '../calculation';
 import { PartnerBonusCheckDialog, type PartnerBonusAction } from './PartnerBonusCheckDialog';
-import { StepOptimizationBlock } from './StepCalculationResult';
-import { ElternArbeitPartTimeEditor } from './PartTimeWeeklyHoursField';
 import type { ElterngeldApplication, BenefitModel } from '../types/elterngeldTypes';
 import type { CalculationResult } from '../calculation';
 
@@ -28,19 +25,6 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
-}
-
-function formatCurrencySigned(amount: number): string {
-  const formatted = formatCurrency(Math.abs(amount));
-  if (amount > 0) return `+${formatted}`;
-  if (amount < 0) return `−${formatted}`;
-  return formatted;
-}
-
-function hasPartnerBonusInResult(result: CalculationResult): boolean {
-  return result.parents.some((p) =>
-    p.monthlyResults.some((m) => m.mode === 'partnerBonus')
-  );
 }
 
 function countBezugMonths(result: CalculationResult): number {
@@ -81,7 +65,6 @@ type HintAction =
   | 'focusEinkommen'
   | 'focusGrunddaten'
   | 'focusMonatsplan'
-  | 'openOptimization'
   | 'openPartnerBonusCheck'
   | 'focusElternArbeit'
   | null;
@@ -267,7 +250,6 @@ type Props = {
   onChange: (values: ElterngeldApplication) => void;
   /** Zu anderem Wizard-Step springen, optional mit scrollToId */
   onNavigateToStep?: (stepId: string, scrollToId?: string) => void;
-  onShowOptimizationOverlay?: (open: boolean) => void;
   /** Entspricht ElterngeldWizardPage: zentrale 24–32-h-Regel für Partnerbonus-Pfade */
   partnerBonusHoursEligible?: boolean;
   /** Nach erfolgreicher Anwendung des Bonus-Fix (Toast etc.) */
@@ -280,13 +262,10 @@ export const StepPlan: React.FC<Props> = ({
   values,
   onChange,
   onNavigateToStep,
-  onShowOptimizationOverlay,
   partnerBonusHoursEligible = true,
   onApplyBonusFix,
 }) => {
   const [activeMonth, setActiveMonth] = useState<number | null>(null);
-  const [partTimeHoursModalOpen, setPartTimeHoursModalOpen] = useState(false);
-  const [partTimeEditGeneration, setPartTimeEditGeneration] = useState(0);
   const [selectedApplyRange, setSelectedApplyRange] = useState<ApplyRangeId | null>(null);
   const [showLeistungDetails, setShowLeistungDetails] = useState(false);
   const [showModelLeistungDetails, setShowModelLeistungDetails] = useState(false);
@@ -500,10 +479,6 @@ export const StepPlan: React.FC<Props> = ({
 
   const partnerBonusValidation = useMemo(() => validatePartnerBonus(planForCheck), [planForCheck]);
 
-  const openPartTimeHoursEditor = useCallback(() => {
-    setPartTimeHoursModalOpen(true);
-  }, []);
-
   const handlePartnerBonusAction = useCallback(
     (action: PartnerBonusAction) => {
       const basePlan = applicationToCalculationPlan(values);
@@ -585,8 +560,6 @@ export const StepPlan: React.FC<Props> = ({
                 setActiveMonth(mainHint.month);
                 const el = document.getElementById('elterngeld-plan-month-grid') ?? document.getElementById('elterngeld-plan-card');
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              } else if (mainHint.action === 'openOptimization') {
-                onShowOptimizationOverlay?.(true);
               } else if (mainHint.action === 'focusEinkommen' && onNavigateToStep) {
                 onNavigateToStep('einkommen');
               } else if (mainHint.action === 'focusGrunddaten' && onNavigateToStep) {
@@ -648,12 +621,22 @@ export const StepPlan: React.FC<Props> = ({
         </div>
       )}
 
-      <div className="elterngeld-plan__model-row">
+      <div id="elterngeld-plan-leistung" className="elterngeld-plan__model-row">
         <span className="elterngeld-plan__model-label">Standard-Leistung für neue Monate</span>
         <p className="elterngeld-plan__model-hint">
           Diese Einstellung wird für neue Monate im Plan verwendet.
           Du kannst sie im Monatsdialog jederzeit ändern.
         </p>
+        <div
+          className="elterngeld-plan__model-comparison elterngeld-step__notice elterngeld-step__notice--tip"
+          role="note"
+        >
+          <p className="elterngeld-plan__model-comparison-text">
+            <strong>Basis:</strong> mehr Geld pro Monat
+            <br />
+            <strong>Plus:</strong> weniger pro Monat, dafür länger und mit Teilzeit kombinierbar
+          </p>
+        </div>
         <div className="elterngeld-plan__model-btns">
           {MODEL_OPTIONS.map((opt) => {
             const isSelected = values.benefitPlan.model === opt.value;
@@ -686,12 +669,7 @@ export const StepPlan: React.FC<Props> = ({
             )}
           </div>
         )}
-        <div className="elterngeld-hint elterngeld-hint--model">
-          <p className="elterngeld-hint__text">
-            Basiselterngeld = mehr Geld pro Monat, kürzere Dauer
-            <br />
-            ElterngeldPlus = weniger pro Monat, dafür länger und mit Teilzeit kombinierbar
-          </p>
+        <div className="elterngeld-hint elterngeld-hint--model elterngeld-hint--model-details">
           <button
             type="button"
             className="elterngeld-hint__toggle"
@@ -748,73 +726,6 @@ export const StepPlan: React.FC<Props> = ({
         <MonthSummary items={items} />
       </div>
 
-      {planResult && planResult.validation.errors.length === 0 && (
-        <>
-          <StepOptimizationBlock
-            plan={planForCheck}
-            result={planResult}
-            formatCurrency={formatCurrency}
-            formatCurrencySigned={formatCurrencySigned}
-            countBezugMonths={countBezugMonths}
-            hasPartnerBonus={hasPartnerBonusInResult}
-            onAdoptOptimization={(p) => {
-              onChange(mergePlanIntoPreparation(values, p));
-              onApplyBonusFix?.();
-            }}
-            onNavigateToMonthEditing={() => {
-              onNavigateToStep?.('plan', 'elterngeld-plan-month-grid');
-            }}
-            onNavigateToPartTimeSettings={openPartTimeHoursEditor}
-            skipToStrategyStep
-            hideDiscardButton
-            hideBackButton
-            originalPlanForOptimization={planForCheck}
-            originalResultForOptimization={planResult}
-            partnerBonusHoursEligible={partnerBonusHoursEligible}
-            partTimeEditGeneration={partTimeEditGeneration}
-            elterngeldApplicationForAdoption={values}
-          />
-          <Modal
-            isOpen={partTimeHoursModalOpen}
-            onClose={() => setPartTimeHoursModalOpen(false)}
-            title="Teilzeitstunden anpassen"
-            variant="softpill"
-            scrollableContent
-            hideFooter
-          >
-            <div
-              className="elterngeld-optimization-overlay-content"
-              data-testid="elterngeld-step-plan-part-time-hours-modal"
-            >
-              <p className="elterngeld-step__hint">
-                Geänderte Teilzeitstunden wirken auf den aktuellen Plan, die Vergleichsbasis und die Alternativvarianten
-                mit Plus oder Partnerschaftsbonus (je Elternteil eure Stunden aus dem Plan; ohne Eintrag 28 Stunden als
-                Fallback).
-              </p>
-              <Card className="still-daily-checklist__card elterngeld-plan__summary-card" role="article">
-                <ElternArbeitPartTimeEditor
-                  values={values}
-                  onChange={(next) => {
-                    onChange(next);
-                    setPartTimeEditGeneration((g) => g + 1);
-                  }}
-                />
-              </Card>
-              <div className="next-steps__stack elterngeld-optimization-goal__actions">
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="next-steps__button btn--softpill"
-                  onClick={() => setPartTimeHoursModalOpen(false)}
-                >
-                  Fertig
-                </Button>
-              </div>
-            </div>
-          </Modal>
-        </>
-      )}
-
       {activeMonth !== null && (
         <div
           className="elterngeld-plan__panel-overlay"
@@ -836,6 +747,16 @@ export const StepPlan: React.FC<Props> = ({
             </h4>
             <div className="elterngeld-plan__panel-leistung">
               <span className="elterngeld-plan__panel-leistung-label">Leistung</span>
+              <div
+                className="elterngeld-plan__model-comparison elterngeld-plan__model-comparison--panel elterngeld-step__notice elterngeld-step__notice--tip"
+                role="note"
+              >
+                <p className="elterngeld-plan__model-comparison-text">
+                  <strong>Basis:</strong> mehr Geld pro Monat
+                  <br />
+                  <strong>Plus:</strong> weniger pro Monat, dafür länger und mit Teilzeit kombinierbar
+                </p>
+              </div>
               <div className="elterngeld-plan__panel-leistung-btns">
                 {DIALOG_LEISTUNG_OPTIONS.map((opt) => (
                   <ElterngeldSelectButton
@@ -850,11 +771,6 @@ export const StepPlan: React.FC<Props> = ({
                 ))}
               </div>
               <div className="elterngeld-hint elterngeld-hint--leistung">
-                <p className="elterngeld-hint__text">
-                  Basiselterngeld = mehr Geld pro Monat, kürzere Dauer
-                  <br />
-                  ElterngeldPlus = weniger pro Monat, dafür länger und mit Teilzeit kombinierbar
-                </p>
                 <button
                   type="button"
                   className="elterngeld-hint__toggle"

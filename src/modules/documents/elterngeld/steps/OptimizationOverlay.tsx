@@ -3,12 +3,12 @@
  * Nutzt denselben Step-Flow wie die Calculation-Page.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from '../../../../shared/ui/Modal';
 import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import { ElterngeldSelectButton } from '../ui/ElterngeldSelectButton';
-import { MAIN_GOAL_OPTIONS } from './OptimizationGoalDialog';
+import { getOptimizationOverlayGoalOptions } from './OptimizationGoalDialog';
 import { StepOptimizationBlock } from './StepCalculationResult';
 import { ElternArbeitPartTimeEditor } from './PartTimeWeeklyHoursField';
 import type { ElterngeldCalculationPlan, CalculationResult } from '../calculation';
@@ -56,6 +56,8 @@ type OptimizationOverlayProps = {
   onAdoptOptimization: (plan: ElterngeldCalculationPlan) => void;
   /** Optional: Führt zur Monatsübersicht (Overlay schließen + Scroll zu Monatsplan) */
   onNavigateToMonthEditing?: () => void;
+  /** Optional: Führt zur Leistungswahl Basis/Plus (Overlay schließen + Scroll zu Leistungsblock) */
+  onNavigateToLeistungSettings?: () => void;
   /** Optional: Vergleichsbasis für Deltas (Konsistenz mit Calculation-Page) */
   originalPlanForOptimization?: ElterngeldCalculationPlan | null;
   originalResultForOptimization?: CalculationResult | null;
@@ -77,6 +79,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
   result,
   onAdoptOptimization,
   onNavigateToMonthEditing,
+  onNavigateToLeistungSettings,
   originalPlanForOptimization,
   originalResultForOptimization,
   lastAdoptedPlan,
@@ -87,9 +90,18 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
   onApplicationChange,
 }) => {
   const [view, setView] = useState<'entry' | 'strategy'>('entry');
-  const [selectedGoal, setSelectedGoal] = useState<'maxMoney' | 'longerDuration' | 'frontLoad'>('maxMoney');
+  const [selectedGoal, setSelectedGoal] = useState<OptimizationGoal>('maxMoney');
   const [partTimeHoursModalOpen, setPartTimeHoursModalOpen] = useState(false);
   const [partTimeEditGeneration, setPartTimeEditGeneration] = useState(0);
+
+  const entryGoalOptions = useMemo(
+    () =>
+      getOptimizationOverlayGoalOptions({
+        partnerBonusHoursEligible,
+        hasSecondParent: result.parents.length >= 2,
+      }),
+    [partnerBonusHoursEligible, result.parents.length]
+  );
 
   const canEditPartTimeInOverlay = Boolean(application && onApplicationChange);
 
@@ -140,11 +152,12 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
               }}
               onBackToOptimization={handleClose}
               onNavigateToMonthEditing={onNavigateToMonthEditing}
+              onNavigateToLeistungSettings={onNavigateToLeistungSettings}
               skipToStrategyStep
               hideDiscardButton
               hideBackButton
               onBackToGoalSelection={() => setView('entry')}
-              optimizationGoal={selectedGoal as OptimizationGoal}
+              optimizationGoal={selectedGoal}
               partnerBonusHoursEligible={partnerBonusHoursEligible}
               onNavigateToPartTimeSettings={openPartTimeHoursEditor}
               partTimeEditGeneration={partTimeEditGeneration}
@@ -228,13 +241,15 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
           </div>
         </Card>
         <div className="elterngeld-optimization-goal__section">
-          <p className="elterngeld-optimization-goal__intro">Was ist dir wichtiger?</p>
+          <p className="elterngeld-optimization-goal__intro">
+            Worauf sollen die Planvorschläge achten?
+          </p>
           <div
             className="elterngeld-optimization-goal__options elterngeld-select-btn-group"
             role="radiogroup"
-            aria-label="Ziel"
+            aria-label="Ziel für Planvorschläge"
           >
-            {MAIN_GOAL_OPTIONS.map((opt) => (
+            {entryGoalOptions.map((opt) => (
               <ElterngeldSelectButton
                 key={opt.value}
                 label={opt.label}
@@ -261,7 +276,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
             className="next-steps__button btn--softpill"
             onClick={handleClose}
           >
-            Optimierung schließen
+            Planvorschläge schließen
           </Button>
         </div>
       </div>

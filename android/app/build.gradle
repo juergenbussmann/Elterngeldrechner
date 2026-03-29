@@ -7,10 +7,10 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "de.stillberatung.jt"
+    namespace = "de.elterngeldrechner.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "de.stillberatung.jt"
+        applicationId "de.elterngeldrechner.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 56

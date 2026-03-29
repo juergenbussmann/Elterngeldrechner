@@ -76,7 +76,7 @@ describe('buildDecisionContext', () => {
     expect(ctx.options[0].strategyType).toBe('current');
     expect(ctx.options[0].label).toBe('Aktueller Plan');
     expect(ctx.options[0].description).toBe(
-      'Dein Plan bleibt unverändert – keine automatische Umwandlung und kein Optimierungs-Eingriff.'
+      'Dein Plan bleibt unverändert – keine automatische Umwandlung und kein automatischer Planvorschlag.'
     );
   });
 

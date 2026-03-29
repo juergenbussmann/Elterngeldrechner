@@ -190,7 +190,7 @@ function getFeedbackForStep1(strategyType?: string): string {
       return 'Damit ist klar: Beide Eltern sind am Elterngeld beteiligt.';
     case 'current':
     default:
-      return 'Aktuell basiert die Optimierung auf eurer bisherigen Aufteilung.';
+      return 'Aktuell beziehen sich die Planvorschläge auf eure bisherige Aufteilung.';
   }
 }
 
@@ -219,7 +219,7 @@ function getFeedbackForStep3(strategyType?: string): string {
       return 'Der Fokus liegt auf mehr Geld in den ersten Monaten.';
     case 'current':
     default:
-      return 'Aktuell basiert die Optimierung auf eurer gewählten Aufteilung.';
+      return 'Aktuell beziehen sich die Planvorschläge auf eure gewählte Aufteilung.';
   }
 }
 
@@ -645,7 +645,7 @@ export function buildStepDecisionContext(
       ? 'Welches Ziel ist dir wichtiger?'
       : 'Deine Variante',
     stepDescription: step3HasRealChoice
-      ? 'Optimiere innerhalb deiner gewählten Aufteilung.'
+      ? 'Die Planvorschläge bleiben innerhalb deiner gewählten Aufteilung.'
       : 'Für eure Situation gibt es aktuell nur eine sinnvolle Variante.',
     stepOptions: step3OptionsFinal,
     selectedOptionIndex: step3Selected,

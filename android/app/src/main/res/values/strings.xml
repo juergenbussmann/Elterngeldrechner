@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Stillberatung</string>
-    <string name="title_activity_main">Stillberatung</string>
-    <string name="package_name">de.stillberatung.jt</string>
-    <string name="custom_url_scheme">de.stillberatung.jt</string>
+    <string name="app_name">Elterngeldrechner</string>
+    <string name="title_activity_main">Elterngeldrechner</string>
+    <string name="package_name">de.elterngeldrechner.app</string>
+    <string name="custom_url_scheme">de.elterngeldrechner.app</string>
 </resources>

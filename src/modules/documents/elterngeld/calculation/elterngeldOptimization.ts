@@ -182,6 +182,14 @@ export function buildOptimizationResult(
     );
   }
 
+  /**
+   * longerDuration: nur echte Mehr-Monate (selectTop3 mischt Referenz-/Alternativ-Szenarien ein;
+   * ohne Filter blieben Varianten mit gleicher oder kürzerer Bezugsdauer mit irreführendem Ziel-Label).
+   */
+  if (goal === 'longerDuration') {
+    suggestions = suggestions.filter((s) => s.optimizedDurationMonths > currentDuration);
+  }
+
   const status: OptimizationStatus =
     suggestions.length === 0
       ? 'no_candidate'
@@ -400,7 +408,7 @@ function getSuggestionTitleAndExplanation(
         explanation: 'Diese Variante nutzt überlappende ElterngeldPlus-Monate günstiger.',
       };
     default:
-      return { title: 'Optimierte Strategie', explanation: '' };
+      return { title: 'Vorgeschlagene Strategie', explanation: '' };
   }
 }
 
@@ -1056,25 +1064,38 @@ function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[
 
   const result: Candidate[] = [];
   const added = new Set<Candidate>();
+  const outPlan = new Set<string>();
+  const outResult = new Set<string>();
+
+  const pushUnique = (c: Candidate | null | undefined) => {
+    if (!c || result.length >= MAX_SUGGESTIONS || added.has(c)) return;
+    const pf = planFingerprint(c.plan);
+    const rf = resultFingerprint(c);
+    if (outPlan.has(pf) || outResult.has(rf)) return;
+    result.push(c);
+    added.add(c);
+    outPlan.add(pf);
+    outResult.add(rf);
+  };
+
+  /** Mindestvielfalt: bester Kandidat ohne Teilzeit + bester mit Teilzeit (jeweils nach aktivem Ziel), wenn vorhanden – damit nicht nur die streng „beste“ Strategie sichtbar ist. */
+  const withoutPartTime = deduped.filter((c) => c.strategyType === 'withoutPartTime');
+  const withPartTime = deduped.filter((c) => c.strategyType === 'withPartTime');
+  pushUnique(bestForScenario(withoutPartTime, goalScenario));
+  pushUnique(bestForScenario(withPartTime, goalScenario));
 
   for (const scenario of scenarioOrder) {
     if (result.length >= MAX_SUGGESTIONS) break;
     if (goal === 'maxMoney' && scenario === 'frontLoad') continue;
     const best = bestForScenario(deduped, scenario);
-    if (best && !added.has(best)) {
-      result.push(best);
-      added.add(best);
-    }
+    pushUnique(best);
   }
 
   /** Strategie-Vielfalt: bothBalanced explizit einbeziehen, wenn noch keiner in result und Platz (gemeinsame Aufteilung = sinnvolles Szenario) */
   const hasBothBalanced = result.some((c) => c.strategyType === 'bothBalanced');
   if (result.length < MAX_SUGGESTIONS && !hasBothBalanced) {
     const bothBalanced = deduped.find((c) => c.strategyType === 'bothBalanced' && !added.has(c));
-    if (bothBalanced) {
-      result.push(bothBalanced);
-      added.add(bothBalanced);
-    }
+    pushUnique(bothBalanced ?? null);
   }
 
   return result;

@@ -82,7 +82,7 @@ export function getAdoptionStatus(
     return {
       kind: 'original_active',
       message: 'Ihr nutzt jetzt wieder euren ursprünglichen Plan.',
-      hint: 'Die übernommene Optimierung ist nicht mehr aktiv.',
+      hint: 'Der übernommene Planvorschlag ist nicht mehr aktiv.',
       displayCategory: 'aktiv',
     };
   }
@@ -99,7 +99,7 @@ export function getAdoptionStatus(
   if (optimizationGoal && hasOriginal && originalPlanForOptimization && !plansAreEqual(plan, originalPlanForOptimization)) {
     return {
       kind: 'optimization_stale',
-      message: 'Diese Optimierung passt nicht mehr vollständig zu eurem aktuellen Stand.',
+      message: 'Diese Planvorschläge passen nicht mehr vollständig zu eurem aktuellen Stand.',
       hint: 'Bitte prüft die Vorschläge noch einmal auf Basis der aktuellen Eingaben.',
       displayCategory: 'nicht mehr aktuell',
     };

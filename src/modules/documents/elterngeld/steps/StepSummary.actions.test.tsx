@@ -1,6 +1,6 @@
 /**
  * @vitest-environment jsdom
- * Zusammenfassung: ein Optimierungs-CTA, primärer Antrag-Schritt, kein Bundesland-Hinweis.
+ * Zusammenfassung: ein Planvorschläge-CTA, primärer Antrag-Schritt, kein Bundesland-Hinweis.
  */
 
 import React from 'react';
@@ -43,7 +43,7 @@ function okResult(): CalculationResult {
 }
 
 describe('StepSummary – Aktionen', () => {
-  it('genau ein „Optimierung ansehen“, primärer „Weiter zur Datenübersicht“, kein Bundesland-Text', () => {
+  it('genau ein „Planvorschläge ansehen“, primärer „Weiter zur Datenübersicht“, kein Bundesland-Text', () => {
     const values = minimalApp();
     const result = okResult();
 
@@ -52,14 +52,13 @@ describe('StepSummary – Aktionen', () => {
         values={values}
         onBackToPlan={vi.fn()}
         onOpenOptimization={vi.fn()}
-        onNavigateToCalculation={vi.fn()}
         onProceedToDocuments={vi.fn()}
         liveResult={result}
-        optimizationSummary={{ hasAnySuggestions: true, partnerBonusSuggestion: null }}
       />
     );
 
-    expect(screen.getAllByRole('button', { name: /Optimierung ansehen/i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /Planvorschläge ansehen/i })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /Ergebnis prüfen/i })).toBeNull();
     expect(screen.getByRole('button', { name: /Weiter zur Datenübersicht/i })).toBeTruthy();
     expect(
       screen.getByText(/Als Nächstes: Datenübersicht, danach Kurzüberblick und Ausfüllhilfe/i)

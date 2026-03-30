@@ -14,6 +14,7 @@ import {
 } from '../calculation/partnerBonusValidation';
 import { getCombinedMonthState } from '../calculation/monthCombinedState';
 import type { ElterngeldCalculationPlan, CalculationResult } from '../calculation';
+import { PARTNERSCHAFTSBONUS_OVERLAY_AKTION } from './partnerBonusUiCopy';
 
 export type PartnerBonusAction =
   | { type: 'focusMonth'; month: number }
@@ -303,7 +304,7 @@ export const PartnerBonusCheckDialog: React.FC<Props> = ({
       title={
         <div className="elterngeld-partner-bonus-check__header">
           <h2 className="elterngeld-partner-bonus-check__title">
-            {showSuccessState ? successTitle : 'Partnerschaftsbonus prüfen'}
+            {showSuccessState ? successTitle : PARTNERSCHAFTSBONUS_OVERLAY_AKTION}
           </h2>
           {showSuccessState ? (
             <p className="elterngeld-partner-bonus-check__explanation elterngeld-partner-bonus-check__explanation--intro">
@@ -311,10 +312,17 @@ export const PartnerBonusCheckDialog: React.FC<Props> = ({
             </p>
           ) : (
             <>
-              <div className="elterngeld-partner-bonus-check__status-row elterngeld-partner-bonus-check__status-row--success">
+              <div className="elterngeld-partner-bonus-check__status-row elterngeld-partner-bonus-check__status-row--warning">
                 <span className="elterngeld-partner-bonus-check__status-icon" aria-hidden="true" />
-                <h3 className="elterngeld-partner-bonus-check__status-label">So aktivierst du den Partnerschaftsbonus</h3>
+                <h3 className="elterngeld-partner-bonus-check__status-label">Aktueller Stand</h3>
               </div>
+              {validation.warnings.length > 0 && (
+                <ul className="elterngeld-partner-bonus-check__warning-list">
+                  {validation.warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              )}
               <p className="elterngeld-partner-bonus-check__explanation elterngeld-partner-bonus-check__explanation--intro">
                 {useResult ? getShortExplanationFromResult(result!, validation) : getShortExplanation(plan, validation)}
               </p>
@@ -333,6 +341,9 @@ export const PartnerBonusCheckDialog: React.FC<Props> = ({
           </Button>
         ) : (
           <>
+            {(bothMonthsNotYetBonus.length > 0 || monthsNeedingFix.length > 0 || sectionActions.length > 0) && (
+              <h3 className="elterngeld-partner-bonus-check__adjustments-heading">Mögliche nächste Schritte</h3>
+            )}
             {bothMonthsNotYetBonus.length > 1 && onAction && (
               <div className="elterngeld-partner-bonus-check__section">
                 <Button
@@ -352,7 +363,9 @@ export const PartnerBonusCheckDialog: React.FC<Props> = ({
             {monthsNeedingFix.length > 0 && onAction && monthsNeedingFix.map(({ month, fix }) => (
               <div key={month} className="elterngeld-partner-bonus-check__section">
                 <h4 className="elterngeld-partner-bonus-check__section-title">Lebensmonat {month}</h4>
-                <p className="elterngeld-partner-bonus-check__explanation">Kann als Bonusmonat gesetzt werden</p>
+                <p className="elterngeld-partner-bonus-check__explanation">
+                  Vorgeschlagene Anpassung (ElterngeldPlus, beide Eltern, zulässige Kombination).
+                </p>
                 <Button
                   type="button"
                   variant="primary"

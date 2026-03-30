@@ -7,8 +7,6 @@ import { describe, it, expect } from 'vitest';
 import { calculatePlan } from './calculationEngine';
 import { buildOptimizationResult } from './elterngeldOptimization';
 import type { ElterngeldCalculationPlan } from './types';
-import { shouldShowVariant } from '../steps/optimizationExplanation';
-
 function createPlan(overrides: Partial<ElterngeldCalculationPlan>): ElterngeldCalculationPlan {
   return {
     childBirthDate: '2025-03-01',
@@ -117,7 +115,7 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
   });
 
   describe('C) Bereits gut verteilter Ausgangsplan', () => {
-    it('C1: Höherer Elternteil hat bereits alle Monate (12) – szenariobasierte Alternativen (Trade-offs)', () => {
+    it('C1: Höherer Elternteil hat bereits alle Monate (12) – ohne echte maxMoney-Verbesserung keine Vorschläge', () => {
       const plan = createPlan({});
       plan.parents[0].incomeBeforeNet = 1200;
       plan.parents[1].incomeBeforeNet = 3500;
@@ -128,22 +126,8 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
 
       expect(outcome).not.toBeNull();
       if ('suggestions' in outcome) {
-        expect(outcome.status).toBe('checked_but_not_better');
-        expect(outcome.suggestions.length).toBeGreaterThan(0);
-        const bezugMonths = new Set<number>();
-        for (const p of result.parents) {
-          for (const r of p.monthlyResults) {
-            if (r.mode !== 'none' || r.amount > 0) bezugMonths.add(r.month);
-          }
-        }
-        const currentDuration = bezugMonths.size;
-        for (const s of outcome.suggestions) {
-          expect(s.currentDurationMonths).toBe(currentDuration);
-          if (s.optimizedDurationMonths === currentDuration) {
-            expect(s.optimizedTotal).toBeGreaterThanOrEqual(result.householdTotal);
-          }
-          expect(shouldShowVariant(s, result, 'maxMoney')).toBe(true);
-        }
+        expect(outcome.status).toBe('no_candidate');
+        expect(outcome.suggestions).toHaveLength(0);
       }
     });
   });
@@ -206,13 +190,13 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
       if ('suggestions' in outcome && outcome.suggestions.length > 0) {
         const top = outcome.suggestions[0];
         expect(top.goal).toBe('frontLoad');
-        expect(top.deltaValue).toBeGreaterThanOrEqual(0);
+        expect(top.deltaValue).toBeGreaterThan(0);
       }
     });
   });
 
   describe('H) bothBalanced – gemeinsame Aufteilung', () => {
-    it('H1: bothBalanced wird angeboten wenn nur ein Elternteil Monate hat (Beide Plus aus Single-Parent)', () => {
+    it('H1: maxMoney – nur Vorschläge mit strikt höherer Summe als Ist-Plan (keine reinen Trade-offs)', () => {
       const plan = createPlan({});
       plan.parents[0].incomeBeforeNet = 2500;
       plan.parents[1].incomeBeforeNet = 2500;
@@ -224,11 +208,11 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
       const result = calculatePlan(plan);
       const outcome = buildOptimizationResult(plan, result, 'maxMoney');
       expect(outcome).not.toBeNull();
-      if ('suggestions' in outcome) {
-        const balanced = outcome.suggestions.find((s) => s.strategyType === 'bothBalanced');
-        expect(balanced).toBeDefined();
-        const monthsB = balanced!.result.parents[1].monthlyResults.filter((r) => r.mode !== 'none' || r.amount > 0).map((r) => r.month);
-        expect(monthsB.length).toBeGreaterThan(0);
+      if ('suggestions' in outcome && outcome.suggestions.length > 0) {
+        for (const s of outcome.suggestions) {
+          expect(s.optimizedTotal).toBeGreaterThan(result.householdTotal + 1);
+          expect(s.status).toBe('improved');
+        }
       }
     });
 
@@ -263,6 +247,36 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
           expect(isContiguous(monthsA)).toBe(true);
           expect(isContiguous(monthsB)).toBe(true);
         }
+      }
+    });
+  });
+
+  describe('I) Idempotenz nach Übernahme (Baseline = übernommener Plan)', () => {
+    it('I1: maxMoney – besten sichtbaren Vorschlag übernehmen → erneut kein höherer Betrag als neuer Verbesserungsvorschlag', () => {
+      const plan = createPlan({});
+      plan.parents[0].incomeBeforeNet = 1200;
+      plan.parents[1].incomeBeforeNet = 3500;
+      setMonth(plan, 0, 1, 'basis');
+      setMonth(plan, 0, 2, 'basis');
+
+      const result = calculatePlan(plan);
+      const outcome1 = buildOptimizationResult(plan, result, 'maxMoney');
+      if (!('suggestions' in outcome1) || outcome1.suggestions.length === 0) {
+        return;
+      }
+
+      const best = outcome1.suggestions.reduce((a, b) => (a.optimizedTotal >= b.optimizedTotal ? a : b));
+      const adopted = JSON.parse(JSON.stringify(best.plan)) as ElterngeldCalculationPlan;
+      const resultAfter = calculatePlan(adopted);
+      expect(Math.abs(resultAfter.householdTotal - best.optimizedTotal)).toBeLessThanOrEqual(1);
+
+      const outcome2 = buildOptimizationResult(adopted, resultAfter, 'maxMoney');
+
+      expect('suggestions' in outcome2).toBe(true);
+      const baseline = resultAfter.householdTotal;
+      for (const s of outcome2.suggestions) {
+        expect(s.optimizedTotal).toBeGreaterThan(baseline + 1);
+        expect(s.status).toBe('improved');
       }
     });
   });

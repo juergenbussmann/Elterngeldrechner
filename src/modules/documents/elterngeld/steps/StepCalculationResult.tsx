@@ -15,6 +15,12 @@ import {
   getFirstPartnerBonusMonthFromResult,
   type PartnerBonusAction,
 } from './PartnerBonusCheckDialog';
+import {
+  getPartnerschaftsbonusHandlungshinweis,
+  isPartnerschaftsbonusWarningMessage,
+  PARTNERSCHAFTSBONUS_KARTE_TITEL,
+  PARTNERSCHAFTSBONUS_OVERLAY_AKTION,
+} from './partnerBonusUiCopy';
 import { getMonthGridItemsFromResults } from '../monthGridMappings';
 import {
   type CalculationResult,
@@ -124,13 +130,7 @@ function planHasPlusOrPartnerBonus(plan: ElterngeldCalculationPlan): boolean {
   );
 }
 
-function OptimizationLeistungLaufzeitHint({
-  optimizationGoal,
-  onLeistungAnpassen,
-}: {
-  optimizationGoal?: OptimizationGoal;
-  onLeistungAnpassen?: () => void;
-}) {
+function OptimizationLeistungLaufzeitHint() {
   return (
     <div
       className="elterngeld-calculation__leistung-laufzeit-hint elterngeld-step__notice elterngeld-step__notice--tip"
@@ -138,28 +138,9 @@ function OptimizationLeistungLaufzeitHint({
       aria-label="Hinweis zu Leistung und Laufzeit"
     >
       <p className="elterngeld-calculation__leistung-laufzeit-hint-p">
-        Die Laufzeit deiner Varianten hängt von der gewählten Leistung ab.
+        Laufzeit und Höhe der Monatsbeträge hängen von der Leistungsform (Basiselterngeld oder ElterngeldPlus) ab. Die
+        Karten unten zeigen die geschätzten Auswirkungen je Variante.
       </p>
-      <p className="elterngeld-calculation__leistung-laufzeit-hint-p">
-        Mit ElterngeldPlus kannst du dein Elterngeld über mehr Monate verteilen.
-      </p>
-      {optimizationGoal === 'longerDuration' && (
-        <p className="elterngeld-calculation__leistung-laufzeit-hint-p elterngeld-calculation__leistung-laufzeit-hint-p--emph">
-          Für längere Laufzeiten kannst du ElterngeldPlus nutzen.
-        </p>
-      )}
-      {onLeistungAnpassen && (
-        <div className="elterngeld-calculation__leistung-laufzeit-hint-actions">
-          <Button
-            type="button"
-            variant="secondary"
-            className="btn--softpill next-steps__button"
-            onClick={onLeistungAnpassen}
-          >
-            Leistung anpassen
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
@@ -374,9 +355,7 @@ function getPlanStability(result: CalculationResult): {
     p.monthlyResults.some((m) => m.mode === 'partnerBonus')
   );
   const hasHoursWarning = validation.warnings.some((w) => w.includes('24–32') || w.includes('Wochenstunden'));
-  const hasPartnerBonusWarning = validation.warnings.some((w) =>
-    w.includes('Partnerschaftsbonus') || w.includes('Partnerbonus')
-  );
+  const hasPartnerBonusWarning = validation.warnings.some((w) => isPartnerschaftsbonusWarningMessage(w));
 
   if (hasErrors) {
     return {
@@ -437,7 +416,8 @@ function getHintAction(
 ): { label: string; action: 'focusMonth' | 'focusEinkommen' | 'focusGrunddaten' | 'focusMonatsplan' | 'openOptimization' | 'openPartnerBonusCheck' | null; month?: number } {
   const month = extractMonthFromWarning(warning);
   if (month != null) return { label: `Monat ${month} anpassen`, action: 'focusMonth', month };
-  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus')) return { label: 'Partnerschaftsbonus prüfen', action: 'openPartnerBonusCheck' };
+  if (warning.includes('Partnerschaftsbonus') || warning.includes('Partnerbonus'))
+    return { label: PARTNERSCHAFTSBONUS_OVERLAY_AKTION, action: 'openPartnerBonusCheck' };
   if (warning.includes('24–32') || warning.includes('Wochenstunden') || warning.includes('Arbeitszeit')) {
     const m = getFirstRelevantMonth(result);
     return { label: 'Arbeitszeit anpassen', action: m != null ? 'focusMonth' : 'focusMonatsplan', month: m ?? undefined };
@@ -673,7 +653,6 @@ export function StepOptimizationBlock({
   onDiscardOptimization,
   onBackToOptimization,
   onNavigateToMonthEditing,
-  onNavigateToLeistungSettings,
   onNavigateToPartTimeSettings,
   skipToStrategyStep,
   hideDiscardButton,
@@ -771,6 +750,7 @@ export function StepOptimizationBlock({
 
   const currentStepIndex = Math.min(selectedOptionPerStep.length, decisionSteps.length - 1);
   const currentStep = decisionSteps[currentStepIndex];
+  const showCompactVariantIntro = currentStep && currentStep.stepOptions.length > 1;
 
   const hasAnyAlternatives = decisionSteps.some((s) => s.stepOptions.length > 1);
 
@@ -819,6 +799,89 @@ export function StepOptimizationBlock({
   const currentResultForStep =
     currentStepIndex === 0 ? result : stepContext.derivedPlanAfterStep[currentStepIndex - 1]?.result ?? result;
 
+  const postVariantCardsMeta = (
+    <>
+      <div
+        className="elterngeld-step-flow__progress"
+        role="progressbar"
+        aria-valuenow={currentStepIndex + 1}
+        aria-valuemin={1}
+        aria-valuemax={decisionSteps.length}
+      >
+        <span className="elterngeld-step-flow__progress-label">
+          Schritt {currentStepIndex + 1} von {decisionSteps.length}
+        </span>
+      </div>
+      {variantTotalsUnchangedHint && (
+        <p className="elterngeld-step__notice elterngeld-step__notice--tip" role="status">
+          {variantTotalsUnchangedHint}
+        </p>
+      )}
+      {optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) && (
+        <div
+          className="elterngeld-calculation__chosen-goal-banner elterngeld-step__notice elterngeld-step__notice--tip"
+          role="status"
+        >
+          <p className="elterngeld-calculation__chosen-goal-title">
+            Gewähltes Ziel:{' '}
+            <strong>{SCENARIO_SHORT_LABELS[optimizationGoal] ?? optimizationGoal}</strong>
+          </p>
+          {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal] && (
+            <p className="elterngeld-calculation__chosen-goal-detail">
+              {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal]}
+            </p>
+          )}
+        </div>
+      )}
+      <div
+        className="elterngeld-calculation__optimization-context elterngeld-step__notice elterngeld-step__notice--tip"
+        role="note"
+      >
+        <p className="elterngeld-calculation__optimization-context-p">
+          Die Vorschläge basieren auf euren erfassten Einkommensangaben; Grenzen und Obergrenzen hängen davon ab.
+          {!skipToStrategyStep && (
+            <> Änderungen am Plan gelten erst nach Übernahme – bis dahin bleibt dein aktueller Plan unverändert.</>
+          )}
+        </p>
+        <p className="elterngeld-calculation__optimization-context-p elterngeld-calculation__optimization-context-p--baseline">
+          <strong>Vergleich zu:</strong> {baselineLabel}. {baselineExplanation}
+        </p>
+      </div>
+      {currentStepIndex > 0 && (() => {
+        const prevStep = decisionSteps[currentStepIndex - 1];
+        const showPartTimeHoursLink =
+          prevStep?.kind === 'partTime' &&
+          !!onNavigateToPartTimeSettings &&
+          prevStep.stepOptions[Math.max(0, prevStep.selectedOptionIndex)]?.strategyType === 'withPartTime';
+        if (!prevStep?.feedbackAfterSelection && !prevStep?.nextStepHint && !showPartTimeHoursLink) {
+          return null;
+        }
+        return (
+          <div className="elterngeld-step-flow__transition" role="status">
+            {prevStep.feedbackAfterSelection && (
+              <p className="elterngeld-step-flow__feedback">{prevStep.feedbackAfterSelection}</p>
+            )}
+            {showPartTimeHoursLink && (
+              <div className="elterngeld-step-flow__feedback elterngeld-step__hint">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="next-steps__button btn--softpill"
+                  onClick={() => onNavigateToPartTimeSettings?.()}
+                >
+                  Teilzeitstunden anpassen
+                </Button>
+              </div>
+            )}
+            {prevStep.nextStepHint && (
+              <p className="elterngeld-step-flow__next-hint">{prevStep.nextStepHint}</p>
+            )}
+          </div>
+        );
+      })()}
+    </>
+  );
+
   return (
     <>
       {adoptDialogOption && (
@@ -846,10 +909,7 @@ export function StepOptimizationBlock({
       <Card className="still-daily-checklist__card elterngeld-calculation__optimization-block elterngeld-calculation__optimization-block--comparison">
         {!hasAnyAlternatives ? (
           <>
-            <OptimizationLeistungLaufzeitHint
-              optimizationGoal={optimizationGoal}
-              onLeistungAnpassen={onNavigateToLeistungSettings ?? onNavigateToMonthEditing}
-            />
+            <OptimizationLeistungLaufzeitHint />
             <h3 className="elterngeld-step__title">Dein aktueller Plan passt gut zu deinem Ziel.</h3>
             {onBackToOptimization && (
               <Button type="button" variant="secondary" className="btn--softpill" onClick={onBackToOptimization}>
@@ -859,81 +919,10 @@ export function StepOptimizationBlock({
           </>
         ) : (
         <div className="elterngeld-step-flow">
-          <OptimizationLeistungLaufzeitHint
-            optimizationGoal={optimizationGoal}
-            onLeistungAnpassen={onNavigateToLeistungSettings ?? onNavigateToMonthEditing}
-          />
-          <p className="elterngeld-calculation__data-basis-hint">
-            Die Planvorschläge basieren auf deinen erfassten Einkommensangaben. Grenzen und Obergrenzen hängen davon ab.
-          </p>
-          {!skipToStrategyStep && (
-            <p className="elterngeld-calculation__adoption-hint">
-              Vergleich zum aktuellen Plan. Änderungen gelten erst nach Übernahme – dein Plan bleibt unverändert.
-            </p>
+          <OptimizationLeistungLaufzeitHint />
+          {showCompactVariantIntro && (
+            <p className="elterngeld-step__hint">Wähle eine Variante und bestätige sie in der Karte.</p>
           )}
-          <p className="elterngeld-calculation__baseline-hint">
-            Vergleich zu: <strong>{baselineLabel}</strong>
-          </p>
-          <p className="elterngeld-calculation__baseline-explanation">{baselineExplanation}</p>
-          {variantTotalsUnchangedHint && (
-            <p className="elterngeld-step__notice elterngeld-step__notice--tip" role="status">
-              {variantTotalsUnchangedHint}
-            </p>
-          )}
-          {optimizationGoal && !UNSUPPORTED_GOALS.includes(optimizationGoal) && (
-            <div
-              className="elterngeld-calculation__chosen-goal-banner elterngeld-step__notice elterngeld-step__notice--tip"
-              role="status"
-            >
-              <p className="elterngeld-calculation__chosen-goal-title">
-                Gewähltes Ziel:{' '}
-                <strong>{SCENARIO_SHORT_LABELS[optimizationGoal] ?? optimizationGoal}</strong>
-              </p>
-              {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal] && (
-                <p className="elterngeld-calculation__chosen-goal-detail">
-                  {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal]}
-                </p>
-              )}
-            </div>
-          )}
-          <div className="elterngeld-step-flow__progress" role="progressbar" aria-valuenow={currentStepIndex + 1} aria-valuemin={1} aria-valuemax={decisionSteps.length}>
-            <span className="elterngeld-step-flow__progress-label">
-              Schritt {currentStepIndex + 1} von {decisionSteps.length}
-            </span>
-          </div>
-          {currentStepIndex > 0 && (() => {
-            const prevStep = decisionSteps[currentStepIndex - 1];
-            const showPartTimeHoursLink =
-              prevStep?.kind === 'partTime' &&
-              !!onNavigateToPartTimeSettings &&
-              prevStep.stepOptions[Math.max(0, prevStep.selectedOptionIndex)]?.strategyType ===
-                'withPartTime';
-            if (!prevStep?.feedbackAfterSelection && !prevStep?.nextStepHint && !showPartTimeHoursLink) {
-              return null;
-            }
-            return (
-              <div className="elterngeld-step-flow__transition" role="status">
-                {prevStep.feedbackAfterSelection && (
-                  <p className="elterngeld-step-flow__feedback">{prevStep.feedbackAfterSelection}</p>
-                )}
-                {showPartTimeHoursLink && (
-                  <div className="elterngeld-step-flow__feedback elterngeld-step__hint">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="next-steps__button btn--softpill"
-                      onClick={() => onNavigateToPartTimeSettings?.()}
-                    >
-                      Teilzeitstunden anpassen
-                    </Button>
-                  </div>
-                )}
-                {prevStep.nextStepHint && (
-                  <p className="elterngeld-step-flow__next-hint">{prevStep.nextStepHint}</p>
-                )}
-              </div>
-            );
-          })()}
           {(() => {
             const step = decisionSteps[currentStepIndex];
             if (!step) return null;
@@ -996,6 +985,7 @@ export function StepOptimizationBlock({
                       </>
                     )}
                   </div>
+                  {postVariantCardsMeta}
                 </div>
               );
             }
@@ -1004,22 +994,6 @@ export function StepOptimizationBlock({
               step.stepOptions.every((o) => o.result.householdTotal === step.stepOptions[0].result.householdTotal);
             return (
               <div key={step.id} className="elterngeld-step-flow__step elterngeld-step-flow__step--active">
-                {!skipToStrategyStep && (
-                  <>
-                    <h3 className="elterngeld-step__title">{step.stepQuestion}</h3>
-                    <p className="elterngeld-calculation__decision-reason">{step.stepDescription}</p>
-                  </>
-                )}
-                {allSameTotal && (
-                  <p className="elterngeld-calculation__gleichstand-hint">
-                    Diese Varianten führen zur gleichen Gesamtauszahlung – sie unterscheiden sich in der Aufteilung.
-                  </p>
-                )}
-                {step.stepOptions.length > 1 && (
-                  <p className="elterngeld-calculation__option-hint">
-                    Wähle eine Variante per Klick; die Übernahme bestätigst du mit dem Button unten.
-                  </p>
-                )}
                 <div className="elterngeld-calculation__suggestion-list" role="list">
                   {step.stepOptions.map((opt, optIdx) => (
                     <OptionCard
@@ -1038,6 +1012,18 @@ export function StepOptimizationBlock({
                     />
                   ))}
                 </div>
+                {postVariantCardsMeta}
+                {!skipToStrategyStep && (
+                  <>
+                    <h3 className="elterngeld-step__title">{step.stepQuestion}</h3>
+                    <p className="elterngeld-calculation__decision-reason">{step.stepDescription}</p>
+                  </>
+                )}
+                {allSameTotal && (
+                  <p className="elterngeld-calculation__gleichstand-hint">
+                    Diese Varianten führen zur gleichen Gesamtauszahlung – sie unterscheiden sich in der Aufteilung.
+                  </p>
+                )}
                 {currentStepIndex > 0 && !hideBackButton && (
                   <Button
                     type="button"
@@ -1347,13 +1333,7 @@ export function OptionCard({
   adoptApplication?: ElterngeldApplication | null;
 }) {
   const durationDelta = opt.impact.durationDelta;
-  const durationCallout =
-    durationDelta !== 0
-      ? `${durationDelta > 0 ? '+' : ''}${durationDelta} ${formatMonthsLabel(Math.abs(durationDelta), 'Monat', 'Monate')} Bezugsdauer`
-      : null;
-  const impactLines = getOptionImpactLines(opt, formatCurrency, formatCurrencySigned, {
-    omitDurationLine: durationDelta !== 0,
-  });
+  const impactLines = getOptionImpactLines(opt, formatCurrency, formatCurrencySigned);
   const planChangeLines =
     opt.strategyType === 'current'
       ? []
@@ -1374,16 +1354,6 @@ export function OptionCard({
   const cardContent = (
     <>
       <span className="elterngeld-calculation__suggestion-title">{opt.label}</span>
-      {durationCallout && (
-        <span className="elterngeld-calculation__suggestion-duration-callout-wrap">
-          <span className="elterngeld-calculation__suggestion-duration-callout" aria-label="Änderung der Bezugsdauer">
-            {durationCallout}
-          </span>
-          {durationDelta > 0 && planHasPlusOrPartnerBonus(opt.plan) && (
-            <span className="elterngeld-calculation__suggestion-duration-plus-note">basierend auf ElterngeldPlus</span>
-          )}
-        </span>
-      )}
       {(impactLines.length > 0 || hasStructuralOnly) && (
         <span className="elterngeld-calculation__suggestion-delta">
           {hasStructuralOnly && (
@@ -1405,6 +1375,11 @@ export function OptionCard({
               </span>
             );
           })}
+          {durationDelta > 0 && planHasPlusOrPartnerBonus(opt.plan) && (
+            <span className="elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--note">
+              basierend auf ElterngeldPlus
+            </span>
+          )}
         </span>
       )}
       {planChangeLines.length > 0 && (
@@ -1718,6 +1693,15 @@ export const StepCalculationResult: React.FC<Props> = ({
 }) => {
   const { parents, householdTotal, validation, meta } = result;
 
+  const partnerBonusWarningMessages = useMemo(
+    () => validation.warnings.filter(isPartnerschaftsbonusWarningMessage),
+    [validation.warnings]
+  );
+  const nonPartnerBonusWarnings = useMemo(
+    () => validation.warnings.filter((w) => !isPartnerschaftsbonusWarningMessage(w)),
+    [validation.warnings]
+  );
+
   const optimizationResultSet = useMemo((): OptimizationResultSet | null => {
     if (!plan || !optimizationGoal || validation.errors.length > 0) return null;
     const outcome = buildOptimizationResult(plan, result, optimizationGoal);
@@ -1829,9 +1813,34 @@ export const StepCalculationResult: React.FC<Props> = ({
         </div>
       )}
 
-      {validation.warnings.length > 0 && (
+      {partnerBonusWarningMessages.length > 0 && (
+        <Card className="still-daily-checklist__card elterngeld-calculation__partner-bonus-issue-card elterngeld-step__notice elterngeld-step__notice--warning">
+          <h3 className="elterngeld-step__title">{PARTNERSCHAFTSBONUS_KARTE_TITEL}</h3>
+          <p className="elterngeld-calculation__partner-bonus-issue-detail">{partnerBonusWarningMessages[0]}</p>
+          {partnerBonusWarningMessages.length > 1 && (
+            <ul className="elterngeld-calculation__partner-bonus-issue-list">
+              {partnerBonusWarningMessages.slice(1).map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          )}
+          <p className="elterngeld-calculation__partner-bonus-issue-hint">
+            {getPartnerschaftsbonusHandlungshinweis(partnerBonusWarningMessages[0])}
+          </p>
+          <Button
+            type="button"
+            variant="primary"
+            className="btn--softpill elterngeld-calculation__partner-bonus-issue-cta"
+            onClick={() => setShowPartnerBonusCheck(true)}
+          >
+            {PARTNERSCHAFTSBONUS_OVERLAY_AKTION}
+          </Button>
+        </Card>
+      )}
+
+      {nonPartnerBonusWarnings.length > 0 && (
         <div className="elterngeld-calculation__validation elterngeld-calculation__validation--warning">
-          {validation.warnings.map((w, i) => {
+          {nonPartnerBonusWarnings.map((w, i) => {
             const action = getHintAction(w, result);
             return (
               <div key={i} className="elterngeld-calculation__validation-item">
@@ -1856,16 +1865,6 @@ export const StepCalculationResult: React.FC<Props> = ({
                     {action.label}
                   </Button>
                 )}
-                {action.action === 'openPartnerBonusCheck' && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="elterngeld-calculation__validation-action elterngeld-calculation__validation-action--small"
-                    onClick={() => setShowPartnerBonusCheck(true)}
-                  >
-                    {action.label}
-                  </Button>
-                )}
               </div>
             );
           })}
@@ -1874,7 +1873,7 @@ export const StepCalculationResult: React.FC<Props> = ({
 
       <PlanStabilityBlock result={result} className="elterngeld-calculation__plan-stability" />
 
-      {!validation.warnings.some((w) => w.includes('Partnerschaftsbonus') || w.includes('Partnerbonus')) && (
+      {partnerBonusWarningMessages.length === 0 && (
         <div className="elterngeld-calculation__partner-bonus-block">
           {parents.some((p) => p.monthlyResults.some((m) => m.mode === 'partnerBonus')) && (
             <p className="elterngeld-calculation__partner-bonus-hint">
@@ -1888,7 +1887,7 @@ export const StepCalculationResult: React.FC<Props> = ({
             className="btn--softpill elterngeld-step__partner-bonus-check-btn"
             onClick={() => setShowPartnerBonusCheck(true)}
           >
-            Partnerschaftsbonus prüfen
+            {PARTNERSCHAFTSBONUS_OVERLAY_AKTION}
           </Button>
         </div>
       )}
@@ -2180,11 +2179,6 @@ export const StepCalculationResult: React.FC<Props> = ({
           plan={plan}
           result={result}
           onAction={(action: PartnerBonusAction) => {
-            if (action.type === 'applyCreatePartnerOverlap') {
-              onApplyCreatePartnerOverlap?.(action.suggestedPlan);
-              setShowPartnerBonusCheck(false);
-              return;
-            }
             if (action.type === 'applyFix') {
               onApplyPartnerBonusFix?.(action.month, action.fix);
             } else if (action.type === 'applySetAllSuitableMonths') {

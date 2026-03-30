@@ -104,6 +104,21 @@ export function getMonthGridItemsFromValues(
   );
 }
 
+/**
+ * Volle Verteilung für Lebensmonat 1..maxMonths: nutzt concreteMonthDistribution (expandiert)
+ * oder dieselbe Count-Logik wie der MonthGrid-Fallback.
+ */
+export function getExpandedMonthDistribution(
+  values: ElterngeldApplication,
+  maxMonths: number
+): MonthDistributionEntry[] {
+  const dist = values.benefitPlan.concreteMonthDistribution;
+  if (dist && dist.length > 0) {
+    return expandConcreteMonthDistribution(dist, maxMonths);
+  }
+  return documentDistributionFromCounts(values, maxMonths);
+}
+
 /** Vorbereitung: count-basiertes Modell → MonthGrid-Items (Fallback) */
 export function getMonthGridItemsFromCounts(
   parentAMonths: number,

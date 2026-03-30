@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getMonthGridItemsFromValues, resolveDocumentMonthDistribution } from './monthGridMappings';
+import {
+  getExpandedMonthDistribution,
+  getMonthGridItemsFromValues,
+  resolveDocumentMonthDistribution,
+} from './monthGridMappings';
 import type { ElterngeldApplication } from './types/elterngeldTypes';
 
 describe('getMonthGridItemsFromValues – concreteMonthDistribution', () => {
@@ -43,6 +47,66 @@ describe('getMonthGridItemsFromValues – concreteMonthDistribution', () => {
     for (let i = 4; i < 24; i++) {
       expect(items[i]).toEqual({ month: i + 1, state: 'mother', label: 'Mutter', subLabel: 'Plus' });
     }
+  });
+});
+
+describe('getExpandedMonthDistribution', () => {
+  it('expandiert kurze concreteMonthDistribution auf maxMonths mit none für Lücken', () => {
+    const values: ElterngeldApplication = {
+      state: '',
+      applicantMode: 'single_applicant',
+      child: { birthDate: '', expectedBirthDate: '', multipleBirth: false },
+      parentA: {
+        firstName: '',
+        lastName: '',
+        employmentType: 'employed',
+        incomeBeforeBirth: '',
+        plannedPartTime: false,
+      },
+      parentB: null,
+      benefitPlan: {
+        model: 'plus',
+        parentAMonths: '2',
+        parentBMonths: '',
+        partnershipBonus: false,
+        concreteMonthDistribution: [
+          { month: 1, modeA: 'plus', modeB: 'none' },
+          { month: 2, modeA: 'plus', modeB: 'none' },
+        ],
+      },
+    };
+    const d = getExpandedMonthDistribution(values, 5);
+    expect(d).toHaveLength(5);
+    expect(d[0]?.modeA).toBe('plus');
+    expect(d[1]?.modeA).toBe('plus');
+    expect(d[2]?.modeA).toBe('none');
+    expect(d[4]?.month).toBe(5);
+  });
+
+  it('ohne Distribution: gleiche Logik wie Count-Fallback', () => {
+    const values: ElterngeldApplication = {
+      state: '',
+      applicantMode: 'single_applicant',
+      child: { birthDate: '', expectedBirthDate: '', multipleBirth: false },
+      parentA: {
+        firstName: '',
+        lastName: '',
+        employmentType: 'employed',
+        incomeBeforeBirth: '',
+        plannedPartTime: false,
+      },
+      parentB: null,
+      benefitPlan: {
+        model: 'basis',
+        parentAMonths: '2',
+        parentBMonths: '',
+        partnershipBonus: false,
+      },
+    };
+    const d = getExpandedMonthDistribution(values, 14);
+    expect(d[0]?.modeA).toBe('basis');
+    expect(d[1]?.modeA).toBe('basis');
+    expect(d[2]?.modeA).toBe('none');
   });
 });
 

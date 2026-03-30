@@ -164,31 +164,17 @@ export function buildOptimizationResult(
     });
   }
 
-  const top3 = selectTop3(candidates, goal);
+  const top3 = selectTop3(candidates, goal, currentDuration);
   let suggestions = top3.map((c) => candidateToSuggestion(c, goal, currentDuration, currentTotal, currentResult));
 
-  /**
-   * Fachregel (alle Ziele): Gleiche Bezugsdauer und geringere Gesamtauszahlung wird nicht angeboten.
-   * Trade-offs mit geänderter Dauer bleiben möglich (weniger Geld, aber z. B. länger/kürzer).
-   */
+  const baselinePlanFp = planFingerprint(plan);
   suggestions = suggestions.filter(
-    (s) => !(s.optimizedDurationMonths === currentDuration && s.optimizedTotal < currentTotal)
+    (s) =>
+      planFingerprint(s.plan) !== baselinePlanFp &&
+      isStrictGoalImprovementAgainstBaseline(s.result, goal, currentResult, currentTotal, currentDuration)
   );
 
-  /** Bei maxMoney/partnerBonus: Vorschläge mit vernachlässigbarem Zuwachs ausfiltern – verhindert Drift bei wiederholter Optimierung. */
-  if (goal === 'maxMoney' || goal === 'partnerBonus') {
-    suggestions = suggestions.filter(
-      (s) => s.optimizedTotal <= currentTotal || s.optimizedTotal - currentTotal > MIN_IMPROVEMENT_EUR
-    );
-  }
-
-  /**
-   * longerDuration: nur echte Mehr-Monate (selectTop3 mischt Referenz-/Alternativ-Szenarien ein;
-   * ohne Filter blieben Varianten mit gleicher oder kürzerer Bezugsdauer mit irreführendem Ziel-Label).
-   */
-  if (goal === 'longerDuration') {
-    suggestions = suggestions.filter((s) => s.optimizedDurationMonths > currentDuration);
-  }
+  suggestions = suggestions.map((s) => ({ ...s, status: 'improved' as const }));
 
   const status: OptimizationStatus =
     suggestions.length === 0
@@ -296,13 +282,30 @@ function candidateToSuggestion(
       optimizedMetricValue = optimizedFL;
       break;
     }
-    case 'partnerBonus':
-      metricLabel = 'Gesamtsumme';
-      deltaValue = optimizedTotal - currentTotal;
-      improved = deltaValue > MIN_IMPROVEMENT_EUR;
-      currentMetricValue = currentTotal;
-      optimizedMetricValue = optimizedTotal;
+    case 'partnerBonus': {
+      const curB = countPartnerBonusMonths(currentResult);
+      const optB = countPartnerBonusMonths(result);
+      if (optB > curB) {
+        metricLabel = 'Partnerschaftsbonus-Monate';
+        deltaValue = optB - curB;
+        currentMetricValue = curB;
+        optimizedMetricValue = optB;
+        improved = true;
+      } else if (optB === curB && optimizedTotal > currentTotal + MIN_IMPROVEMENT_EUR) {
+        metricLabel = 'Gesamtsumme';
+        deltaValue = optimizedTotal - currentTotal;
+        currentMetricValue = currentTotal;
+        optimizedMetricValue = optimizedTotal;
+        improved = true;
+      } else {
+        metricLabel = optB < curB ? 'Partnerschaftsbonus-Monate' : 'Gesamtsumme';
+        deltaValue = optB !== curB ? optB - curB : optimizedTotal - currentTotal;
+        currentMetricValue = optB !== curB ? curB : currentTotal;
+        optimizedMetricValue = optB !== curB ? optB : optimizedTotal;
+        improved = false;
+      }
       break;
+    }
     default:
       metricLabel = 'Gesamtsumme';
       deltaValue = optimizedTotal - currentTotal;
@@ -1011,6 +1014,38 @@ function computeFrontLoadScore(result: CalculationResult): number {
   return score;
 }
 
+/**
+ * Strikte Zielverbesserung gegenüber dem Ist-Plan (Baseline = currentResult nach mergePlanIntoPreparation).
+ * Nur wenn true, ist der Kandidat für das aktive Ziel ein echter Verbesserungsvorschlag (Idempotenz nach Übernahme).
+ */
+function isStrictGoalImprovementAgainstBaseline(
+  optimizedResult: CalculationResult,
+  goal: OptimizationGoal,
+  baselineResult: CalculationResult,
+  baselineTotal: number,
+  baselineDuration: number
+): boolean {
+  const optTotal = optimizedResult.householdTotal;
+  const optDuration = countBezugMonths(optimizedResult);
+  switch (goal) {
+    case 'maxMoney':
+      return optTotal > baselineTotal + MIN_IMPROVEMENT_EUR;
+    case 'longerDuration':
+      return optDuration > baselineDuration;
+    case 'frontLoad':
+      return computeFrontLoadScore(optimizedResult) > computeFrontLoadScore(baselineResult);
+    case 'partnerBonus': {
+      const curB = countPartnerBonusMonths(baselineResult);
+      const optB = countPartnerBonusMonths(optimizedResult);
+      if (optB > curB) return true;
+      if (optB < curB) return false;
+      return optTotal > baselineTotal + MIN_IMPROVEMENT_EUR;
+    }
+    default:
+      return false;
+  }
+}
+
 /** Ergebnis-Fingerprint für Duplikaterkennung (identische Ausgaben inkl. FrontLoad-Verteilung) */
 function resultFingerprint(c: Candidate): string {
   const total = c.result.householdTotal;
@@ -1041,7 +1076,11 @@ function bestForScenario(candidates: Candidate[], scenario: ScenarioType): Candi
 }
 
 /** Szenariobasierte Auswahl: gewähltes Ziel priorisiert, andere sinnvolle Trade-off-Szenarien bleiben erhalten. Max 3, keine Duplikate. */
-function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[] {
+function selectTop3(
+  candidates: Candidate[],
+  goal: OptimizationGoal,
+  currentDurationMonths: number
+): Candidate[] {
   if (candidates.length === 0) return [];
 
   const seenPlan = new Set<string>();
@@ -1077,6 +1116,28 @@ function selectTop3(candidates: Candidate[], goal: OptimizationGoal): Candidate[
     outPlan.add(pf);
     outResult.add(rf);
   };
+
+  /**
+   * maxMoney: zuerst den Kandidaten mit höchster Haushaltssumme im gesamten Pool setzen.
+   * So fehlt der globale Pool-Max im ersten Lauf nicht zugunsten nur szenarien-bedingter Vielfalt
+   * (vermeidet „nach Übernahme plötzlich mehr Geld“, wenn derselbe Kandidat schon im ersten Pool war).
+   */
+  if (goal === 'maxMoney') {
+    pushUnique(bestForScenario(deduped, 'maxMoney'));
+  }
+
+  /**
+   * longerDuration: zuerst einen Kandidaten mit echt längerer Bezugsdauer sichern, der nicht die
+   * Partnerschaftsbonus-/withPartTime-Strategie nutzt (z. B. reine Plus-Spanne nur Mutter oder beide ohne Bonus),
+   * sofern im Pool vorhanden – verhindert, dass nur Bonus-/Teilzeit-Pfade die Top-3 dominieren.
+   */
+  if (goal === 'longerDuration') {
+    const longerNonWithPartTime = deduped.filter(
+      (c) =>
+        c.strategyType !== 'withPartTime' && countBezugMonths(c.result) > currentDurationMonths
+    );
+    pushUnique(bestForScenario(longerNonWithPartTime, goalScenario));
+  }
 
   /** Mindestvielfalt: bester Kandidat ohne Teilzeit + bester mit Teilzeit (jeweils nach aktivem Ziel), wenn vorhanden – damit nicht nur die streng „beste“ Strategie sichtbar ist. */
   const withoutPartTime = deduped.filter((c) => c.strategyType === 'withoutPartTime');
@@ -1133,6 +1194,7 @@ function generateMutationCandidates(
 
   if (goal === 'longerDuration') {
     addBasisToPlusCandidates(plan, currentResult, candidates, addIfNew);
+    addLongerDurationPlusSpanReferenceCandidates(plan, currentResult, candidates, addIfNew);
     return;
   }
 
@@ -1178,6 +1240,41 @@ function planFingerprint(plan: ElterngeldCalculationPlan): string {
 }
 
 type AddCandidateFn = (c: Candidate) => void;
+
+/**
+ * Zusätzliche längere Bezugsdauer ohne bothPlusWithBonus: nutzt dieselben Referenzpläne wie
+ * createReferencePlan (motherOnlyPlus, bothPlus) für alle zulässigen Monatsanzahlen oberhalb der
+ * aktuellen Bezugsdauer – reine Plus-Spannen, kein Partnerschaftsbonus-Pfad.
+ */
+function addLongerDurationPlusSpanReferenceCandidates(
+  plan: ElterngeldCalculationPlan,
+  currentResult: CalculationResult,
+  candidates: Candidate[],
+  addIfNew: AddCandidateFn
+): void {
+  const currentDuration = countBezugMonths(currentResult);
+  const parentB = plan.parents[1];
+
+  const tryAdd = (config: 'motherOnlyPlus' | 'bothPlus') => {
+    const durations = getDurationsForConfig(config).filter((d) => d > currentDuration);
+    for (const totalMonths of durations) {
+      if (candidates.length >= MAX_CANDIDATES) return;
+      const refPlan = createReferencePlan(plan, config, totalMonths);
+      if (!refPlan) continue;
+      const res = calculatePlan(refPlan);
+      if (!res.validation.isValid) continue;
+      if (countBezugMonths(res) <= currentDuration) continue;
+      const strategyType: Candidate['strategyType'] =
+        config === 'motherOnlyPlus' ? 'motherOnly' : 'bothBalanced';
+      addIfNew({ plan: refPlan, result: res, strategyType });
+    }
+  };
+
+  tryAdd('motherOnlyPlus');
+  if (parentB && parentB.incomeBeforeNet > 0) {
+    tryAdd('bothPlus');
+  }
+}
 
 /** Strategie: Basis → Plus Umwandlung (max 2 pro Kandidat) für längere Bezugsdauer */
 function addBasisToPlusCandidates(

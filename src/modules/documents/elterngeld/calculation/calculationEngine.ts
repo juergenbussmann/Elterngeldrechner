@@ -284,9 +284,6 @@ export function calculatePlan(plan: ElterngeldCalculationPlan): CalculationResul
   if (partnerBonusValidation.warnings.length > 0) {
     globalWarnings.push(...partnerBonusValidation.warnings);
   }
-  if (!partnerBonusValidation.isValid && plan.parents.some((p) => p.months.some((m) => m.mode === 'partnerBonus'))) {
-    globalWarnings.push('Partnerschaftsbonus: Bedingungen möglicherweise nicht erfüllt.');
-  }
 
   const householdTotal = parents.reduce((sum, p) => sum + p.total, 0);
 

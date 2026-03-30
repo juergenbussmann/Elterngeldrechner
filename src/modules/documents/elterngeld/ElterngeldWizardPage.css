@@ -1022,6 +1022,17 @@
   max-width: 100%;
 }
 
+.elterngeld-plan__status-text--title {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.elterngeld-plan__status-text--hint {
+  font-weight: 600;
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+}
+
 .elterngeld-calculation__optimization-block,
 .still-daily-checklist__card.elterngeld-calculation__optimization-block {
   min-width: 0;
@@ -1126,6 +1137,21 @@
   margin-bottom: 0.5rem;
 }
 
+.elterngeld-partner-bonus-check__warning-list {
+  margin: 0 0 1rem 1.25rem;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #333);
+}
+
+.elterngeld-partner-bonus-check__adjustments-heading {
+  margin: 0.5rem 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+}
+
 /* Edit-Origin-Dialog: Änderung aus Vorbereitung */
 .elterngeld-edit-origin-dialog__text {
   margin: 0 0 1rem 0;
@@ -1172,6 +1198,10 @@
 }
 
 .elterngeld-plan__partner-bonus-buttons .elterngeld-step__partner-bonus-check-btn {
+  margin-top: 0;
+}
+
+.elterngeld-plan__partner-bonus-buttons .elterngeld-plan__panel-quickfix-btn {
   margin-top: 0;
 }
 
@@ -1380,6 +1410,38 @@
 .elterngeld-calculation__validation-action--small {
   padding: 0.25rem 0.6rem;
   font-size: 0.85rem;
+}
+
+.elterngeld-calculation__partner-bonus-issue-card {
+  margin-bottom: 1rem;
+}
+
+.elterngeld-calculation__partner-bonus-issue-card .elterngeld-step__title {
+  margin-bottom: 0.5rem;
+}
+
+.elterngeld-calculation__partner-bonus-issue-detail {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.elterngeld-calculation__partner-bonus-issue-list {
+  margin: 0 0 0.75rem 1.1rem;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.elterngeld-calculation__partner-bonus-issue-hint {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.elterngeld-calculation__partner-bonus-issue-cta {
+  min-height: 48px;
 }
 
 .elterngeld-calculation__warning-item {
@@ -2116,34 +2178,29 @@
   gap: 0.5rem;
 }
 
-.elterngeld-calculation__suggestion-duration-callout-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-  margin-top: 0.3rem;
-  margin-bottom: 0.2rem;
-  max-width: 100%;
-}
-
-.elterngeld-calculation__suggestion-duration-callout {
-  display: inline-block;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--color-text-primary, #0f172a);
-  background: rgba(37, 99, 235, 0.09);
-  border: 1px solid rgba(37, 99, 235, 0.22);
-  max-width: 100%;
-}
-
-.elterngeld-calculation__suggestion-duration-plus-note {
-  font-size: 0.75rem;
-  font-weight: 500;
+.elterngeld-calculation__suggestion-delta-line--note {
+  font-size: 0.8rem;
+  font-weight: 400;
   color: var(--color-text-secondary, #505050);
-  line-height: 1.3;
+  line-height: 1.35;
+}
+
+.elterngeld-calculation__optimization-context {
+  margin: 0.5rem 0 0.65rem 0;
+}
+
+.elterngeld-calculation__optimization-context-p {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.elterngeld-calculation__optimization-context-p:last-child {
+  margin-bottom: 0;
+}
+
+.elterngeld-calculation__optimization-context-p--baseline {
+  color: var(--color-text-secondary, #444);
 }
 
 .elterngeld-calculation__leistung-laufzeit-hint {
@@ -2163,10 +2220,6 @@
 
 .elterngeld-calculation__leistung-laufzeit-hint-p--emph {
   font-weight: 500;
-}
-
-.elterngeld-calculation__leistung-laufzeit-hint-actions {
-  margin-top: 0.5rem;
 }
 
 .elterngeld-calculation__chosen-goal-banner {

@@ -6,7 +6,10 @@
 import React, { useMemo } from 'react';
 import { Card } from '../../../../shared/ui/Card';
 import { formatDateGerman, parseIsoDate } from '../elterngeldDeadlines';
-import { buildElterngeldDocumentModel } from '../documentModel/buildElterngeldDocumentModel';
+import {
+  buildElterngeldDocumentModel,
+  filterChecklistItemsForUnterlagenDisplay,
+} from '../documentModel/buildElterngeldDocumentModel';
 import type {
   ApplicantMode,
   BenefitModel,
@@ -221,7 +224,7 @@ export const StepDocumentsDataOverview: React.FC<Props> = ({ values, liveResult 
           Unterlagen-Checkliste (im Kurzüberblick-PDF)
         </h4>
         <ul className="elterngeld-step__doc-list elterngeld-step__doc-list--checklist">
-          {model.checklistItems.map((doc, i) => (
+          {filterChecklistItemsForUnterlagenDisplay(model.checklistItems).map((doc, i) => (
             <li key={i}>{doc}</li>
           ))}
         </ul>

@@ -7,6 +7,7 @@ import { Card } from '../../../../shared/ui/Card';
 import { Button } from '../../../../shared/ui/Button';
 import { getMonthGridItemsFromValues } from '../monthGridMappings';
 import { isPartnerBonusPartTimeHoursEligible } from '../partnerBonusEligibility';
+import { isPartnerschaftsbonusWarningMessage } from './partnerBonusUiCopy';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
 import type { CalculationResult } from '../calculation';
 function formatCurrency(amount: number): string {
@@ -101,6 +102,7 @@ export const StepSummary: React.FC<Props> = ({
 
   const maxMonths = values.benefitPlan.model === 'plus' ? 24 : 14;
   const hasPartner = values.applicantMode === 'both_parents';
+  const hidePartnerschaftsbonusUi = values.applicantMode === 'single_parent';
 
   const items = useMemo(
     () => getMonthGridItemsFromValues(values, maxMonths),
@@ -116,6 +118,7 @@ export const StepSummary: React.FC<Props> = ({
       if (action) return { type: 'critical' as const, text: firstError };
     }
     for (const w of validation.warnings) {
+      if (hidePartnerschaftsbonusUi && isPartnerschaftsbonusWarningMessage(w)) continue;
       const { action } = getHintActionFromWarning(w, result);
       if (action) return { type: 'critical' as const, text: w };
     }
@@ -131,7 +134,7 @@ export const StepSummary: React.FC<Props> = ({
       };
     }
     return null;
-  }, [result, hasPartner, items, values.benefitPlan.model, values]);
+  }, [result, hasPartner, hidePartnerschaftsbonusUi, items, values.benefitPlan.model, values]);
 
   return (
     <Card className="still-daily-checklist__card elterngeld-summary-card">
@@ -152,10 +155,12 @@ export const StepSummary: React.FC<Props> = ({
               <span className="elterngeld-plan__summary-label">Dauer</span>
               <span className="elterngeld-plan__summary-value">{countBezugMonths(result)} Monate</span>
             </div>
+            {!hidePartnerschaftsbonusUi && (
             <div className="elterngeld-plan__summary-row">
               <span className="elterngeld-plan__summary-label">Bonusmonate</span>
               <span className="elterngeld-plan__summary-value">{countPartnerBonusMonths(result)} Bonusmonate</span>
             </div>
+            )}
           </div>
         </div>
       )}

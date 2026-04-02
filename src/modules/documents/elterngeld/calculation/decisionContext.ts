@@ -452,7 +452,7 @@ const STRATEGY_LABELS: Record<string, string> = {
   maxMoneyNotHighest: 'Fokus auf Gesamtauszahlung',
   longerDuration: 'Ich möchte den Bezug möglichst lange strecken',
   frontLoad: 'Ich möchte am Anfang mehr Geld haben',
-  partnerBonus: 'Partnerschaftsbonus nutzen',
+  partnerBonus: 'Partnerschaftsbonus gemeinsam nutzen',
   motherOnly: 'Nur Mutter bezieht Elterngeld',
   bothBalanced: 'Beide Eltern beziehen Elterngeld',
   withoutPartTime: 'Einfachere Aufteilung ohne Teilzeit',
@@ -557,6 +557,10 @@ export function buildDecisionContext(
     if (strategyType === 'withPartTime') {
       description +=
         ' In dieser Schätzung werden pro Elternteil eure im Plan hinterlegten Wochenstunden verwendet; fehlen sie dort, gelten 28 Wochenstunden als Fallback je Elternteil.';
+    }
+    if (strategyType === 'partnerBonus') {
+      description =
+        'Die betroffenen Monate werden zum Partnerschaftsbonus umgestellt → beide Eltern müssen parallel ElterngeldPlus beziehen.';
     }
     const isFirstNonCurrent = options.filter((o) => o.strategyType !== 'current').length === 0;
     const recommendedReasonText = getRecommendedReasonText(strategyType, goal, s);

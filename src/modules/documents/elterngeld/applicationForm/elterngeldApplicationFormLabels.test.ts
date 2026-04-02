@@ -34,6 +34,7 @@ function stubModel(partial: Partial<ElterngeldDocumentModel>): ElterngeldDocumen
     calculation: null,
     documentMonthDistribution: [],
     formSections: [],
+    mainDocumentFlow: [],
     ...partial,
   };
 }

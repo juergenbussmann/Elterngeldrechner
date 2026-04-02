@@ -9,6 +9,8 @@ import { describe, it, expect } from 'vitest';
 import { calculatePlan } from './calculation/calculationEngine';
 import { buildStepDecisionContext } from './calculation/stepDecisionFlow';
 import { mergePlanIntoPreparation } from './planToApplicationMerge';
+import { applicationToCalculationPlan } from './applicationToCalculationPlan';
+import { buildOptimizationResult, parseOptimizationAdoptedBaselineMap } from './calculation/elterngeldOptimization';
 import { getMonthGridItemsFromValues } from './monthGridMappings';
 import { INITIAL_ELTERNGELD_APPLICATION, EMPTY_ELTERNGELD_PARENT } from './types/elterngeldTypes';
 import type { ElterngeldCalculationPlan } from './calculation';
@@ -173,5 +175,55 @@ describe('mergePlanIntoPreparation – 24-Monats-Variante', () => {
     expect(items.length).toBe(24);
     expect(expected1to4).toBe(true);
     expect(expected5to24).toBe(true);
+  });
+});
+
+describe('mergePlanIntoPreparation – Optimierung idempotent nach Übernahme (maxMoney)', () => {
+  it('withPartTime + adoptedOptimizationGoal maxMoney → kein weiterer maxMoney-Vorschlag', () => {
+    const plan = createPlan({});
+    plan.parents[0].incomeBeforeNet = 1200;
+    plan.parents[1].incomeBeforeNet = 3500;
+    setMonth(plan, 0, 1, 'basis');
+    setMonth(plan, 0, 2, 'basis');
+
+    const result = calculatePlan(plan);
+    const ctx = buildStepDecisionContext(plan, result, {
+      strategyStepRequireExplicitSelection: true,
+      userPriorityGoal: 'maxMoney',
+    });
+    const optStep = ctx.decisionSteps[ctx.decisionSteps.length - 1];
+    const variant24 = (optStep?.stepOptions ?? []).find(
+      (o) => o.strategyType === 'withPartTime' && o.result.householdTotal > 0
+    );
+    expect(variant24).toBeDefined();
+
+    const current = {
+      ...INITIAL_ELTERNGELD_APPLICATION,
+      applicantMode: 'both_parents' as const,
+      parentB: { ...EMPTY_ELTERNGELD_PARENT },
+      child: { birthDate: '2025-03-01', expectedBirthDate: '', multipleBirth: false },
+    };
+
+    const merged = mergePlanIntoPreparation(current, variant24!.plan, {
+      adoptedOptimizationGoal: 'maxMoney',
+      adoptedOptimizationResult: variant24!.result,
+    });
+    expect(merged.benefitPlan.optimizationAdoptedBaselineGoals).toEqual({
+      maxMoney: { score: variant24!.result.householdTotal },
+    });
+
+    const recon = applicationToCalculationPlan(merged);
+    const rAfter = calculatePlan(recon);
+    const outcome = buildOptimizationResult(recon, rAfter, 'maxMoney', {
+      adoptedBaselineGoals: parseOptimizationAdoptedBaselineMap(
+        merged.benefitPlan.optimizationAdoptedBaselineGoals
+      ),
+    });
+    if (!('suggestions' in outcome)) throw new Error('expected optimization result set');
+
+    const baselineScore = variant24!.result.householdTotal;
+    for (const s of outcome.suggestions) {
+      expect(s.optimizedTotal).toBeLessThanOrEqual(baselineScore + 1);
+    }
   });
 });

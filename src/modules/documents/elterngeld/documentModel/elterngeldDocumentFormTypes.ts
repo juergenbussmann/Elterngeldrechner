@@ -36,6 +36,8 @@ export function isAppBoundFormField(
 export interface ElterngeldDocumentFormSubsection {
   subsectionTitle: string;
   fields: ElterngeldDocumentFormField[];
+  /** Reihenfolge im Hauptteil (Profil `formDocumentFlowOrder.ts`); fehlend = ans Ende sortiert. */
+  documentFlowKey?: string;
 }
 
 export interface ElterngeldDocumentFormSection {

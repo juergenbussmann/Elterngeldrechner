@@ -23,7 +23,7 @@ import { StepSummary } from './steps/StepSummary';
 import { StepDocumentsDataOverview } from './steps/StepDocumentsDataOverview';
 import { StepDocumentsPdfBundle } from './steps/StepDocumentsPdfBundle';
 import { OptimizationOverlay } from './steps/OptimizationOverlay';
-import { buildOptimizationResult } from './calculation/elterngeldOptimization';
+import { buildOptimizationResult, parseOptimizationAdoptedBaselineMap } from './calculation/elterngeldOptimization';
 import { mergePlanIntoPreparation } from './planToApplicationMerge';
 import { isPartnerBonusPartTimeHoursEligible } from './partnerBonusEligibility';
 import { saveElterngeldWizardPdfBundle } from './saveElterngeldWizardPdfBundle';
@@ -124,7 +124,11 @@ const ElterngeldWizardPageBody: React.FC = () => {
       let partnerBonusSuggestion = null;
       for (const goal of goals) {
         if (goal === 'partnerBonus' && !partnerBonusHoursEligible) continue;
-        const outcome = buildOptimizationResult(planForOptimization, liveResult, goal);
+        const outcome = buildOptimizationResult(planForOptimization, liveResult, goal, {
+          adoptedBaselineGoals: parseOptimizationAdoptedBaselineMap(
+            values.benefitPlan.optimizationAdoptedBaselineGoals
+          ),
+        });
         if ('status' in outcome && outcome.status === 'unsupported') continue;
         const ors = outcome as { currentResult: typeof liveResult; suggestions: { status: string; result: typeof liveResult }[] };
         const hasImproved = ors.suggestions.some((s) => s.status === 'improved');
@@ -137,7 +141,7 @@ const ElterngeldWizardPageBody: React.FC = () => {
     } catch {
       return { hasAnySuggestions: false, partnerBonusSuggestion: null };
     }
-  }, [planForOptimization, liveResult, partnerBonusHoursEligible]);
+  }, [planForOptimization, liveResult, partnerBonusHoursEligible, values.benefitPlan.optimizationAdoptedBaselineGoals]);
 
   const handleNext = useCallback(() => {
     setCalculationError(null);
@@ -385,8 +389,19 @@ const ElterngeldWizardPageBody: React.FC = () => {
               partnerBonusHoursEligible={partnerBonusHoursEligible}
               application={values}
               onApplicationChange={setValues}
-              onAdoptOptimization={(plan) => {
-                setValues((prev) => mergePlanIntoPreparation(prev, plan));
+              onAdoptOptimization={(plan, adoptedGoal, adoptedResult) => {
+                setValues((prev) =>
+                  mergePlanIntoPreparation(
+                    prev,
+                    plan,
+                    adoptedGoal
+                      ? {
+                          adoptedOptimizationGoal: adoptedGoal,
+                          adoptedOptimizationResult: adoptedResult,
+                        }
+                      : undefined
+                  )
+                );
                 closeOptimizationOverlay();
               }}
               originalPlanForOptimization={planForOptimization}

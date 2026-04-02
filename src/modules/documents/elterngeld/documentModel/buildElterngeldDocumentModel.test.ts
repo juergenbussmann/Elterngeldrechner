@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { buildElterngeldDocumentModel, ELTERNGELD_BASE_DOCUMENT_CHECKLIST } from './buildElterngeldDocumentModel';
+import {
+  buildElterngeldDocumentModel,
+  ELTERNGELD_BASE_DOCUMENT_CHECKLIST,
+  filterChecklistItemsForUnterlagenDisplay,
+  getBaseChecklistAntragsangabenNichtInApp,
+} from './buildElterngeldDocumentModel';
 import { INITIAL_ELTERNGELD_APPLICATION } from '../types/elterngeldTypes';
 import { ELTERNGELD_APPLICATION_PDF_OUTPUT_KIND } from './elterngeldOutputKindConstants';
 
@@ -128,5 +133,21 @@ describe('buildElterngeldDocumentModel', () => {
     };
     const model = buildElterngeldDocumentModel(INITIAL_ELTERNGELD_APPLICATION, liveResult);
     expect(model.calculation).toBeNull();
+  });
+
+  it('getBaseChecklistAntragsangabenNichtInApp: nur nicht in der App erfasste Antragsangaben aus der Basis-Checkliste', () => {
+    const angaben = getBaseChecklistAntragsangabenNichtInApp();
+    expect(angaben).toEqual(['Steuer-ID', 'Bankverbindung']);
+    expect(angaben.every((x) => ELTERNGELD_BASE_DOCUMENT_CHECKLIST.includes(x))).toBe(true);
+  });
+
+  it('filterChecklistItemsForUnterlagenDisplay: entfernt Steuer-ID und Bankverbindung aus Anzeige-Listen', () => {
+    const full = [...ELTERNGELD_BASE_DOCUMENT_CHECKLIST, 'Zusatz Land'];
+    expect(filterChecklistItemsForUnterlagenDisplay(full)).toEqual([
+      'Geburtsurkunde',
+      'Einkommensnachweise',
+      'Arbeitgeberbescheinigung',
+      'Zusatz Land',
+    ]);
   });
 });

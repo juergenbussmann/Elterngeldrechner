@@ -32,9 +32,15 @@ export const MAIN_GOAL_OPTIONS: OptimizationEntryGoalOption[] = [
 export function getOptimizationOverlayGoalOptions(opts: {
   partnerBonusHoursEligible: boolean;
   hasSecondParent: boolean;
+  /** Bei Alleinerziehend entfällt der Partnerschaftsbonus in der UI. */
+  applicantMode?: string;
 }): OptimizationEntryGoalOption[] {
   const base = [...MAIN_GOAL_OPTIONS];
-  if (opts.hasSecondParent && opts.partnerBonusHoursEligible) {
+  if (
+    opts.hasSecondParent &&
+    opts.partnerBonusHoursEligible &&
+    opts.applicantMode !== 'single_parent'
+  ) {
     base.push({
       value: 'partnerBonus',
       label: 'Partnerschaftsbonus',

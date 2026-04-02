@@ -1,5 +1,5 @@
 /**
- * Wizard Schritt: vollständige Antrags-Ausfüllhilfe (A–E) als Vorschau + PDF-Speicherung (bestehende Builder).
+ * Wizard Schritt: Ausfüllhilfe-PDF und Vorschau (formularnaher Hauptteil, Hinweise, Anhang).
  */
 
 import React, { useMemo } from 'react';

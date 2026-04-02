@@ -73,7 +73,6 @@ describe('buildElterngeldFormSectionA (über buildElterngeldDocumentModel)', () 
       '2. Angaben zu den Eltern',
       '11. Nach der Geburt: Elternzeit',
       '10. Planung der Elterngeld-Monate',
-      SUBSECTION_TITLE_OFFICIAL_FORM_ONLY_FIELDS,
     ]);
     expect(titles.some((t) => t.includes('3.'))).toBe(false);
     expect(titles.some((t) => t.includes('4.'))).toBe(false);
@@ -132,7 +131,6 @@ describe('buildElterngeldFormSectionA (über buildElterngeldDocumentModel)', () 
       '2. Angaben zu den Eltern',
       'Nach der Geburt: Elternzeit',
       '11. Planung der Elterngeld-Monate',
-      SUBSECTION_TITLE_OFFICIAL_FORM_ONLY_FIELDS,
     ]);
   });
 
@@ -274,9 +272,9 @@ describe('buildElterngeldFormSectionA (über buildElterngeldDocumentModel)', () 
       ...INITIAL_ELTERNGELD_APPLICATION,
       state: 'NI',
     });
-    const officialSub = model.formSections
-      .find((s) => s.sectionCode === 'A')!
-      .subsections.find((s) => s.subsectionTitle === SUBSECTION_TITLE_OFFICIAL_FORM_ONLY_FIELDS)!;
+    const officialBlock = model.mainDocumentFlow.find((b) => b.kind === 'official_form_only');
+    expect(officialBlock).toBeDefined();
+    const officialSub = officialBlock!.subsection;
     expect(officialSub.fields).toHaveLength(getOfficialFormOnlyFieldDefs('one_to_thirteen').length);
     const bank = officialSub.fields.find((f) => f.source === 'official_form_only' && f.displayKey === 'official_bank_iban')!;
     expect(bank.value).toBe('');
@@ -290,8 +288,9 @@ describe('buildElterngeldFormSectionA (über buildElterngeldDocumentModel)', () 
   it('kein Duplikat: reine Formularfelder haben keine App-id', () => {
     const model = buildElterngeldDocumentModel({ ...INITIAL_ELTERNGELD_APPLICATION, state: 'NW' });
     const secA = model.formSections.find((s) => s.sectionCode === 'A')!;
-    const officialCount = secA.subsections
-      .flatMap((s) => s.fields)
+    const officialCount = model.mainDocumentFlow
+      .filter((b) => b.kind === 'official_form_only')
+      .flatMap((b) => b.subsection.fields)
       .filter((f) => f.source === 'official_form_only').length;
     expect(officialCount).toBe(getOfficialFormOnlyFieldDefs('nrw_like').length);
   });

@@ -30,6 +30,7 @@ import {
 import {
   buildOptimizationResult,
   GOAL_LABELS,
+  parseOptimizationAdoptedBaselineMap,
   UNSUPPORTED_GOALS,
   type OptimizationGoal,
   type OptimizationResultSet,
@@ -49,8 +50,15 @@ import type { CombinedWho } from '../calculation/monthCombinedState';
 import type { MonthMode } from '../calculation';
 import { isPlanEmpty } from '../infra/calculationPlanStorage';
 import { getAdoptionStatus } from './adoptionStatus';
-import type { ElterngeldApplication } from '../types/elterngeldTypes';
+import type { ElterngeldApplication, OptimizationAdoptableGoal } from '../types/elterngeldTypes';
 import { getOptimizationAdoptUiState } from './optimizationAdoptUi';
+
+function optimizationGoalToAdoptable(
+  g: OptimizationGoal | undefined
+): OptimizationAdoptableGoal | undefined {
+  if (g === 'maxMoney' || g === 'longerDuration' || g === 'frontLoad' || g === 'partnerBonus') return g;
+  return undefined;
+}
 
 const MODE_LABELS: Record<string, string> = {
   none: '–',
@@ -262,7 +270,7 @@ function getResultChangePreview(
 /** Technisches Label → verständliche Beschreibung für Nutzer. */
 function formatModeForUser(label: string): string {
   if (label === 'Kein Bezug') return 'kein Bezug';
-  if (label === 'Partnerschaftsbonus') return 'Partnerschaftsbonus (beide Eltern)';
+  if (label === 'Partnerschaftsbonus') return 'Partnerschaftsbonus — beide Eltern parallel mit ElterngeldPlus';
   if (label === 'Beide – Bonus') return 'ElterngeldPlus mit beiden Eltern';
   if (label === 'Mutter – Basis') return 'Basiselterngeld (Mutter)';
   if (label === 'Mutter – Plus') return 'ElterngeldPlus (Mutter)';
@@ -271,12 +279,8 @@ function formatModeForUser(label: string): string {
   return label;
 }
 
-/** Änderungen im Plan – verständlich formatiert („Monat 3–5 wird zu ElterngeldPlus mit beiden Eltern“). */
-function getResultChangePreviewUserFriendly(
-  currentResult: CalculationResult,
-  optimizedResult: CalculationResult,
-  maxLines: number = 5
-): string[] {
+/** Alle Lebensmonate, die für die Änderungsvorschau verglichen werden (Union inkl. geschlossener Lücken). */
+function expandPreviewMonthsUnionWithGaps(currentResult: CalculationResult, optimizedResult: CalculationResult): number[] {
   const allMonths = new Set<number>();
   for (const p of currentResult.parents) {
     for (const r of p.monthlyResults) allMonths.add(r.month);
@@ -284,7 +288,42 @@ function getResultChangePreviewUserFriendly(
   for (const p of optimizedResult.parents) {
     for (const r of p.monthlyResults) allMonths.add(r.month);
   }
-  const months = [...allMonths].sort((a, b) => a - b);
+  const sortedSeed = [...allMonths].sort((a, b) => a - b);
+  for (let i = 0; i < sortedSeed.length - 1; i++) {
+    const lo = sortedSeed[i];
+    const hi = sortedSeed[i + 1];
+    if (hi > lo + 1) {
+      for (let m = lo + 1; m < hi; m++) allMonths.add(m);
+    }
+  }
+  return [...allMonths].sort((a, b) => a - b);
+}
+
+function assertChangePreviewCoversAllChangedMonths(
+  changedMonths: Set<number>,
+  changes: { months: number[] }[]
+): void {
+  const covered = new Set<number>();
+  for (const c of changes) {
+    for (const m of c.months) covered.add(m);
+  }
+  if (changedMonths.size === covered.size && [...changedMonths].every((m) => covered.has(m))) return;
+
+  const msg = `[getResultChangePreviewUserFriendly] Unvollständige Monatsabdeckung: geändert=${[...changedMonths].sort((a, b) => a - b).join(',')}, abgebildet=${[...covered].sort((a, b) => a - b).join(',')}`;
+  console.error(msg);
+  if (import.meta.env.DEV) {
+    throw new Error(msg);
+  }
+}
+
+/** Änderungen im Plan – verständlich formatiert („Monat 3–5 wird zu ElterngeldPlus mit beiden Eltern“). */
+export function getResultChangePreviewUserFriendly(
+  currentResult: CalculationResult,
+  optimizedResult: CalculationResult,
+  maxLines: number = 5
+): string[] {
+  const months = expandPreviewMonthsUnionWithGaps(currentResult, optimizedResult);
+  const changedMonths = new Set<number>();
 
   type Change = { months: number[]; changeType: 'neu' | 'entfernt' | 'replace'; fromLabel?: string; toLabel?: string };
   const changes: Change[] = [];
@@ -298,14 +337,22 @@ function getResultChangePreviewUserFriendly(
 
     if (fromLabel === toLabel) continue;
 
+    changedMonths.add(month);
+
     const changeType: 'neu' | 'entfernt' | 'replace' =
       cur.who === 'none' ? 'neu' : opt.who === 'none' ? 'entfernt' : 'replace';
 
-    if (
-      currentRun &&
-      changeType === currentRun.changeType &&
-      (changeType === 'neu' ? toLabel === currentRun.toLabel : changeType === 'entfernt' ? fromLabel === currentRun.fromLabel : `${fromLabel}→${toLabel}` === `${currentRun.fromLabel}→${currentRun.toLabel}`)
-    ) {
+    const lastInRun = currentRun?.months[currentRun.months.length - 1];
+    const consecutive = lastInRun != null && month === lastInRun + 1;
+
+    let extendRun = false;
+    if (currentRun && changeType === currentRun.changeType && consecutive) {
+      if (changeType === 'entfernt') extendRun = true;
+      else if (changeType === 'neu') extendRun = toLabel === currentRun.toLabel;
+      else extendRun = fromLabel === currentRun.fromLabel && toLabel === currentRun.toLabel;
+    }
+
+    if (extendRun && currentRun) {
       currentRun.months.push(month);
     } else {
       if (currentRun) changes.push(currentRun);
@@ -313,6 +360,8 @@ function getResultChangePreviewUserFriendly(
     }
   }
   if (currentRun) changes.push(currentRun);
+
+  assertChangePreviewCoversAllChangedMonths(changedMonths, changes);
 
   const formatMonthRangeUser = (m: number[]): string => {
     if (m.length === 0) return '';
@@ -323,9 +372,18 @@ function getResultChangePreviewUserFriendly(
   const lines: string[] = [];
   for (const c of changes) {
     const range = formatMonthRangeUser(c.months);
+    const toPartnerschaftsbonus =
+      (c.changeType === 'neu' || c.changeType === 'replace') && c.toLabel === 'Partnerschaftsbonus';
+    if (toPartnerschaftsbonus) {
+      lines.push(`${range} wird zum Partnerschaftsbonus`);
+      lines.push('→ beide Eltern müssen parallel ElterngeldPlus beziehen');
+      continue;
+    }
     const line =
       c.changeType === 'entfernt'
-        ? `${range} wird entfernt`
+        ? c.months.length === 1
+          ? `${range} entfällt`
+          : `${range} entfallen`
         : c.changeType === 'neu' && c.toLabel
           ? `${range} wird zu ${formatModeForUser(c.toLabel)}`
           : c.changeType === 'replace' && c.toLabel
@@ -342,18 +400,27 @@ function getResultChangePreviewUserFriendly(
 
 type PlanStability = 'gut' | 'pruefen' | 'kritisch';
 
-function getPlanStability(result: CalculationResult): {
+function getPlanStability(
+  result: CalculationResult,
+  hidePartnerschaftsbonusUi = false
+): {
   level: PlanStability;
   label: string;
   hints: string[];
 } {
-  const { validation, parents } = result;
+  const { parents } = result;
+  const validation = hidePartnerschaftsbonusUi
+    ? {
+        ...result.validation,
+        warnings: result.validation.warnings.filter((w) => !isPartnerschaftsbonusWarningMessage(w)),
+      }
+    : result.validation;
   const hasErrors = validation.errors.length > 0;
   const hasWarnings = validation.warnings.length > 0;
   const hasParentWarnings = parents.some((p) => p.warnings.length > 0);
-  const hasPartnerBonus = parents.some((p) =>
-    p.monthlyResults.some((m) => m.mode === 'partnerBonus')
-  );
+  const hasPartnerBonus =
+    !hidePartnerschaftsbonusUi &&
+    parents.some((p) => p.monthlyResults.some((m) => m.mode === 'partnerBonus'));
   const hasHoursWarning = validation.warnings.some((w) => w.includes('24–32') || w.includes('Wochenstunden'));
   const hasPartnerBonusWarning = validation.warnings.some((w) => isPartnerschaftsbonusWarningMessage(w));
 
@@ -437,10 +504,15 @@ function getErrorAction(error: string): { label: string; action: 'focusGrunddate
 type PlanStabilityBlockProps = {
   result: CalculationResult;
   className?: string;
+  hidePartnerschaftsbonusUi?: boolean;
 };
 
-function PlanStabilityBlock({ result, className }: PlanStabilityBlockProps) {
-  const { level, label, hints } = getPlanStability(result);
+function PlanStabilityBlock({
+  result,
+  className,
+  hidePartnerschaftsbonusUi = false,
+}: PlanStabilityBlockProps) {
+  const { level, label, hints } = getPlanStability(result, hidePartnerschaftsbonusUi);
   const levelClass =
     level === 'kritisch'
       ? 'elterngeld-plan-stability--kritisch'
@@ -467,7 +539,11 @@ type StepOptimizationBlockProps = {
   formatCurrencySigned: (n: number) => string;
   countBezugMonths: (r: CalculationResult) => number;
   hasPartnerBonus: (r: CalculationResult) => boolean;
-  onAdoptOptimization?: (plan: ElterngeldCalculationPlan) => void;
+  onAdoptOptimization?: (
+    plan: ElterngeldCalculationPlan,
+    adoptedGoal?: OptimizationAdoptableGoal,
+    adoptedResult?: CalculationResult
+  ) => void;
   onDiscardOptimization?: () => void;
   onBackToOptimization?: () => void;
   /** Schließt Overlay/Ansicht und führt sichtbar in die Monatsaufteilungs-Bearbeitung. */
@@ -500,6 +576,8 @@ type StepOptimizationBlockProps = {
   partTimeEditGeneration?: number;
   /** Vorbereitungsdaten: für Übernahme-Prüfung „explizit eingetragene Teilzeit“ (nicht nur Fallback-Schätzung). */
   elterngeldApplicationForAdoption?: ElterngeldApplication | null;
+  /** Alleinerziehend: keine Partnerschaftsbonus-Darstellung in Varianten. */
+  hidePartnerschaftsbonusUi?: boolean;
 };
 
 type OptimizationComparisonBlockProps = {
@@ -510,7 +588,11 @@ type OptimizationComparisonBlockProps = {
   formatCurrencySigned: (n: number) => string;
   countBezugMonths: (r: CalculationResult) => number;
   hasPartnerBonus: (r: CalculationResult) => boolean;
-  onAdoptOptimization?: (plan: ElterngeldCalculationPlan) => void;
+  onAdoptOptimization?: (
+    plan: ElterngeldCalculationPlan,
+    adoptedGoal?: OptimizationAdoptableGoal,
+    adoptedResult?: CalculationResult
+  ) => void;
   onDiscardOptimization?: () => void;
   onBackToOptimization?: () => void;
   originalPlanForOptimization?: ElterngeldCalculationPlan | null;
@@ -624,7 +706,7 @@ function getOptionImpactLines(
   opt: DecisionOption,
   formatCurrency: (n: number) => string,
   formatCurrencySigned: (n: number) => string,
-  options?: { omitDurationLine?: boolean }
+  options?: { omitDurationLine?: boolean; omitBonusDelta?: boolean }
 ): string[] {
   const { impact } = opt;
   const lines: string[] = [];
@@ -633,7 +715,7 @@ function getOptionImpactLines(
     const unit = formatMonthsLabel(Math.abs(impact.durationDelta), 'Monat', 'Monate');
     lines.push(impact.durationDelta > 0 ? `+${impact.durationDelta} ${unit}` : `${impact.durationDelta} ${unit}`);
   }
-  if (impact.bonusDelta !== 0) {
+  if (!options?.omitBonusDelta && impact.bonusDelta !== 0) {
     const unit = formatMonthsLabel(Math.abs(impact.bonusDelta), 'Bonusmonat', 'Bonusmonate');
     lines.push(impact.bonusDelta > 0 ? `+${impact.bonusDelta} ${unit}` : `${impact.bonusDelta} ${unit}`);
   }
@@ -668,6 +750,7 @@ export function StepOptimizationBlock({
   partnerBonusHoursEligible = true,
   partTimeEditGeneration = 0,
   elterngeldApplicationForAdoption = null,
+  hidePartnerschaftsbonusUi = false,
 }: StepOptimizationBlockProps) {
   const [selectedOptionPerStep, setSelectedOptionPerStep] = useState<number[]>([]);
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
@@ -826,7 +909,8 @@ export function StepOptimizationBlock({
             Gewähltes Ziel:{' '}
             <strong>{SCENARIO_SHORT_LABELS[optimizationGoal] ?? optimizationGoal}</strong>
           </p>
-          {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal] && (
+          {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal] &&
+            !(hidePartnerschaftsbonusUi && optimizationGoal === 'partnerBonus') && (
             <p className="elterngeld-calculation__chosen-goal-detail">
               {OPTIMIZATION_GOAL_CHOICE_HINT[optimizationGoal]}
             </p>
@@ -896,7 +980,11 @@ export function StepOptimizationBlock({
               }).allowed
             )
               return;
-            onAdoptOptimization?.(adoptDialogOption.plan);
+            onAdoptOptimization?.(
+              adoptDialogOption.plan,
+              optimizationGoalToAdoptable(optimizationGoal),
+              adoptDialogOption.result
+            );
           }}
           currentResult={currentResultForStep}
           optimizedResult={adoptDialogOption.result}
@@ -1009,6 +1097,7 @@ export function StepOptimizationBlock({
                       onNavigateToPartTimeSettings={onNavigateToPartTimeSettings}
                       adoptUserPlan={plan}
                       adoptApplication={elterngeldApplicationForAdoption}
+                      hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
                     />
                   ))}
                 </div>
@@ -1103,6 +1192,7 @@ function OptimizationComparisonBlock({
   elterngeldApplicationForAdoption = null,
   adoptUserPlan = null,
 }: OptimizationComparisonBlockProps) {
+  const hidePartnerschaftsbonusUi = elterngeldApplicationForAdoption?.applicantMode === 'single_parent';
   const [showAdoptConfirm, setShowAdoptConfirm] = useState(false);
   const { goal, status, currentResult, suggestions } = optimizationResultSet;
   const comparisonAdoptUserPlan = adoptUserPlan ?? optimizationResultSet.currentPlan;
@@ -1149,7 +1239,7 @@ function OptimizationComparisonBlock({
             }).allowed
           )
             return;
-          onAdoptOptimization?.(selectedOption.plan);
+          onAdoptOptimization?.(selectedOption.plan, optimizationGoalToAdoptable(goal), selectedOption.result);
         }}
         currentResult={currentResult}
         optimizedResult={selectedOption?.result ?? currentResult}
@@ -1221,6 +1311,7 @@ function OptimizationComparisonBlock({
                             onNavigateToPartTimeSettings={onNavigateToPartTimeSettings}
                             adoptUserPlan={comparisonAdoptUserPlan}
                             adoptApplication={elterngeldApplicationForAdoption}
+                            hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
                           />
                         );
                       })}
@@ -1246,6 +1337,7 @@ function OptimizationComparisonBlock({
                             onNavigateToPartTimeSettings={onNavigateToPartTimeSettings}
                             adoptUserPlan={comparisonAdoptUserPlan}
                             adoptApplication={elterngeldApplicationForAdoption}
+                            hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
                           />
                         );
                       })}
@@ -1319,6 +1411,7 @@ export function OptionCard({
   onNavigateToPartTimeSettings,
   adoptUserPlan,
   adoptApplication = null,
+  hidePartnerschaftsbonusUi = false,
 }: {
   opt: DecisionOption;
   idx: number;
@@ -1331,9 +1424,12 @@ export function OptionCard({
   onNavigateToPartTimeSettings?: () => void;
   adoptUserPlan: ElterngeldCalculationPlan;
   adoptApplication?: ElterngeldApplication | null;
+  hidePartnerschaftsbonusUi?: boolean;
 }) {
   const durationDelta = opt.impact.durationDelta;
-  const impactLines = getOptionImpactLines(opt, formatCurrency, formatCurrencySigned);
+  const impactLines = getOptionImpactLines(opt, formatCurrency, formatCurrencySigned, {
+    omitBonusDelta: hidePartnerschaftsbonusUi,
+  });
   const planChangeLines =
     opt.strategyType === 'current'
       ? []
@@ -1353,6 +1449,13 @@ export function OptionCard({
 
   const cardContent = (
     <>
+      {opt.strategyType === 'partnerBonus' && !hidePartnerschaftsbonusUi && (
+        <span
+          className="elterngeld-calculation__suggestion-card-badge elterngeld-calculation__suggestion-card-badge--inline"
+        >
+          👥 Nur mit Partner möglich
+        </span>
+      )}
       <span className="elterngeld-calculation__suggestion-title">{opt.label}</span>
       {(impactLines.length > 0 || hasStructuralOnly) && (
         <span className="elterngeld-calculation__suggestion-delta">
@@ -1380,6 +1483,16 @@ export function OptionCard({
               basierend auf ElterngeldPlus
             </span>
           )}
+          {opt.strategyType === 'partnerBonus' && !hidePartnerschaftsbonusUi && (
+            <span className="elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--note">
+              Voraussetzung: Partner bezieht gleichzeitig Elterngeld
+            </span>
+          )}
+        </span>
+      )}
+      {opt.strategyType === 'partnerBonus' && !hidePartnerschaftsbonusUi && impactLines.length === 0 && !hasStructuralOnly && (
+        <span className="elterngeld-calculation__suggestion-delta-line elterngeld-calculation__suggestion-delta-line--note">
+          Voraussetzung: Partner bezieht gleichzeitig Elterngeld
         </span>
       )}
       {planChangeLines.length > 0 && (
@@ -1478,7 +1591,7 @@ export function OptionCard({
       })()}
       <span className="elterngeld-calculation__suggestion-meta">
         {formatCurrency(opt.result.householdTotal)} · {countBezugMonthsCore(opt.result)} Monate
-        {opt.strategyType !== 'current' && hasPartnerBonus(opt.result) && (
+        {opt.strategyType !== 'current' && hasPartnerBonus(opt.result) && !hidePartnerschaftsbonusUi && (
           <> · Partnerschaftsbonus</>
         )}
         {opt.matchesUserPriority && <> · Dein Ziel</>}
@@ -1635,7 +1748,11 @@ type Props = {
   originalResultForOptimization?: CalculationResult | null;
   lastAdoptedPlan?: ElterngeldCalculationPlan | null;
   lastAdoptedResult?: CalculationResult | null;
-  onAdoptOptimization?: (plan: ElterngeldCalculationPlan) => void;
+  onAdoptOptimization?: (
+    plan: ElterngeldCalculationPlan,
+    adoptedGoal?: OptimizationAdoptableGoal,
+    adoptedResult?: CalculationResult
+  ) => void;
   onDiscardOptimization?: () => void;
   onShowCompareOriginal?: () => void;
   onCreatePdf?: () => void;
@@ -1692,10 +1809,14 @@ export const StepCalculationResult: React.FC<Props> = ({
   elterngeldApplicationForAdoption = null,
 }) => {
   const { parents, householdTotal, validation, meta } = result;
+  const hidePartnerschaftsbonusUi = elterngeldApplicationForAdoption?.applicantMode === 'single_parent';
 
   const partnerBonusWarningMessages = useMemo(
-    () => validation.warnings.filter(isPartnerschaftsbonusWarningMessage),
-    [validation.warnings]
+    () =>
+      hidePartnerschaftsbonusUi
+        ? []
+        : validation.warnings.filter(isPartnerschaftsbonusWarningMessage),
+    [validation.warnings, hidePartnerschaftsbonusUi]
   );
   const nonPartnerBonusWarnings = useMemo(
     () => validation.warnings.filter((w) => !isPartnerschaftsbonusWarningMessage(w)),
@@ -1704,10 +1825,20 @@ export const StepCalculationResult: React.FC<Props> = ({
 
   const optimizationResultSet = useMemo((): OptimizationResultSet | null => {
     if (!plan || !optimizationGoal || validation.errors.length > 0) return null;
-    const outcome = buildOptimizationResult(plan, result, optimizationGoal);
+    const outcome = buildOptimizationResult(plan, result, optimizationGoal, {
+      adoptedBaselineGoals: parseOptimizationAdoptedBaselineMap(
+        elterngeldApplicationForAdoption?.benefitPlan.optimizationAdoptedBaselineGoals
+      ),
+    });
     if ('status' in outcome && outcome.status === 'unsupported') return null;
     return outcome as OptimizationResultSet;
-  }, [plan, result, optimizationGoal, validation.errors.length]);
+  }, [
+    plan,
+    result,
+    optimizationGoal,
+    validation.errors.length,
+    elterngeldApplicationForAdoption?.benefitPlan.optimizationAdoptedBaselineGoals,
+  ]);
 
   const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
   const [showPartnerBonusCheck, setShowPartnerBonusCheck] = useState(false);
@@ -1813,7 +1944,7 @@ export const StepCalculationResult: React.FC<Props> = ({
         </div>
       )}
 
-      {partnerBonusWarningMessages.length > 0 && (
+      {!hidePartnerschaftsbonusUi && partnerBonusWarningMessages.length > 0 && (
         <Card className="still-daily-checklist__card elterngeld-calculation__partner-bonus-issue-card elterngeld-step__notice elterngeld-step__notice--warning">
           <h3 className="elterngeld-step__title">{PARTNERSCHAFTSBONUS_KARTE_TITEL}</h3>
           <p className="elterngeld-calculation__partner-bonus-issue-detail">{partnerBonusWarningMessages[0]}</p>
@@ -1871,9 +2002,13 @@ export const StepCalculationResult: React.FC<Props> = ({
         </div>
       )}
 
-      <PlanStabilityBlock result={result} className="elterngeld-calculation__plan-stability" />
+      <PlanStabilityBlock
+        result={result}
+        className="elterngeld-calculation__plan-stability"
+        hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
+      />
 
-      {partnerBonusWarningMessages.length === 0 && (
+      {!hidePartnerschaftsbonusUi && partnerBonusWarningMessages.length === 0 && (
         <div className="elterngeld-calculation__partner-bonus-block">
           {parents.some((p) => p.monthlyResults.some((m) => m.mode === 'partnerBonus')) && (
             <p className="elterngeld-calculation__partner-bonus-hint">
@@ -1951,6 +2086,7 @@ export const StepCalculationResult: React.FC<Props> = ({
                   partnerBonusHoursEligible={partnerBonusHoursEligible}
                   partTimeEditGeneration={partTimeEditGeneration}
                   elterngeldApplicationForAdoption={elterngeldApplicationForAdoption}
+                  hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
                 />
               </>
             )}
@@ -2062,7 +2198,9 @@ export const StepCalculationResult: React.FC<Props> = ({
             </p>
             {parent.warnings.length > 0 && (
               <ul className="elterngeld-calculation__warnings">
-                {parent.warnings.map((w, i) => {
+                {parent.warnings
+                  .filter((w) => !hidePartnerschaftsbonusUi || !isPartnerschaftsbonusWarningMessage(w))
+                  .map((w, i) => {
                   const action = getHintAction(w, result);
                   return (
                     <li key={i} className="elterngeld-calculation__warning-item">
@@ -2172,7 +2310,7 @@ export const StepCalculationResult: React.FC<Props> = ({
       </Card>
       )}
 
-      {plan && (
+      {plan && !hidePartnerschaftsbonusUi && (
         <PartnerBonusCheckDialog
           isOpen={showPartnerBonusCheck}
           onClose={() => setShowPartnerBonusCheck(false)}

@@ -1936,6 +1936,16 @@
   border-radius: 4px;
 }
 
+/* Varianten-Badge unter/über Titel (kein Overlay in der Kartenecke) */
+.elterngeld-calculation__suggestion-card-badge.elterngeld-calculation__suggestion-card-badge--inline {
+  position: static;
+  align-self: flex-start;
+  margin: 0 0 0.2rem 0;
+  color: var(--color-text-secondary, #505050);
+  background: rgba(120, 96, 76, 0.1);
+  font-weight: 600;
+}
+
 .elterngeld-calculation__suggestion-main-signal {
   display: block;
   font-size: 1.1rem;

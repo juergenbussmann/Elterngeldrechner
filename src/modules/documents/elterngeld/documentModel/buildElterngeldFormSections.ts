@@ -31,6 +31,8 @@ import type {
 } from './elterngeldDocumentFormTypes';
 import { isAppBoundFormField } from './elterngeldDocumentFormTypes';
 import { buildOfficialFormOnlySubsection } from '../bundesland/formProfiles/officialFormOnlyFields';
+import { DOCUMENT_FLOW_KEYS } from './formDocumentFlowOrder';
+import { sortAppSubsectionsByProfile } from './buildElterngeldMainDocumentFlow';
 
 /** Titel aus einheitlichem Antrag (1–13) — NI/RLP/ST u. a.; Abschnitt 3/4/12 ohne passende App-Felder: nicht ausgespielt. */
 const TITLE_1_KIND = '1. Angaben zum Kind';
@@ -124,9 +126,14 @@ function sub(
   title: string,
   fields: ElterngeldDocumentFormField[],
   sortKey: FormSubsectionKey,
-  layout: BundeslandFormSectionALayout | undefined
+  layout: BundeslandFormSectionALayout | undefined,
+  documentFlowKey: string
 ): ElterngeldDocumentFormSubsection {
-  return { subsectionTitle: title, fields: sortFieldsByLayout(fields, sortKey, layout) };
+  return {
+    subsectionTitle: title,
+    fields: sortFieldsByLayout(fields, sortKey, layout),
+    documentFlowKey,
+  };
 }
 
 export function buildSubsectionsFromProfile(
@@ -143,9 +150,11 @@ export function buildSubsectionsFromProfile(
       const sorted = sortFieldsByLayout([...byKey[key].fields], key, layout);
       fields.push(...sorted);
     }
+    const documentFlowKey = g.keys[0] ?? 'bundesland';
     return {
       subsectionTitle: g.displayTitle,
       fields,
+      documentFlowKey,
     };
   });
 }
@@ -173,23 +182,39 @@ function buildOneToThirteenLikeSubsections(
 
   const out: ElterngeldDocumentFormSubsection[] = [];
 
-  out.push(sub('Bundesland', [...byKey.bundesland.fields], 'bundesland', layout));
-  out.push(sub(TITLE_1_KIND, [...byKey.kind.fields], 'kind', layout));
+  out.push(
+    sub('Bundesland', [...byKey.bundesland.fields], 'bundesland', layout, DOCUMENT_FLOW_KEYS.bundesland)
+  );
+  out.push(sub(TITLE_1_KIND, [...byKey.kind.fields], 'kind', layout, DOCUMENT_FLOW_KEYS.kind));
 
   const sec2Fields = [
     ...sortFieldsByLayout([...byKey.antragstellung.fields], 'antragstellung', layout),
     ...sortFieldsByLayout(stamm, 'eltern', layout),
   ];
-  out.push(sub(TITLE_2_ELTERN, sec2Fields, 'eltern', layout));
+  out.push(sub(TITLE_2_ELTERN, sec2Fields, 'eltern', layout, DOCUMENT_FLOW_KEYS.elternBlock2));
 
   if (hasIncomeData(values)) {
-    out.push(sub(einkommenTitel, sortFieldsByLayout(einkommen, 'eltern', layout), 'eltern', layout));
+    out.push(
+      sub(
+        einkommenTitel,
+        sortFieldsByLayout(einkommen, 'eltern', layout),
+        'eltern',
+        layout,
+        DOCUMENT_FLOW_KEYS.einkommenVorGeburt
+      )
+    );
   }
 
   out.push(
-    sub(elternzeitTitel, sortFieldsByLayout(teilzeit, 'eltern', layout), 'eltern', layout)
+    sub(
+      elternzeitTitel,
+      sortFieldsByLayout(teilzeit, 'eltern', layout),
+      'eltern',
+      layout,
+      DOCUMENT_FLOW_KEYS.elternzeitTeilzeit
+    )
   );
-  out.push(sub(planungsTitel, [...byKey.bezug.fields], 'bezug', layout));
+  out.push(sub(planungsTitel, [...byKey.bezug.fields], 'bezug', layout, DOCUMENT_FLOW_KEYS.bezug));
 
   return out;
 }
@@ -213,18 +238,35 @@ function buildHessenSubsections(
   ]);
 
   const out: ElterngeldDocumentFormSubsection[] = [];
-  out.push(sub('Bundesland', [...byKey.bundesland.fields], 'bundesland', layout));
-  out.push(sub(DEFAULT_FORM_SUBSECTION_TITLES.kind, [...byKey.kind.fields], 'kind', layout));
+  out.push(
+    sub('Bundesland', [...byKey.bundesland.fields], 'bundesland', layout, DOCUMENT_FLOW_KEYS.bundesland)
+  );
+  out.push(
+    sub(
+      DEFAULT_FORM_SUBSECTION_TITLES.kind,
+      [...byKey.kind.fields],
+      'kind',
+      layout,
+      DOCUMENT_FLOW_KEYS.kind
+    )
+  );
   out.push(
     sub(
       DEFAULT_FORM_SUBSECTION_TITLES.antragstellung,
       [...byKey.antragstellung.fields],
       'antragstellung',
-      layout
+      layout,
+      DOCUMENT_FLOW_KEYS.hessenAntragstellung
     )
   );
   out.push(
-    sub(DEFAULT_FORM_SUBSECTION_TITLES.eltern, sortFieldsByLayout(stamm, 'eltern', layout), 'eltern', layout)
+    sub(
+      DEFAULT_FORM_SUBSECTION_TITLES.eltern,
+      sortFieldsByLayout(stamm, 'eltern', layout),
+      'eltern',
+      layout,
+      DOCUMENT_FLOW_KEYS.hessenElternStamm
+    )
   );
 
   if (hasIncomeData(values)) {
@@ -233,7 +275,8 @@ function buildHessenSubsections(
         TITLE_7_EINKOMMEN_VOR_GEBURT,
         sortFieldsByLayout(einkommen, 'eltern', layout),
         'eltern',
-        layout
+        layout,
+        DOCUMENT_FLOW_KEYS.einkommenVorGeburt
       )
     );
   }
@@ -243,7 +286,8 @@ function buildHessenSubsections(
       TITLE_11_ELTERNZEIT,
       sortFieldsByLayout(teilzeit, 'eltern', layout),
       'eltern',
-      layout
+      layout,
+      DOCUMENT_FLOW_KEYS.elternzeitTeilzeit
     )
   );
   out.push(
@@ -251,7 +295,8 @@ function buildHessenSubsections(
       DEFAULT_FORM_SUBSECTION_TITLES.bezug,
       [...byKey.bezug.fields],
       'bezug',
-      layout
+      layout,
+      DOCUMENT_FLOW_KEYS.bezug
     )
   );
 
@@ -275,8 +320,10 @@ function buildNrwLikeSubsections(
   const ptB = pickElternFieldsById(elternAll, ['parentBPartTime']);
 
   const out: ElterngeldDocumentFormSubsection[] = [];
-  out.push(sub('Bundesland', [...byKey.bundesland.fields], 'bundesland', layout));
-  out.push(sub(TITLE_NRW_11_KIND, [...byKey.kind.fields], 'kind', layout));
+  out.push(
+    sub('Bundesland', [...byKey.bundesland.fields], 'bundesland', layout, DOCUMENT_FLOW_KEYS.bundesland)
+  );
+  out.push(sub(TITLE_NRW_11_KIND, [...byKey.kind.fields], 'kind', layout, DOCUMENT_FLOW_KEYS.kind));
 
   if (parentB) {
     const block12 = [
@@ -285,14 +332,18 @@ function buildNrwLikeSubsections(
       ...sortFieldsByLayout(incA, 'eltern', layout),
       ...sortFieldsByLayout(ptA, 'eltern', layout),
     ];
-    out.push(sub(TITLE_NRW_12_ELTERN, block12, 'eltern', layout));
+    out.push(
+      sub(TITLE_NRW_12_ELTERN, block12, 'eltern', layout, DOCUMENT_FLOW_KEYS.nrwPrimaryParent)
+    );
 
     const blockF3 = [
       ...sortFieldsByLayout(stammB, 'eltern', layout),
       ...sortFieldsByLayout(incB, 'eltern', layout),
       ...sortFieldsByLayout(ptB, 'eltern', layout),
     ];
-    out.push(sub(TITLE_NRW_FORM3_AUSZUG, blockF3, 'eltern', layout));
+    out.push(
+      sub(TITLE_NRW_FORM3_AUSZUG, blockF3, 'eltern', layout, DOCUMENT_FLOW_KEYS.nrwSecondParent)
+    );
   } else {
     const block12 = [
       ...sortFieldsByLayout([...byKey.antragstellung.fields], 'antragstellung', layout),
@@ -300,10 +351,14 @@ function buildNrwLikeSubsections(
       ...sortFieldsByLayout(incA, 'eltern', layout),
       ...sortFieldsByLayout(ptA, 'eltern', layout),
     ];
-    out.push(sub(TITLE_NRW_12_ELTERN, block12, 'eltern', layout));
+    out.push(
+      sub(TITLE_NRW_12_ELTERN, block12, 'eltern', layout, DOCUMENT_FLOW_KEYS.nrwPrimaryParent)
+    );
   }
 
-  out.push(sub(TITLE_NRW_13_MONATE, [...byKey.bezug.fields], 'bezug', layout));
+  out.push(
+    sub(TITLE_NRW_13_MONATE, [...byKey.bezug.fields], 'bezug', layout, DOCUMENT_FLOW_KEYS.bezug)
+  );
   return out;
 }
 
@@ -342,10 +397,15 @@ function buildSubsectionsForProfil(
   }
 }
 
+export interface ElterngeldFormSectionABuildResult {
+  section: ElterngeldDocumentFormSection;
+  officialSubsection: ElterngeldDocumentFormSubsection | null;
+}
+
 export function buildElterngeldFormSectionA(
   values: ElterngeldApplication,
   bl: ResolvedBundeslandForDocuments
-): ElterngeldDocumentFormSection {
+): ElterngeldFormSectionABuildResult {
   const stateCode = bl.stateCode;
   const birthDate = parseIsoDate(values.child.birthDate);
   const birthStr = birthDate ? formatDateGerman(birthDate) : '';
@@ -435,13 +495,16 @@ export function buildElterngeldFormSectionA(
   };
 
   const profil = getFormularProfil(stateCode);
-  const subsections = buildSubsectionsForProfil(profil, values, byKey, stateCode);
-  const officialSub = buildOfficialFormOnlySubsection(profil, subsections);
-  if (officialSub) subsections.push(officialSub);
+  const rawSubsections = buildSubsectionsForProfil(profil, values, byKey, stateCode);
+  const officialSubsection = buildOfficialFormOnlySubsection(profil, rawSubsections);
+  const subsections = sortAppSubsectionsByProfile(rawSubsections, profil);
 
   return {
-    sectionCode: 'A',
-    sectionHeading: SECTION_A_TITLE,
-    subsections,
+    section: {
+      sectionCode: 'A',
+      sectionHeading: SECTION_A_TITLE,
+      subsections,
+    },
+    officialSubsection,
   };
 }

@@ -15,11 +15,7 @@ import { mergePlanIntoPreparation } from '../planToApplicationMerge';
 import { isPartnerBonusPartTimeHoursEligible } from '../partnerBonusEligibility';
 import { calculatePlan, validatePartnerBonus, applyCombinedSelection } from '../calculation';
 import { PartnerBonusCheckDialog, type PartnerBonusAction } from './PartnerBonusCheckDialog';
-import {
-  getPartnerschaftsbonusHandlungshinweis,
-  PARTNERSCHAFTSBONUS_KARTE_TITEL,
-  PARTNERSCHAFTSBONUS_OVERLAY_AKTION,
-} from './partnerBonusUiCopy';
+import { isPartnerschaftsbonusWarningMessage, PARTNERSCHAFTSBONUS_OVERLAY_AKTION } from './partnerBonusUiCopy';
 import type {
   ElterngeldApplication,
   BenefitModel,
@@ -398,6 +394,7 @@ export const StepPlan: React.FC<Props> = ({
       ? parseMonthCount(values.benefitPlan.parentBMonths)
       : 0;
   const hasPartner = values.applicantMode === 'both_parents';
+  const hidePartnerschaftsbonusUi = values.applicantMode === 'single_parent';
 
   const partnerBonusNotAllowed = useMemo(
     () => hasPartner && !isPartnerBonusPartTimeHoursEligible(values),
@@ -554,21 +551,26 @@ export const StepPlan: React.FC<Props> = ({
     [values, onChange, onApplyBonusFix, onNavigateToStep]
   );
 
+  const planWarningsForHints = useMemo(() => {
+    const w = planResult?.validation.warnings ?? [];
+    if (hidePartnerschaftsbonusUi) return w.filter((x) => !isPartnerschaftsbonusWarningMessage(x));
+    return w;
+  }, [planResult, hidePartnerschaftsbonusUi]);
+
   const mainHint = useMemo(() => {
     if (!planResult) return null;
     const hoursEligible = isPartnerBonusPartTimeHoursEligible(values);
-    const { validation } = planResult;
-    const firstError = validation.errors[0];
+    const firstError = planResult.validation.errors[0];
     if (firstError) {
       const { label, action } = getErrorActionFromError(firstError);
       if (action) return { text: firstError, label, action: action as HintAction, month: undefined as number | undefined };
     }
-    for (const w of validation.warnings) {
+    for (const w of planWarningsForHints) {
       const { label, action, month } = getHintActionFromWarning(w, planResult, hoursEligible);
       if (action) return { text: w, label, action, month };
     }
     return null;
-  }, [planResult, values]);
+  }, [planResult, values, planWarningsForHints]);
 
   return (
     <Card id="elterngeld-plan-card" className="still-daily-checklist__card elterngeld-plan-card">
@@ -577,7 +579,7 @@ export const StepPlan: React.FC<Props> = ({
         Plane hier, welcher Elternteil in welchem Monat Elterngeld bezieht.
       </p>
 
-      {planResult && mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck' && (planResult.validation.errors.length > 0 || planResult.validation.warnings.length > 0) && (
+      {planResult && mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck' && (planResult.validation.errors.length > 0 || planWarningsForHints.length > 0) && (
         <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--warning">
           <p className="elterngeld-plan__status-text">{mainHint.text}</p>
           <Button
@@ -606,24 +608,6 @@ export const StepPlan: React.FC<Props> = ({
         </div>
       )}
 
-      {planResult && mainHint?.action === 'openPartnerBonusCheck' && (
-        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--warning">
-          <p className="elterngeld-plan__status-text elterngeld-plan__status-text--title">{PARTNERSCHAFTSBONUS_KARTE_TITEL}</p>
-          <p className="elterngeld-plan__status-text">{mainHint.text}</p>
-          <p className="elterngeld-plan__status-text elterngeld-plan__status-text--hint">
-            {getPartnerschaftsbonusHandlungshinweis(mainHint.text)}
-          </p>
-          <Button
-            type="button"
-            variant="primary"
-            className="btn--softpill elterngeld-plan__status-btn"
-            onClick={() => setShowPartnerBonusCheck(true)}
-          >
-            {PARTNERSCHAFTSBONUS_OVERLAY_AKTION}
-          </Button>
-        </div>
-      )}
-
       {planResult && (
         <Card className="elterngeld-plan__summary-card still-daily-checklist__card">
           <div className="elterngeld-plan__summary-rows">
@@ -635,37 +619,14 @@ export const StepPlan: React.FC<Props> = ({
               <span className="elterngeld-plan__summary-label">Dauer</span>
               <span className="elterngeld-plan__summary-value">{countBezugMonths(planResult)} Monate</span>
             </div>
+            {!hidePartnerschaftsbonusUi && (
             <div className="elterngeld-plan__summary-row">
               <span className="elterngeld-plan__summary-label">Bonusmonate</span>
               <span className="elterngeld-plan__summary-value">{countPartnerBonusMonths(planResult)} Bonusmonate</span>
             </div>
+            )}
           </div>
         </Card>
-      )}
-
-      {hasPartner &&
-        isPartnerBonusPartTimeHoursEligible(values) &&
-        !partnerBonusValidation.isValid &&
-        !(mainHint && mainHint.action && mainHint.action !== 'openPartnerBonusCheck') && (
-        <div className="elterngeld-plan__status-card elterngeld-step__notice elterngeld-step__notice--warning">
-          <p className="elterngeld-plan__status-text elterngeld-plan__status-text--title">{PARTNERSCHAFTSBONUS_KARTE_TITEL}</p>
-          {partnerBonusValidation.warnings[0] && (
-            <p className="elterngeld-plan__status-text">{partnerBonusValidation.warnings[0]}</p>
-          )}
-          {partnerBonusValidation.warnings[0] && (
-            <p className="elterngeld-plan__status-text elterngeld-plan__status-text--hint">
-              {getPartnerschaftsbonusHandlungshinweis(partnerBonusValidation.warnings[0])}
-            </p>
-          )}
-          <Button
-            type="button"
-            variant="primary"
-            className="btn--softpill elterngeld-plan__status-btn"
-            onClick={() => setShowPartnerBonusCheck(true)}
-          >
-            {PARTNERSCHAFTSBONUS_OVERLAY_AKTION}
-          </Button>
-        </div>
       )}
 
       <div id="elterngeld-plan-leistung" className="elterngeld-plan__model-row">
@@ -681,7 +642,7 @@ export const StepPlan: React.FC<Props> = ({
           <p className="elterngeld-plan__model-comparison-text">
             <strong>Basis:</strong> mehr Geld pro Monat
             <br />
-            <strong>Plus:</strong> weniger pro Monat, dafür länger und mit Teilzeit kombinierbar
+            <strong>Plus:</strong> weniger pro Monat, dafür längere Bezugsdauer. Auch ohne Teilzeit möglich.
           </p>
         </div>
         <div className="elterngeld-plan__model-btns">
@@ -700,7 +661,7 @@ export const StepPlan: React.FC<Props> = ({
             );
           })}
         </div>
-        {values.benefitPlan.model === 'plus' && partnerBonusNotAllowed && (
+        {values.benefitPlan.model === 'plus' && partnerBonusNotAllowed && !hidePartnerschaftsbonusUi && (
           <div className="elterngeld-hint elterngeld-hint--model">
             <p className="elterngeld-hint__text">
               Partnerschaftsbonus nur möglich bei 24–32 Stunden pro Woche.
@@ -738,11 +699,13 @@ export const StepPlan: React.FC<Props> = ({
                 <br />
                 geringere monatliche Auszahlung · längere Bezugsdauer · sinnvoll bei Teilzeit
               </p>
+              {!hidePartnerschaftsbonusUi && (
               <p className="elterngeld-hint__details-text">
                 <strong>Partnerschaftsbonus</strong>
                 <br />
                 nur mit ElterngeldPlus möglich
               </p>
+              )}
               <p className="elterngeld-hint__details-text elterngeld-hint__details-text--sub">
                 Diese Auswahl ist die Voreinstellung für neue Monate.
                 Im Monatsdialog kannst du die Leistung pro Monat ändern.
@@ -751,6 +714,55 @@ export const StepPlan: React.FC<Props> = ({
           )}
         </div>
       </div>
+
+      {hasPartner && !hidePartnerschaftsbonusUi && (
+        <div
+          className={`elterngeld-plan__status-card elterngeld-step__notice ${
+            partnerBonusValidation.isValid
+              ? 'elterngeld-step__notice--tip'
+              : 'elterngeld-step__notice--warning'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {partnerBonusValidation.isValid ? (
+            <>
+              <p className="elterngeld-plan__status-text elterngeld-plan__status-text--title">
+                Partnerschaftsbonus erfüllt
+              </p>
+              <p className="elterngeld-plan__status-text">
+                Der Plan erfüllt die hier geprüften Voraussetzungen für den Partnerschaftsbonus.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="elterngeld-plan__status-text elterngeld-plan__status-text--title">
+                Partnerschaftsbonus nicht erfüllt
+              </p>
+              {partnerBonusValidation.warnings[0] ? (
+                <p className="elterngeld-plan__status-text">{partnerBonusValidation.warnings[0]}</p>
+              ) : null}
+              {partnerBonusValidation.warnings.length > 1 ? (
+                <ul className="elterngeld-calculation__partner-bonus-issue-list">
+                  {partnerBonusValidation.warnings.slice(1).map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
+          )}
+          {!partnerBonusValidation.isValid && (
+            <Button
+              type="button"
+              variant="primary"
+              className="btn--softpill elterngeld-plan__status-btn"
+              onClick={() => setShowPartnerBonusCheck(true)}
+            >
+              Bonus vollständig prüfen
+            </Button>
+          )}
+        </div>
+      )}
 
       <div id="elterngeld-plan-month-grid" className="elterngeld-plan__month-grid-wrap">
         <MonthGrid
@@ -839,11 +851,13 @@ export const StepPlan: React.FC<Props> = ({
                       <br />
                       geringere monatliche Auszahlung · längere Bezugsdauer · sinnvoll bei Teilzeit
                     </p>
+                    {!hidePartnerschaftsbonusUi && (
                     <p className="elterngeld-hint__details-text">
                       <strong>Partnerschaftsbonus</strong>
                       <br />
                       nur mit ElterngeldPlus möglich · beide Eltern müssen gleichzeitig ElterngeldPlus beziehen
                     </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -865,7 +879,7 @@ export const StepPlan: React.FC<Props> = ({
                 />
               ))}
             </div>
-            {hasPartner && activeMonth !== null && (() => {
+            {hasPartner && !hidePartnerschaftsbonusUi && activeMonth !== null && (() => {
               const isPlus = selectedModelInDialog === 'plus';
               const isBoth = currentState === 'both';
               const hint =
@@ -920,6 +934,7 @@ export const StepPlan: React.FC<Props> = ({
                         {buttonLabel}
                       </button>
                     )}
+                    {!partnerBonusValidation.isValid && (
                     <Button
                       type="button"
                       variant="secondary"
@@ -931,6 +946,7 @@ export const StepPlan: React.FC<Props> = ({
                     >
                       Bonus vollständig prüfen
                     </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -983,12 +999,14 @@ export const StepPlan: React.FC<Props> = ({
         </div>
       )}
 
+      {!hidePartnerschaftsbonusUi && (
       <PartnerBonusCheckDialog
         isOpen={showPartnerBonusCheck}
         onClose={() => setShowPartnerBonusCheck(false)}
         plan={planForCheck}
         onAction={handlePartnerBonusAction}
       />
+      )}
     </Card>
   );
 };

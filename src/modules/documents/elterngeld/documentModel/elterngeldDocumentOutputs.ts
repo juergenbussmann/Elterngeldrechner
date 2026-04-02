@@ -73,7 +73,7 @@ export function getElterngeldDocumentOutputRows(model: ElterngeldDocumentModel):
     id: 'output-checklist',
     title: 'Unterlagen-Checkliste',
     description:
-      'Liste der Unterlagen aus deinen Daten und dem gewählten Bundesland — siehe Abschnitt unten auf dieser Seite.',
+      'Liste der Unterlagen aus deinen Daten und dem gewählten Bundesland — siehe den Anhang weiter unten auf dieser Seite.',
     status: 'available',
     statusLabel: STATUS_LABEL.available,
     action: 'scrollChecklist',
@@ -83,7 +83,7 @@ export function getElterngeldDocumentOutputRows(model: ElterngeldDocumentModel):
     id: 'output-application-fill-helper',
     title: 'Ausfüllhilfe für den Antrag (PDF)',
     description:
-      'Ausführliche Formularhilfe (Abschnitte A–E): Monatsaufstellung je Lebensmonat, erste/zweite Elternperson, Bezugsarten — kein amtliches Formular. Wird als „Elterngeld-Antragsvorbereitung – Ausfüllhilfe (PDF)“ gespeichert.',
+      'Ausführliche Ausfüllhilfe in formularnaher Reihenfolge: Angaben wie im Antrag üblich, dazu monatliche Aufteilung und ggf. Schätzung direkt beim Bezug, anschließend Hinweise, Anhang und fehlende Antragsangaben — kein amtliches Formular. Wird als „Elterngeld-Antragsvorbereitung – Ausfüllhilfe (PDF)“ gespeichert.',
     status: 'available',
     statusLabel: STATUS_LABEL.available,
     action: 'applicationPdf',

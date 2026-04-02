@@ -7,7 +7,10 @@ import { jsPDF } from 'jspdf';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
 import type { CalculationResult } from '../calculation';
 import { formatDateGerman, parseIsoDate } from '../elterngeldDeadlines';
-import { buildElterngeldDocumentModel } from '../documentModel/buildElterngeldDocumentModel';
+import {
+  buildElterngeldDocumentModel,
+  filterChecklistItemsForUnterlagenDisplay,
+} from '../documentModel/buildElterngeldDocumentModel';
 import { formatApplicantMode } from '../applicationForm/elterngeldApplicationFormLabels';
 import {
   ELTERNGELD_PDF_LINE_HEIGHT,
@@ -40,7 +43,7 @@ export function buildElterngeldSummaryPdf(
   doc.setFontSize(9);
   y = elterngeldPdfAddWrappedText(
     doc,
-    'Kurzüberblick zu deinen Angaben — ohne Monatsliste. Die ausführliche Ausfüllhilfe mit Lebensmonaten ist ein separates PDF.',
+    'Kurzüberblick zu deinen Angaben — ohne Monatsliste. Die ausführliche Ausfüllhilfe mit formularnaher Reihenfolge und Lebensmonaten ist ein separates PDF.',
     ELTERNGELD_PDF_MARGIN,
     y,
     ELTERNGELD_PDF_TEXT_WIDTH,
@@ -233,7 +236,7 @@ export function buildElterngeldSummaryPdf(
   doc.text('Unterlagen-Checkliste', ELTERNGELD_PDF_MARGIN, y);
   y += ELTERNGELD_PDF_LINE_HEIGHT;
   doc.setFont('helvetica', 'normal');
-  for (const d of model.checklistItems) {
+  for (const d of filterChecklistItemsForUnterlagenDisplay(model.checklistItems)) {
     y = elterngeldPdfEnsurePageSpace(doc, y, 14);
     y = elterngeldPdfAddWrappedText(doc, `• ${d}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
   }

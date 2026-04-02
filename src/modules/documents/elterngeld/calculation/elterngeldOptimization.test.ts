@@ -251,8 +251,8 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
     });
   });
 
-  describe('I) Idempotenz nach Übernahme (Baseline = übernommener Plan)', () => {
-    it('I1: maxMoney – besten sichtbaren Vorschlag übernehmen → erneut kein höherer Betrag als neuer Verbesserungsvorschlag', () => {
+  describe('I) Idempotenz nach Übernahme (Score-Baseline pro Ziel)', () => {
+    it('I1: maxMoney – kein Vorschlag übernimmt höheren Score als die übernommene Baseline', () => {
       const plan = createPlan({});
       plan.parents[0].incomeBeforeNet = 1200;
       plan.parents[1].incomeBeforeNet = 3500;
@@ -260,23 +260,52 @@ describe('Elterngeld-Optimierung – realistische Testfälle', () => {
       setMonth(plan, 0, 2, 'basis');
 
       const result = calculatePlan(plan);
-      const outcome1 = buildOptimizationResult(plan, result, 'maxMoney');
-      if (!('suggestions' in outcome1) || outcome1.suggestions.length === 0) {
+      const open = buildOptimizationResult(plan, result, 'maxMoney');
+      if (!('suggestions' in open) || open.suggestions.length === 0) {
         return;
       }
 
-      const best = outcome1.suggestions.reduce((a, b) => (a.optimizedTotal >= b.optimizedTotal ? a : b));
-      const adopted = JSON.parse(JSON.stringify(best.plan)) as ElterngeldCalculationPlan;
+      const adopted = JSON.parse(JSON.stringify(open.suggestions[0].plan)) as ElterngeldCalculationPlan;
       const resultAfter = calculatePlan(adopted);
-      expect(Math.abs(resultAfter.householdTotal - best.optimizedTotal)).toBeLessThanOrEqual(1);
+      const adoptedScore = resultAfter.householdTotal;
 
-      const outcome2 = buildOptimizationResult(adopted, resultAfter, 'maxMoney');
+      const filtered = buildOptimizationResult(adopted, resultAfter, 'maxMoney', {
+        adoptedBaselineGoals: { maxMoney: { score: adoptedScore } },
+      });
+      expect('suggestions' in filtered).toBe(true);
+      if (!('suggestions' in filtered)) return;
+      for (const s of filtered.suggestions) {
+        expect(s.optimizedTotal).toBeLessThanOrEqual(adoptedScore + 1);
+      }
+    });
 
-      expect('suggestions' in outcome2).toBe(true);
-      const baseline = resultAfter.householdTotal;
-      for (const s of outcome2.suggestions) {
-        expect(s.optimizedTotal).toBeGreaterThan(baseline + 1);
-        expect(s.status).toBe('improved');
+    it('I2: longerDuration – kein Vorschlag mit mehr Bezugsmonaten als die übernommene Baseline', () => {
+      const plan = createPlan({});
+      plan.parents[0].incomeBeforeNet = 2000;
+      plan.parents[1].incomeBeforeNet = 0;
+      setMonth(plan, 0, 1, 'basis');
+      setMonth(plan, 0, 2, 'basis');
+      const result = calculatePlan(plan);
+      const open = buildOptimizationResult(plan, result, 'longerDuration');
+      if (!('suggestions' in open) || open.suggestions.length === 0) {
+        return;
+      }
+      const adopted = JSON.parse(JSON.stringify(open.suggestions[0].plan)) as ElterngeldCalculationPlan;
+      const after = calculatePlan(adopted);
+      const months = new Set<number>();
+      for (const p of after.parents) {
+        for (const r of p.monthlyResults) {
+          if (r.mode !== 'none' || r.amount > 0) months.add(r.month);
+        }
+      }
+      const adoptedDuration = months.size;
+
+      const filtered = buildOptimizationResult(adopted, after, 'longerDuration', {
+        adoptedBaselineGoals: { longerDuration: { score: adoptedDuration } },
+      });
+      if (!('suggestions' in filtered)) return;
+      for (const s of filtered.suggestions) {
+        expect(s.optimizedDurationMonths).toBeLessThanOrEqual(adoptedDuration);
       }
     });
   });

@@ -13,7 +13,7 @@ import { StepOptimizationBlock } from './StepCalculationResult';
 import { ElternArbeitPartTimeEditor } from './PartTimeWeeklyHoursField';
 import type { ElterngeldCalculationPlan, CalculationResult } from '../calculation';
 import type { OptimizationGoal } from '../calculation/elterngeldOptimization';
-import type { ElterngeldApplication } from '../types/elterngeldTypes';
+import type { ElterngeldApplication, OptimizationAdoptableGoal } from '../types/elterngeldTypes';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -53,7 +53,11 @@ type OptimizationOverlayProps = {
   plan: ElterngeldCalculationPlan;
   result: CalculationResult;
   hasAnySuggestions: boolean;
-  onAdoptOptimization: (plan: ElterngeldCalculationPlan) => void;
+  onAdoptOptimization: (
+    plan: ElterngeldCalculationPlan,
+    adoptedGoal?: OptimizationAdoptableGoal,
+    adoptedResult?: CalculationResult
+  ) => void;
   /** Optional: Führt zur Monatsübersicht (Overlay schließen + Scroll zu Monatsplan) */
   onNavigateToMonthEditing?: () => void;
   /** Optional: Führt zur Leistungswahl Basis/Plus (Overlay schließen + Scroll zu Leistungsblock) */
@@ -89,6 +93,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
   application,
   onApplicationChange,
 }) => {
+  const hidePartnerschaftsbonusUi = application?.applicantMode === 'single_parent';
   const [view, setView] = useState<'entry' | 'strategy'>('entry');
   const [selectedGoal, setSelectedGoal] = useState<OptimizationGoal>('maxMoney');
   const [partTimeHoursModalOpen, setPartTimeHoursModalOpen] = useState(false);
@@ -99,8 +104,9 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
       getOptimizationOverlayGoalOptions({
         partnerBonusHoursEligible,
         hasSecondParent: result.parents.length >= 2,
+        applicantMode: application?.applicantMode,
       }),
-    [partnerBonusHoursEligible, result.parents.length]
+    [partnerBonusHoursEligible, result.parents.length, application?.applicantMode]
   );
 
   const canEditPartTimeInOverlay = Boolean(application && onApplicationChange);
@@ -146,8 +152,16 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
               formatCurrencySigned={formatCurrencySigned}
               countBezugMonths={countBezugMonths}
               hasPartnerBonus={hasPartnerBonus}
-              onAdoptOptimization={(p) => {
-                onAdoptOptimization(p);
+              onAdoptOptimization={(p, adoptGoalFromStep, adoptedResult) => {
+                const adoptGoal: OptimizationAdoptableGoal | undefined =
+                  adoptGoalFromStep ??
+                  (selectedGoal === 'maxMoney' ||
+                  selectedGoal === 'longerDuration' ||
+                  selectedGoal === 'frontLoad' ||
+                  selectedGoal === 'partnerBonus'
+                    ? selectedGoal
+                    : undefined);
+                onAdoptOptimization(p, adoptGoal, adoptedResult);
                 handleClose();
               }}
               onBackToOptimization={handleClose}
@@ -162,6 +176,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
               onNavigateToPartTimeSettings={openPartTimeHoursEditor}
               partTimeEditGeneration={partTimeEditGeneration}
               elterngeldApplicationForAdoption={application ?? null}
+              hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
             />
           </div>
         </Modal>
@@ -179,9 +194,18 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
               data-testid="elterngeld-optimization-part-time-hours-modal"
             >
               <p className="elterngeld-step__hint">
-                Geänderte Teilzeitstunden wirken auf den aktuellen Plan, die Vergleichsbasis und die Alternativvarianten
-                mit Plus oder Partnerschaftsbonus (je Elternteil eure Stunden aus dem Plan; ohne Eintrag 28 Stunden als
-                Fallback).
+                {hidePartnerschaftsbonusUi ? (
+                  <>
+                    Geänderte Teilzeitstunden wirken auf den aktuellen Plan und die Vergleichsbasis (Stunden aus dem
+                    Plan; ohne Eintrag 28 Stunden als Fallback).
+                  </>
+                ) : (
+                  <>
+                    Geänderte Teilzeitstunden wirken auf den aktuellen Plan, die Vergleichsbasis und die Alternativvarianten
+                    mit Plus oder Partnerschaftsbonus (je Elternteil eure Stunden aus dem Plan; ohne Eintrag 28 Stunden als
+                    Fallback).
+                  </>
+                )}
               </p>
               <Card className="still-daily-checklist__card elterngeld-plan__summary-card" role="article">
                 <ElternArbeitPartTimeEditor
@@ -232,7 +256,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
               <span className="elterngeld-plan__summary-label">Dauer</span>
               <span className="elterngeld-plan__summary-value">{bezugMonths} Monate</span>
             </div>
-            {bonusMonths > 0 && (
+            {!hidePartnerschaftsbonusUi && bonusMonths > 0 && (
               <div className="elterngeld-plan__summary-row">
                 <span className="elterngeld-plan__summary-label">Bonusmonate</span>
                 <span className="elterngeld-plan__summary-value">{bonusMonths} Bonusmonate</span>

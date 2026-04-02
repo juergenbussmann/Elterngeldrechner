@@ -18,9 +18,7 @@ describe('Abschnitt A: Reihenfolge aus Formularprofil', () => {
     expect(subs.map((s) => s.subsectionTitle)).not.toContain('7. Vor der Geburt: Einkommen');
     expect(subs[3].subsectionTitle).toBe('11. Nach der Geburt: Elternzeit');
     expect(subs[4].subsectionTitle).toBe('10. Planung der Elterngeld-Monate');
-    expect(subs[5].subsectionTitle).toBe(
-      'Weitere Angaben im Antragsformular (ohne App-Erfassung)'
-    );
+    expect(subs).toHaveLength(5);
   });
 
   it('Niedersachsen: mit Einkommen — zusätzlicher Block 7.', () => {
@@ -42,7 +40,6 @@ describe('Abschnitt A: Reihenfolge aus Formularprofil', () => {
       '7. Vor der Geburt: Einkommen',
       '11. Nach der Geburt: Elternzeit',
       '10. Planung der Elterngeld-Monate',
-      'Weitere Angaben im Antragsformular (ohne App-Erfassung)',
     ]);
   });
 

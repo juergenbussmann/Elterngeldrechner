@@ -4,9 +4,15 @@
  * Keine Business-Logik, nur Daten-Mapping.
  */
 
-import type { ElterngeldApplication, MonthDistributionEntry } from './types/elterngeldTypes';
+import type {
+  ElterngeldApplication,
+  MonthDistributionEntry,
+  OptimizationAdoptableGoal,
+} from './types/elterngeldTypes';
 import { EMPTY_ELTERNGELD_PARENT } from './types/elterngeldTypes';
-import type { ElterngeldCalculationPlan } from './calculation';
+import type { ElterngeldCalculationPlan, CalculationResult } from './calculation';
+import { calculatePlan } from './calculation/calculationEngine';
+import { getAdoptedBaselineScoreFromResult, parseOptimizationAdoptedBaselineMap } from './calculation/elterngeldOptimization';
 
 function countBelegteMonate(months: { mode: string }[]): number {
   return months.filter((m) => m.mode !== 'none').length;
@@ -44,13 +50,21 @@ function extractMonthDistribution(
   return result;
 }
 
+export type MergePlanIntoPreparationOptions = {
+  /** Beim Übernehmen aus dem Optimierungs-Overlay: Ziel, für das die Score-Baseline gesetzt wird. */
+  adoptedOptimizationGoal?: OptimizationAdoptableGoal;
+  /** Ergebnis der übernommenen Variante (gleiche Zahlen wie in der UI); sonst einmal calculatePlan(plan). */
+  adoptedOptimizationResult?: CalculationResult;
+};
+
 /**
  * Aktualisiert die Vorbereitung mit Daten aus dem Berechnungsplan.
  * Behält bestehende Felder (z. B. Namen) bei, überschreibt nur plan-relevante Werte.
  */
 export function mergePlanIntoPreparation(
   current: ElterngeldApplication,
-  plan: ElterngeldCalculationPlan
+  plan: ElterngeldCalculationPlan,
+  opts?: MergePlanIntoPreparationOptions
 ): ElterngeldApplication {
   const parentA = plan.parents[0];
   const parentB = plan.parents.length > 1 ? plan.parents[1] : null;
@@ -102,6 +116,17 @@ export function mergePlanIntoPreparation(
       parentBMonths: String(countB),
       partnershipBonus: hasPB,
       concreteMonthDistribution,
+      optimizationAdoptedBaselineGoals: opts?.adoptedOptimizationGoal
+        ? {
+            ...parseOptimizationAdoptedBaselineMap(current.benefitPlan.optimizationAdoptedBaselineGoals),
+            [opts.adoptedOptimizationGoal]: {
+              score: getAdoptedBaselineScoreFromResult(
+                opts.adoptedOptimizationGoal,
+                opts.adoptedOptimizationResult ?? calculatePlan(plan)
+              ),
+            },
+          }
+        : current.benefitPlan.optimizationAdoptedBaselineGoals,
     },
   };
 

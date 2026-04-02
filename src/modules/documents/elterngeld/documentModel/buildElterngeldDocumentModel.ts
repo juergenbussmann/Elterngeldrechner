@@ -12,6 +12,8 @@ import { resolveBundeslandForDocuments } from '../bundesland/elterngeldBundeslan
 import type { BundeslandTier } from '../bundesland/bundeslandTypes';
 import { getElterngeldDeadlineInfo, type ElterngeldDeadlineInfo } from '../elterngeldDeadlines';
 import { buildElterngeldFormSectionA } from './buildElterngeldFormSections';
+import { buildMainDocumentFlow } from './buildElterngeldMainDocumentFlow';
+import type { ElterngeldMainDocumentBlock } from './buildElterngeldMainDocumentFlow';
 import type { ElterngeldDocumentFormSection } from './elterngeldDocumentFormTypes';
 
 /**
@@ -26,6 +28,23 @@ export const ELTERNGELD_BASE_DOCUMENT_CHECKLIST: readonly string[] = [
   'Steuer-ID',
   'Bankverbindung',
 ] as const;
+
+/** Positionen der Basis-Checkliste, die typischerweise als Formularfelder gelten (nicht von der App erfasst). */
+const BASE_CHECKLIST_AS_ANTRAGS_ANGABEN = new Set(['Steuer-ID', 'Bankverbindung']);
+
+/**
+ * Einträge aus `ELTERNGELD_BASE_DOCUMENT_CHECKLIST`, die als Antragsangaben gelten,
+ * die die App nicht erfasst (Reihenfolge der Basisliste).
+ */
+export function getBaseChecklistAntragsangabenNichtInApp(): string[] {
+  return ELTERNGELD_BASE_DOCUMENT_CHECKLIST.filter((item) => BASE_CHECKLIST_AS_ANTRAGS_ANGABEN.has(item));
+}
+
+/** Unterlagen-Checkliste in PDF/UI: ohne Steuer-ID/Bank (stehen nur unter „Fehlende Angaben für den Antrag“). */
+export function filterChecklistItemsForUnterlagenDisplay(items: readonly string[]): string[] {
+  const skip = new Set(getBaseChecklistAntragsangabenNichtInApp());
+  return items.filter((item) => !skip.has(item));
+}
 
 export interface ElterngeldDocumentCalculationSnapshot {
   householdTotal: number;
@@ -58,6 +77,11 @@ export interface ElterngeldDocumentModel {
    * Keine zusätzlichen fachlichen Felder.
    */
   formSections: ElterngeldDocumentFormSection[];
+  /**
+   * Lesereihenfolge des Hauptteils (formularnahe Blöcke, Monats-/Schätzung nach Bezug, dann Bank/Steuer-Platzhalter).
+   * Hinweise C/D, Anhang und Fehlangaben bleiben in PDF/Vorschau nachgelagert.
+   */
+  mainDocumentFlow: ElterngeldMainDocumentBlock[];
 }
 
 function mergeChecklistItems(
@@ -111,7 +135,13 @@ export function buildElterngeldDocumentModel(
     resolved && !resolved.validation.errors.length ? buildCalculationSnapshot(resolved) : null;
   const maxMonths = values.benefitPlan.model === 'plus' ? 24 : 14;
   const documentMonthDistribution = resolveDocumentMonthDistribution(values, resolved, maxMonths);
-  const formSections: ElterngeldDocumentFormSection[] = [buildElterngeldFormSectionA(values, bl)];
+  const { section: formSectionA, officialSubsection } = buildElterngeldFormSectionA(values, bl);
+  const formSections: ElterngeldDocumentFormSection[] = [formSectionA];
+  const mainDocumentFlow = buildMainDocumentFlow(
+    formSectionA.subsections,
+    officialSubsection,
+    { hasCalculation: calculation != null }
+  );
 
   return {
     stateCode: bl.stateCode,
@@ -130,5 +160,8 @@ export function buildElterngeldDocumentModel(
     calculation,
     documentMonthDistribution,
     formSections,
+    mainDocumentFlow,
   };
 }
+
+export type { ElterngeldMainDocumentBlock } from './buildElterngeldMainDocumentFlow';

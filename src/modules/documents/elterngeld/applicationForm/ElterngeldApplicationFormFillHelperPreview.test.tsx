@@ -6,11 +6,11 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ElterngeldApplicationFormFillHelperPreview } from './ElterngeldApplicationFormFillHelperPreview';
 import { buildElterngeldDocumentModel } from '../documentModel/buildElterngeldDocumentModel';
-import { SECTION_A_TITLE, SECTION_B_TITLE } from './elterngeldApplicationFormLabels';
+import { SECTION_A_TITLE, SUBSECTION_CALCULATION } from './elterngeldApplicationFormLabels';
 import { INITIAL_ELTERNGELD_APPLICATION } from '../types/elterngeldTypes';
 
 describe('ElterngeldApplicationFormFillHelperPreview', () => {
-  it('zeigt die Abschnitte A und B der Ausfüllhilfe', () => {
+  it('zeigt den formularnahen Hauptteil (A) inkl. Schätzungsunterabschnitt ohne separaten Block „B.“', () => {
     const model = buildElterngeldDocumentModel({
       ...INITIAL_ELTERNGELD_APPLICATION,
       state: 'HE',
@@ -18,6 +18,6 @@ describe('ElterngeldApplicationFormFillHelperPreview', () => {
     });
     render(<ElterngeldApplicationFormFillHelperPreview model={model} />);
     expect(screen.getByText(SECTION_A_TITLE)).toBeTruthy();
-    expect(screen.getByText(SECTION_B_TITLE)).toBeTruthy();
+    expect(screen.getByText(SUBSECTION_CALCULATION)).toBeTruthy();
   });
 });

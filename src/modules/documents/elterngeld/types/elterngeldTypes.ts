@@ -30,6 +30,15 @@ export interface ElterngeldParent {
 /** Pro-Monat-Modus für konkrete Verteilung (aus übernommener Variante). */
 export type MonthModeForDistribution = 'none' | 'basis' | 'plus' | 'partnerBonus';
 
+/** Optimierungsziele, für die nach Übernahme einer Variante keine striktere Verbesserung mehr vorgeschlagen wird. */
+export type OptimizationAdoptableGoal = 'maxMoney' | 'longerDuration' | 'frontLoad' | 'partnerBonus';
+
+/**
+ * Nach Übernahme: pro Ziel ein Score aus dem damaligen CalculationResult (keine eigene Neubewertung).
+ * Filter in buildOptimizationResult: Kandidaten, die diesen Score für dasselbe Ziel übertreffen, werden ausgeblendet.
+ */
+export type OptimizationAdoptedBaselineGoals = Partial<Record<OptimizationAdoptableGoal, { score: number }>>;
+
 /** Konkrete Monatsverteilung pro Lebensmonat (überschreibt Count-Logik wenn gesetzt). */
 export interface MonthDistributionEntry {
   month: number;
@@ -44,6 +53,11 @@ export interface ElterngeldBenefitPlan {
   partnershipBonus: boolean;
   /** Optionale konkrete Verteilung aus übernommener Variante. Hat Vorrang vor Count-Logik. */
   concreteMonthDistribution?: MonthDistributionEntry[];
+  /**
+   * Nach „Variante übernehmen“: pro Ziel der akzeptierte Score (aus dem angezeigten Ergebnis).
+   * Legacy: früher string[] — wird beim Lesen ignoriert.
+   */
+  optimizationAdoptedBaselineGoals?: OptimizationAdoptedBaselineGoals | OptimizationAdoptableGoal[];
 }
 
 export interface ElterngeldApplication {

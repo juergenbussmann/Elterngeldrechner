@@ -1,10 +1,14 @@
 /**
  * PDF zur Antragsvorbereitung aus dem kanonischen Dokumentenmodell.
- * Formularnahe Ausfüllhilfe (A–E) — kein amtliches Originalformular.
+ * Durchgehend formularnahe Ausfüllhilfe, danach Hinweise, Anhang und fehlende Antragsangaben — kein amtliches Originalformular.
  */
 
 import { jsPDF } from 'jspdf';
-import type { ElterngeldDocumentModel } from '../documentModel/buildElterngeldDocumentModel';
+import {
+  filterChecklistItemsForUnterlagenDisplay,
+  getBaseChecklistAntragsangabenNichtInApp,
+  type ElterngeldDocumentModel,
+} from '../documentModel/buildElterngeldDocumentModel';
 import {
   ANHANG_CHECKLIST_INTRO,
   ANHANG_CHECKLIST_TITLE,
@@ -17,13 +21,17 @@ import {
   SECTION_ANHANG_TITLE,
   SECTION_A_TITLE,
   SECTION_B_NO_DISTRIBUTION_HINT,
-  SECTION_B_TITLE,
   SECTION_C_TITLE,
-  SECTION_D_MISSING_HEADING,
-  SECTION_D_TITLE,
   SECTION_E_LINES,
   SECTION_E_TITLE,
+  SECTION_MISSING_FOR_APPLICATION_FURTHER_INTRO,
+  SECTION_MISSING_FOR_APPLICATION_INTRO_ANGABEN,
+  SECTION_MISSING_FOR_APPLICATION_TITLE,
+  SECTION_MISSING_FOR_APPLICATION_FURTHER_ITEMS,
+  SECTION_MISSING_PLANNING_COVERED_ITEMS,
+  SECTION_MISSING_PLANNING_COVERED_TITLE,
   SUBSECTION_CALCULATION,
+  SUBSECTION_MONTHLY_SPLIT,
 } from '../applicationForm/elterngeldApplicationFormLabels';
 import {
   ELTERNGELD_PDF_LINE_HEIGHT,
@@ -56,96 +64,7 @@ function mappedFormFieldLine(doc: jsPDF, field: ElterngeldDocumentFormField, y: 
   return elterngeldPdfAddWrappedText(doc, text, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, fontSize);
 }
 
-function renderMappedFormSectionA(doc: jsPDF, model: ElterngeldDocumentModel, y: number): number {
-  const sec = model.formSections.find((s) => s.sectionCode === 'A');
-  const heading = sec?.sectionHeading ?? SECTION_A_TITLE;
-  y = majorSectionHeading(doc, heading, y, false);
-  if (!sec) return y;
-  for (const sub of sec.subsections) {
-    y = elterngeldPdfEnsurePageSpace(doc, y);
-    y = subsectionHeading(doc, sub.subsectionTitle, y);
-    for (const f of sub.fields) {
-      y = mappedFormFieldLine(doc, f, y, 10);
-      y += 2;
-    }
-    y += 4;
-  }
-  return y;
-}
-
-/** Hauptabschnitt A–E: fett, größer, mit Abstand darunter. */
-function majorSectionHeading(doc: jsPDF, title: string, y: number, addSpacingBefore: boolean): number {
-  if (addSpacingBefore) {
-    y += 10;
-  }
-  y = elterngeldPdfEnsurePageSpace(doc, y, 34);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text(title, ELTERNGELD_PDF_MARGIN, y);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  return y + ELTERNGELD_PDF_LINE_HEIGHT * 2;
-}
-
-function subsectionHeading(doc: jsPDF, title: string, y: number): number {
-  y = elterngeldPdfEnsurePageSpace(doc, y, 24);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text(title, ELTERNGELD_PDF_MARGIN, y);
-  doc.setFont('helvetica', 'normal');
-  return y + ELTERNGELD_PDF_LINE_HEIGHT * 1.1;
-}
-
-export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  doc.setFont('helvetica');
-  doc.setTextColor(0, 0, 0);
-
-  let y = ELTERNGELD_PDF_MARGIN;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(APPLICATION_FORM_DOCUMENT_TITLE, ELTERNGELD_PDF_MARGIN, y);
-  y += ELTERNGELD_PDF_LINE_HEIGHT * 1.8;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  y = elterngeldPdfAddWrappedText(
-    doc,
-    getApplicationFormIntroParagraph(model),
-    ELTERNGELD_PDF_MARGIN,
-    y,
-    ELTERNGELD_PDF_TEXT_WIDTH,
-    9
-  );
-  y += 10;
-
-  // ——— A. Gemappte Angaben (Bundesland → Formularbezeichnung) ———
-  y = renderMappedFormSectionA(doc, model, y);
-  y += 8;
-
-  // ——— B. Ergebnis Ihrer Planung ———
-  y = majorSectionHeading(doc, SECTION_B_TITLE, y, true);
-
-  const hasMonthBezug = model.documentMonthDistribution.some(
-    (e) => e.modeA !== 'none' || e.modeB !== 'none'
-  );
-  if (hasMonthBezug) {
-    y = elterngeldPdfRenderMonthDistributionSection(doc, model, y);
-  } else {
-    doc.setFontSize(9);
-    y = elterngeldPdfAddWrappedText(
-      doc,
-      SECTION_B_NO_DISTRIBUTION_HINT,
-      ELTERNGELD_PDF_MARGIN,
-      y,
-      ELTERNGELD_PDF_TEXT_WIDTH,
-      9
-    );
-    y += 6;
-    doc.setFontSize(10);
-  }
-
+function renderCalculationSubsection(doc: jsPDF, model: ElterngeldDocumentModel, y: number): number {
   y = subsectionHeading(doc, SUBSECTION_CALCULATION, y);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
@@ -181,10 +100,161 @@ export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): B
       10
     );
   }
+  y += 10;
+  return y;
+}
 
+/** Hauptteil: formularnahe Unterblöcke, direkt nach Bezug Monats-/Schätzung, zuletzt Bank/Steuer-Platzhalter. */
+function renderMainDocumentFlow(doc: jsPDF, model: ElterngeldDocumentModel, y: number): number {
+  const hasMonthBezug = model.documentMonthDistribution.some(
+    (e) => e.modeA !== 'none' || e.modeB !== 'none'
+  );
+  y = majorSectionHeading(doc, SECTION_A_TITLE, y, false);
+  for (const block of model.mainDocumentFlow) {
+    y = elterngeldPdfEnsurePageSpace(doc, y);
+    switch (block.kind) {
+      case 'form_subsection':
+      case 'official_form_only': {
+        const sub = block.subsection;
+        y = subsectionHeading(doc, sub.subsectionTitle, y);
+        for (const f of sub.fields) {
+          y = mappedFormFieldLine(doc, f, y, 10);
+          y += 2;
+        }
+        y += 4;
+        break;
+      }
+      case 'month_distribution':
+        if (hasMonthBezug) {
+          y = elterngeldPdfRenderMonthDistributionSection(doc, model, y);
+        } else {
+          y = subsectionHeading(doc, SUBSECTION_MONTHLY_SPLIT, y);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          y = elterngeldPdfAddWrappedText(
+            doc,
+            SECTION_B_NO_DISTRIBUTION_HINT,
+            ELTERNGELD_PDF_MARGIN,
+            y,
+            ELTERNGELD_PDF_TEXT_WIDTH,
+            9
+          );
+          y += 6;
+          doc.setFontSize(10);
+        }
+        break;
+      case 'calculation':
+        y = renderCalculationSubsection(doc, model, y);
+        break;
+    }
+  }
+  return y;
+}
+
+/** Hauptabschnitt: fett, größer, mit Abstand darunter. */
+function majorSectionHeading(doc: jsPDF, title: string, y: number, addSpacingBefore: boolean): number {
+  if (addSpacingBefore) {
+    y += 10;
+  }
+  y = elterngeldPdfEnsurePageSpace(doc, y, 34);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text(title, ELTERNGELD_PDF_MARGIN, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  return y + ELTERNGELD_PDF_LINE_HEIGHT * 2;
+}
+
+function subsectionHeading(doc: jsPDF, title: string, y: number): number {
+  y = elterngeldPdfEnsurePageSpace(doc, y, 24);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(title, ELTERNGELD_PDF_MARGIN, y);
+  doc.setFont('helvetica', 'normal');
+  return y + ELTERNGELD_PDF_LINE_HEIGHT * 1.1;
+}
+
+/** Abschluss: nicht erfasste Antragsangaben aus `ELTERNGELD_BASE_DOCUMENT_CHECKLIST` (nur Darstellung). */
+function renderMissingForApplicationClosingSection(doc: jsPDF, y: number): number {
+  const antragsangabenNichtInApp = getBaseChecklistAntragsangabenNichtInApp();
+
+  y = majorSectionHeading(doc, SECTION_MISSING_FOR_APPLICATION_TITLE, y, true);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    SECTION_MISSING_FOR_APPLICATION_INTRO_ANGABEN,
+    ELTERNGELD_PDF_MARGIN,
+    y,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
+  y += 4;
+  for (const item of antragsangabenNichtInApp) {
+    y = elterngeldPdfEnsurePageSpace(doc, y, 12);
+    y = elterngeldPdfAddWrappedText(doc, `• ${item}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+    y += 2;
+  }
+  y += 6;
+
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    SECTION_MISSING_FOR_APPLICATION_FURTHER_INTRO,
+    ELTERNGELD_PDF_MARGIN,
+    y,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    10
+  );
+  y += 4;
+  for (const item of SECTION_MISSING_FOR_APPLICATION_FURTHER_ITEMS) {
+    y = elterngeldPdfEnsurePageSpace(doc, y, 12);
+    y = elterngeldPdfAddWrappedText(doc, `• ${item}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+    y += 2;
+  }
+  y += 6;
+
+  y = subsectionHeading(doc, SECTION_MISSING_PLANNING_COVERED_TITLE, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  for (const item of SECTION_MISSING_PLANNING_COVERED_ITEMS) {
+    y = elterngeldPdfEnsurePageSpace(doc, y, 12);
+    y = elterngeldPdfAddWrappedText(doc, `✔ ${item}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
+    y += 2;
+  }
+
+  return y;
+}
+
+export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): Blob {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  doc.setFont('helvetica');
+  doc.setTextColor(0, 0, 0);
+
+  let y = ELTERNGELD_PDF_MARGIN;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text(APPLICATION_FORM_DOCUMENT_TITLE, ELTERNGELD_PDF_MARGIN, y);
+  y += ELTERNGELD_PDF_LINE_HEIGHT * 1.8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  y = elterngeldPdfAddWrappedText(
+    doc,
+    getApplicationFormIntroParagraph(model),
+    ELTERNGELD_PDF_MARGIN,
+    y,
+    ELTERNGELD_PDF_TEXT_WIDTH,
+    9
+  );
   y += 10;
 
-  // ——— C. So nutzen Sie diese Angaben im Antrag ———
+  // ——— Hauptteil: formularnahe Angaben inkl. Bezug, Monate, Schätzung, Platzhalter Bank/Steuer ———
+  y = renderMainDocumentFlow(doc, model, y);
+  y += 8;
+
+  // ——— Hinweise zum Übertrag in den Antrag ———
   y = majorSectionHeading(doc, SECTION_C_TITLE, y, true);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
@@ -195,21 +265,7 @@ export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): B
   }
   y += 10;
 
-  // ——— D. Fehlende Angaben ———
-  y = majorSectionHeading(doc, SECTION_D_TITLE, y, true);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  y = elterngeldPdfAddWrappedText(
-    doc,
-    SECTION_D_MISSING_HEADING,
-    ELTERNGELD_PDF_MARGIN,
-    y,
-    ELTERNGELD_PDF_TEXT_WIDTH,
-    10
-  );
-  y += 8;
-
-  // ——— E. Wichtiger Hinweis ———
+  // ——— D. Wichtiger Hinweis ———
   y = elterngeldPdfEnsurePageSpace(doc, y, 52);
   y = majorSectionHeading(doc, SECTION_E_TITLE, y, true);
   doc.setFont('helvetica', 'normal');
@@ -222,7 +278,7 @@ export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): B
   }
   y += 10;
 
-  // ——— Anhang (nach A–E, getrennt von „Fehlende Angaben“) ———
+  // ——— Anhang (Unterlagen, Fristen; anschließend nur nicht erfasste Formularangaben) ———
   y = elterngeldPdfEnsurePageSpace(doc, y, 36);
   y = majorSectionHeading(doc, SECTION_ANHANG_TITLE, y, true);
   doc.setFont('helvetica', 'normal');
@@ -238,7 +294,7 @@ export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): B
     9
   );
   y += 4;
-  for (const item of model.checklistItems) {
+  for (const item of filterChecklistItemsForUnterlagenDisplay(model.checklistItems)) {
     y = elterngeldPdfEnsurePageSpace(doc, y, 12);
     y = elterngeldPdfAddWrappedText(doc, `• ${item}`, ELTERNGELD_PDF_MARGIN, y, ELTERNGELD_PDF_TEXT_WIDTH, 10);
   }
@@ -263,6 +319,9 @@ export function buildElterngeldApplicationPdf(model: ElterngeldDocumentModel): B
       );
     }
   }
+
+  y += 8;
+  y = renderMissingForApplicationClosingSection(doc, y);
 
   return doc.output('blob');
 }

@@ -10,6 +10,10 @@ import type {
   MonthMode,
 } from './types';
 import { calculatePlan } from './calculationEngine';
+import type {
+  OptimizationAdoptableGoal,
+  OptimizationAdoptedBaselineGoals,
+} from '../types/elterngeldTypes';
 
 function duplicatePlan(plan: ElterngeldCalculationPlan): ElterngeldCalculationPlan {
   return JSON.parse(JSON.stringify(plan));
@@ -126,14 +130,37 @@ const UNSUPPORTED_GOALS: OptimizationGoal[] = ['balanced'];
 
 const MAX_SUGGESTIONS = 3;
 
+/** Optionen für buildOptimizationResult (z. B. score-basierte Idempotenz nach Übernahme). */
+export type BuildOptimizationResultOptions = {
+  /**
+   * Übernommene Ziel-Scores aus dem Wizard; Kandidaten, die diese übertreffen, werden für dieses Ziel ausgeblendet.
+   * Legacy string[] wird von parseOptimizationAdoptedBaselineMap ignoriert.
+   */
+  adoptedBaselineGoals?: OptimizationAdoptedBaselineGoals | OptimizationAdoptableGoal[];
+};
+
+/**
+ * Liefert die Map der übernommenen Baselines oder undefined (Legacy string[] wird ignoriert).
+ */
+export function parseOptimizationAdoptedBaselineMap(
+  raw: OptimizationAdoptedBaselineGoals | OptimizationAdoptableGoal[] | undefined
+): OptimizationAdoptedBaselineGoals | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  return raw;
+}
+
 /**
  * Berechnet ein Optimierungsergebnis für das gewählte Ziel.
  * Liefert ein OptimizationResultSet mit bis zu 3 Vorschlägen.
+ *
+ * adoptedBaselineGoals: Für ein Ziel gespeicherte Scores nach Übernahme — Vorschläge, die besser sind als dieser Score,
+ * werden entfernt (Idempotenz auf Zielebene, unabhängig vom Strategietyp).
  */
 export function buildOptimizationResult(
   plan: ElterngeldCalculationPlan,
   currentResult: CalculationResult,
-  goal: OptimizationGoal
+  goal: OptimizationGoal,
+  options?: BuildOptimizationResultOptions
 ): OptimizationResultSet | { goal: OptimizationGoal; status: 'unsupported' } {
   if (UNSUPPORTED_GOALS.includes(goal)) {
     if (import.meta.env.DEV) {
@@ -173,6 +200,14 @@ export function buildOptimizationResult(
       planFingerprint(s.plan) !== baselinePlanFp &&
       isStrictGoalImprovementAgainstBaseline(s.result, goal, currentResult, currentTotal, currentDuration)
   );
+
+  const adoptedMap = parseOptimizationAdoptedBaselineMap(options?.adoptedBaselineGoals);
+  const adoptedEntry = adoptedMap?.[goal as OptimizationAdoptableGoal];
+  if (adoptedEntry !== undefined) {
+    suggestions = suggestions.filter(
+      (s) => !candidateBeatsAdoptedBaselineScore(goal as OptimizationAdoptableGoal, s.result, adoptedEntry.score)
+    );
+  }
 
   suggestions = suggestions.map((s) => ({ ...s, status: 'improved' as const }));
 
@@ -1040,6 +1075,60 @@ function isStrictGoalImprovementAgainstBaseline(
       if (optB > curB) return true;
       if (optB < curB) return false;
       return optTotal > baselineTotal + MIN_IMPROVEMENT_EUR;
+    }
+    default:
+      return false;
+  }
+}
+
+/** Encoding für partnerBonus-Score: Bonusmonate und householdTotal (Vergleich wie isStrictGoalImprovementAgainstBaseline). */
+const PARTNER_BONUS_ADOPTED_SCORE_MULT = 1_000_000_000;
+
+/**
+ * Score für die übernommene Baseline eines Ziels — gleiche Metriken wie isStrictGoalImprovementAgainstBaseline.
+ * Wert aus dem CalculationResult bei Übernahme (keine andere Bewertungslogik).
+ */
+export function getAdoptedBaselineScoreFromResult(
+  goal: OptimizationAdoptableGoal,
+  result: CalculationResult
+): number {
+  switch (goal) {
+    case 'maxMoney':
+      return result.householdTotal;
+    case 'longerDuration':
+      return countBezugMonths(result);
+    case 'frontLoad':
+      return computeFrontLoadScore(result);
+    case 'partnerBonus': {
+      const b = countPartnerBonusMonths(result);
+      return b * PARTNER_BONUS_ADOPTED_SCORE_MULT + result.householdTotal;
+    }
+    default:
+      return 0;
+  }
+}
+
+/** true, wenn der Kandidat die übernommene Baseline für dieses Ziel strikt übertrifft → wird gefiltert. */
+export function candidateBeatsAdoptedBaselineScore(
+  goal: OptimizationAdoptableGoal,
+  candidateResult: CalculationResult,
+  adoptedScore: number
+): boolean {
+  switch (goal) {
+    case 'maxMoney':
+      return candidateResult.householdTotal > adoptedScore + MIN_IMPROVEMENT_EUR;
+    case 'longerDuration':
+      return countBezugMonths(candidateResult) > adoptedScore;
+    case 'frontLoad':
+      return computeFrontLoadScore(candidateResult) > adoptedScore;
+    case 'partnerBonus': {
+      const adB = Math.floor(adoptedScore / PARTNER_BONUS_ADOPTED_SCORE_MULT);
+      const adT = adoptedScore % PARTNER_BONUS_ADOPTED_SCORE_MULT;
+      const optB = countPartnerBonusMonths(candidateResult);
+      const optT = candidateResult.householdTotal;
+      if (optB > adB) return true;
+      if (optB < adB) return false;
+      return optT > adT + MIN_IMPROVEMENT_EUR;
     }
     default:
       return false;

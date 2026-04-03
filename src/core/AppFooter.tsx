@@ -136,7 +136,7 @@ export const AppFooter: React.FC = () => {
       className="app-shell__footer"
       aria-label={t('app.footer.navigation')}
       style={{
-        backgroundColor: navTokens.background,
+        background: navTokens.background,
         borderTop: `1px solid ${navTokens.border}`,
         color: navTokens.text,
       }}

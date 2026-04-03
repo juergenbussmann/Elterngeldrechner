@@ -1,39 +1,36 @@
-/* ===== SOFTPILL BUTTON DESIGN TOKENS =====
-   Zentrale Variablen für den weichen Pill-Button-Look.
-   Import vor layout.css. */
+/* ===== INTERAKTIVE FLÄCHEN – Premium warm (Light), Dark separat */
 
 :root {
-  --pill-bg-top: rgba(255, 248, 240, 0.92);
-  --pill-bg-bottom: rgba(244, 233, 220, 0.88);
-  --pill-bg-top-hover: rgba(255, 250, 244, 0.96);
-  --pill-bg-bottom-hover: rgba(248, 238, 226, 0.92);
-  --pill-border: rgba(180, 150, 120, 0.25);
-  --pill-border-hover: rgba(170, 135, 100, 0.35);
-  --pill-shadow: 0 12px 28px rgba(140, 110, 80, 0.18);
-  --pill-shadow-hover: 0 16px 34px rgba(140, 110, 80, 0.22);
-  --pill-shadow-active: 0 8px 18px rgba(120, 95, 70, 0.22);
-  --pill-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --pill-inset-hover: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --pill-inset-active: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  --pill-radius: 18px;
-  --pill-padding-y: 14px;
-  --pill-padding-x: 16px;
-  --pill-focus: rgba(160, 120, 85, 0.45);
+  --pill-bg-top: linear-gradient(180deg, #ffffff 0%, #f4efe6 100%);
+  --pill-bg-bottom: #f4efe6;
+  --pill-bg-top-hover: linear-gradient(180deg, #ffffff 0%, #ebe4d8 100%);
+  --pill-bg-bottom-hover: #ebe4d8;
+  --pill-border: rgba(0, 0, 0, 0.08);
+  --pill-border-hover: rgba(0, 0, 0, 0.14);
+  --pill-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --pill-shadow-hover: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --pill-shadow-active: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --pill-inset: none;
+  --pill-inset-hover: none;
+  --pill-inset-active: none;
+  --pill-radius: 12px;
+  --pill-padding-y: 12px;
+  --pill-padding-x: 18px;
+  --pill-focus: rgba(37, 99, 235, 0.45);
 }
 
-/* Dark Theme – nur wenn Settings-Dark-Mode aktiv (data-color-scheme="dark") */
 [data-color-scheme='dark'] {
-  --pill-bg-top: rgba(60, 48, 40, 0.88);
-  --pill-bg-bottom: rgba(48, 38, 32, 0.92);
-  --pill-bg-top-hover: rgba(70, 56, 46, 0.92);
-  --pill-bg-bottom-hover: rgba(58, 46, 38, 0.96);
-  --pill-border: rgba(200, 170, 140, 0.2);
-  --pill-border-hover: rgba(220, 190, 160, 0.28);
-  --pill-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
-  --pill-shadow-hover: 0 16px 34px rgba(0, 0, 0, 0.55);
-  --pill-shadow-active: 0 8px 18px rgba(0, 0, 0, 0.5);
-  --pill-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --pill-inset-hover: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  --pill-inset-active: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --pill-focus: rgba(220, 190, 160, 0.45);
+  --pill-bg-top: #2e2e35;
+  --pill-bg-bottom: #2e2e35;
+  --pill-bg-top-hover: #383840;
+  --pill-bg-bottom-hover: #383840;
+  --pill-border: rgba(255, 255, 255, 0.1);
+  --pill-border-hover: rgba(255, 255, 255, 0.18);
+  --pill-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 8px 28px rgba(0, 0, 0, 0.25);
+  --pill-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 36px rgba(0, 0, 0, 0.3);
+  --pill-shadow-active: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --pill-inset: none;
+  --pill-inset-hover: none;
+  --pill-inset-active: none;
+  --pill-focus: rgba(96, 165, 250, 0.5);
 }

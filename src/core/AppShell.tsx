@@ -206,7 +206,7 @@ const AppShellContent: React.FC = () => {
         <header
           className="app-shell__header"
           style={{
-            backgroundColor: headerTokens.background,
+            background: headerTokens.background,
             borderBottom: `1px solid ${headerTokens.border}`,
             color: headerTokens.text,
           }}

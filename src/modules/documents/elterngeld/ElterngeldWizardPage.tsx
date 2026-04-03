@@ -244,16 +244,9 @@ const ElterngeldWizardPageBody: React.FC = () => {
 
   if (!wizardStarted) {
     return (
-      <div className="screen-placeholder elterngeld-screen">
-        <section className="next-steps next-steps--plain elterngeld__section">
-          <SectionHeader as="h1" title="Elterngeld planen" />
-          <div className="elterngeld-wizard-progress">
-            <p className="elterngeld-wizard-progress__label">Schritt 1 von {TOTAL_STEPS}</p>
-            <div className="elterngeld-wizard-progress__bar" role="progressbar" aria-valuenow={1} aria-valuemin={1} aria-valuemax={TOTAL_STEPS}>
-              <div className="elterngeld-wizard-progress__fill" style={{ width: `${(1 / TOTAL_STEPS) * 100}%` }} />
-            </div>
-          </div>
-          <StepIntro onStart={handleStartWizard} />
+      <div className="screen-placeholder elterngeld-screen elterngeld-screen--intro">
+        <section className="elterngeld-intro-screen" aria-label="Elterngeld Einstieg">
+          <StepIntro onStart={handleStartWizard} onReset={handleReset} />
         </section>
       </div>
     );

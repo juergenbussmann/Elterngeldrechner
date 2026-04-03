@@ -35,16 +35,15 @@ body,
   --footer-height: 64px;
 }
 
-/* Design-Tokens für App-Shell und Unterseiten
-   (an warme Landing-Optik angelehnt) */
+/* Design-Tokens – warme Premium-Shell (Light) */
 :root {
-  --app-bg: var(--color-background);
-  --surface: rgba(255, 248, 242, 0.9);
-  --surface-border: rgba(120, 85, 60, 0.22);
+  --app-bg: var(--ui-bg-page, var(--color-background));
+  --surface: #f6f2e9;
+  --surface-border: rgba(0, 0, 0, 0.05);
   --text: var(--color-text-primary);
   --muted: var(--color-text-secondary);
-  --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.16);
-  --radius-soft: 18px;
+  --shadow-soft: 0 16px 36px rgba(0, 0, 0, 0.1);
+  --radius-soft: 20px;
 }
 
 /* Surface/glass/text Overrides für Dark: siehe dark-theme-overrides.css */
@@ -52,10 +51,10 @@ body,
 /* ===== GLASSMORPHISM DESIGN-TOKENS =====
    Zentralisierte Variablen für Glass-Effekte */
 :root {
-  --glass-bg: rgba(255, 248, 242, 0.85);
-  --glass-border: rgba(120, 85, 60, 0.18);
-  --glass-blur: 12px;
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glass-bg: rgba(255, 252, 247, 0.88);
+  --glass-border: rgba(120, 96, 76, 0.14);
+  --glass-blur: 14px;
+  --glass-shadow: 0 14px 36px rgba(0, 0, 0, 0.1);
 }
 
 /* Glass Dark Overrides: siehe dark-theme-overrides.css */
@@ -64,13 +63,13 @@ body,
    Nur visuelle Props, 1:1 aus softpill-cards.css.
    Selected-State nutzt --softpill-selected-* (in :root). */
 .softpill-surface {
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: linear-gradient(180deg, #ffffff 0%, #f7f5ef 100%);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.1),
+    0 12px 30px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* ===== GLASS UTILITY-KLASSE =====
@@ -178,7 +177,7 @@ body,
 
 :root {
   --color-primary: #2563eb;
-  --color-background: #f4f4f5;
+  --color-background: #f3efe7;
   --color-surface: #ffffff;
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
@@ -192,7 +191,8 @@ body,
 }
 
 body {
-  background-color: var(--color-background);
+  background: var(--ui-bg-page-gradient, linear-gradient(135deg, #f3efe7 0%, #e9e4d8 40%, #f8f6f1 100%));
+  background-attachment: fixed;
   color: var(--color-text-primary);
   font-family: var(--font-family-base);
   position: relative;
@@ -298,7 +298,7 @@ a[href^='tel:'] {
   min-height: 100vh;
   padding-top: calc(56px + env(safe-area-inset-top, 0px)); /* header + Safe Area oben */
   padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom, 0px)); /* footer-hoogte inkl. Safe-Area */
-  background-color: transparent; /* Hintergrund wird durch BackgroundLayers bereitgestellt */
+  background-color: transparent;
   z-index: 1;
 }
 
@@ -328,10 +328,11 @@ a[href^='tel:'] {
   column-gap: 0.5rem;
   padding: env(safe-area-inset-top, 0px) 16px 0 16px;
   box-sizing: border-box;
-  border-bottom: 1px solid var(--surface-border);
-  background-color: var(--surface);
-  backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-soft);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 
 .app-shell__header-inner {
@@ -537,12 +538,51 @@ body.debug-layout .app-shell__footer {
   min-height: calc(var(--footer-height) + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--surface-border);
-  background-color: var(--surface);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.05);
   padding: 0 16px calc(10px + env(safe-area-inset-bottom, 0px)) 16px;
   overflow: visible;
+}
+
+/* Elterngeld-Startscreen: schwebende Pill-Bar, Glas, untergeordnet zum Hero */
+.app-shell:has(.elterngeld-screen--intro) .app-shell__footer {
+  left: 18px;
+  right: 18px;
+  width: auto;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.55) !important;
+  background: rgba(255, 252, 248, 0.78) !important;
+  box-shadow:
+    0 8px 32px rgba(90, 72, 48, 0.1),
+    0 2px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  padding: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px)) 10px;
+  min-height: 0;
+}
+
+.app-shell:has(.elterngeld-screen--intro) .app-shell__footer-nav {
+  max-width: 100%;
+}
+
+.app-shell:has(.elterngeld-screen--intro) .app-shell__footer .app-shell__footer-nav-item.ui-btn--pill {
+  border-radius: 12px;
+  min-height: 42px;
+}
+
+[data-color-scheme='dark'] .app-shell:has(.elterngeld-screen--intro) .app-shell__footer {
+  background: rgba(32, 30, 28, 0.82) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* FOOTER-INHOUD – gecentreerde navigatie */
@@ -572,7 +612,7 @@ body.debug-layout .app-shell__footer {
   align-items: center;
   min-width: 0;
   min-height: 44px;
-  border-radius: 999px;
+  border-radius: var(--ui-radius-md, 12px);
   background: transparent;
   box-shadow: none;
   transition: opacity 0.12s ease-out, background-color 0.12s ease-out;
@@ -587,6 +627,10 @@ body.debug-layout .app-shell__footer {
 .app-shell__footer-nav-item:active {
   transform: none;
   opacity: 0.9;
+}
+
+.app-shell__footer .app-shell__footer-nav-item.ui-btn--pill {
+  border-radius: var(--ui-radius-md, 12px);
 }
 
 /* Alleen iconen tonen in footer, tekst verbergen */
@@ -1192,20 +1236,34 @@ body.debug-layout .app-shell__footer {
   padding: var(--pill-padding-y) var(--pill-padding-x);
   border-radius: var(--pill-radius);
 
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom));
+  background: var(--pill-bg-top);
 
   border: 1px solid var(--pill-border);
 
-  box-shadow: var(--pill-shadow), var(--pill-inset);
+  box-shadow: var(--pill-shadow);
 
-  font-weight: 650;
-  letter-spacing: 0.2px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
     background 160ms ease,
-    border-color 160ms ease;
+    border-color 160ms ease,
+    filter 160ms ease;
+}
+
+[data-color-scheme='light'] .btn--softpill {
+  background: linear-gradient(135deg, #d8c8a8, #c2b08b);
+  color: #2b2b2b;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+[data-color-scheme='light'] .btn--softpill:hover:not(:disabled) {
+  filter: brightness(1.04);
 }
 
 [data-color-scheme='dark'] .btn--softpill {
@@ -1214,20 +1272,25 @@ body.debug-layout .app-shell__footer {
 
 @media (hover: hover) and (pointer: fine) {
   .btn--softpill:hover:not(:disabled) {
-    background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover));
-
+    background: var(--pill-bg-top-hover);
     border-color: var(--pill-border-hover);
-
-    box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover);
-
+    box-shadow: var(--pill-shadow-hover);
     transform: translateY(-1px);
+  }
+
+  [data-color-scheme='light'] .btn--softpill:hover:not(:disabled) {
+    background: linear-gradient(135deg, #e0d2b5, #c9b897);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.45);
   }
 }
 
 .btn--softpill:active:not(:disabled) {
   transform: translateY(1px);
 
-  box-shadow: var(--pill-shadow-active), var(--pill-inset-active);
+  box-shadow: var(--pill-shadow-active);
 }
 
 .btn--softpill:disabled {
@@ -1235,7 +1298,7 @@ body.debug-layout .app-shell__footer {
   cursor: not-allowed;
   filter: grayscale(0.06);
   transform: none;
-  box-shadow: var(--pill-shadow), var(--pill-inset);
+  box-shadow: var(--pill-shadow);
 }
 
 .btn--softpill:focus-visible {
@@ -1246,7 +1309,7 @@ body.debug-layout .app-shell__footer {
 /* Selected-State (z.B. Paycards): subtil wie hover, kein Ring */
 .btn--softpill--selected {
   border-color: var(--pill-border-hover);
-  box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover);
+  box-shadow: var(--pill-shadow-hover);
 }
 
 .home-widget-grid {

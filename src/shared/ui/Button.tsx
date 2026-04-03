@@ -18,7 +18,11 @@ const isTokenBasedButton = (className?: string | null): boolean =>
   (className.includes('btn--softpill') || className.includes('ui-btn') || className.includes('ui-chip'));
 
 const getUiButtonClasses = (variant: ButtonVariant, fullWidth?: boolean): string => {
-  const base = variant === 'ghost' ? 'ui-btn ui-btn--ghost' : 'ui-btn ui-btn--pill';
+  if (variant === 'ghost') {
+    const base = 'ui-btn ui-btn--ghost';
+    return fullWidth ? `${base} ui-btn--full` : base;
+  }
+  const base = `ui-btn ui-btn--pill ui-btn--${variant}`;
   return fullWidth ? `${base} ui-btn--full` : base;
 };
 

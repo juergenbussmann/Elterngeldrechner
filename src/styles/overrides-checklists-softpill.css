@@ -1,8 +1,5 @@
-/* LAST-LOADED OVERRIDES
-   Scope: nur normale Screens (screen-placeholder), Startseite bleibt unangetastet
-*/
+/* LAST-LOADED: Premium Gradient + Gloss auf Screen-Placeholder-Karten (Light). */
 
-/* 1) LISTEN/ZEILEN IN CARDS: komplett transparent (killt die weißen "Zeilen-Kacheln") */
 .screen-placeholder .still-daily-checklist__card .still-daily-checklist__list,
 .screen-placeholder .still-daily-checklist__card .still-daily-checklist__list * {
   background-color: transparent !important;
@@ -10,7 +7,6 @@
   box-shadow: none !important;
 }
 
-/* falls die weißen Flächen aus border/pseudo kommen */
 .screen-placeholder .still-daily-checklist__card .still-daily-checklist__list *::before,
 .screen-placeholder .still-daily-checklist__card .still-daily-checklist__list *::after {
   background-color: transparent !important;
@@ -19,7 +15,6 @@
   border-color: transparent !important;
 }
 
-/* 2) LINKS IN CARDS (die wie Buttons aussehen) */
 .screen-placeholder .still-daily-checklist__card a.next-steps__button,
 .screen-placeholder .still-daily-checklist__card a.btn--softpill {
   text-decoration: none;
@@ -31,45 +26,114 @@
   color: inherit;
 }
 
-/* 3) BUTTONS IN CARDS: wie Softpill-Buttons (über Variablen, nicht "irgendwie") */
-.screen-placeholder .still-daily-checklist__card .btn,
-.screen-placeholder .still-daily-checklist__card button {
-  border-radius: var(--pill-radius) !important;
-  padding: var(--pill-padding-y) var(--pill-padding-x) !important;
-  font-weight: 650 !important;
-  letter-spacing: 0.2px !important;
-
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid var(--pill-border) !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
-
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease,
-    border-color 160ms ease !important;
+/* Softpill-Links in Karten: Gold-Premium (ohne ui-btn anzutasten) */
+.screen-placeholder .still-daily-checklist__card a.btn--softpill,
+.screen-placeholder .still-daily-checklist__card .btn--softpill {
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #d8c8a8, #c2b08b) !important;
+  color: #2b2b2b !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  font-weight: var(--ui-font-weight-cta, 600) !important;
+  letter-spacing: 0.01em !important;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease !important;
 }
 
-/* Hover/Active (wie .btn--softpill) – Buttons */
-.screen-placeholder .still-daily-checklist__card .btn:hover,
-.screen-placeholder .still-daily-checklist__card button:hover {
-  background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover)) !important;
-  border-color: var(--pill-border-hover) !important;
-  box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover) !important;
+.screen-placeholder .still-daily-checklist__card a.btn--softpill:hover,
+.screen-placeholder .still-daily-checklist__card .btn--softpill:hover {
+  filter: brightness(1.04) !important;
+  transform: translateY(-1px) !important;
 }
 
-.screen-placeholder .still-daily-checklist__card .btn:active,
-.screen-placeholder .still-daily-checklist__card button:active {
-  transform: translateY(1px) !important;
-  box-shadow: var(--pill-shadow-active), var(--pill-inset-active) !important;
+.screen-placeholder .still-daily-checklist__card a.btn--softpill:active,
+.screen-placeholder .still-daily-checklist__card .btn--softpill:active {
+  transform: translateY(0) !important;
+  filter: brightness(0.98) !important;
 }
 
-/* 4) CARDS in normalen Screens wie Bild 2 (Notes Composer) – pill tokens, kein Glass/Blur */
-.screen-placeholder .still-daily-checklist__card,
-.screen-placeholder .ui-card,
-.screen-placeholder .card,
-.screen-placeholder [class*="__card"] {
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid var(--pill-border) !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
-  border-radius: var(--pill-radius) !important;
+/* Native Buttons ohne .ui-btn (Fallback) */
+.screen-placeholder .still-daily-checklist__card button:not(.ui-btn) {
+  border-radius: 12px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f2ebe0 100%) !important;
+  color: #2b2b2b !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+  font-weight: var(--ui-font-weight-cta, 600) !important;
+}
+
+[data-color-scheme='light'] .screen-placeholder .still-daily-checklist__card,
+[data-color-scheme='light'] .screen-placeholder .ui-card,
+[data-color-scheme='light'] .screen-placeholder .card,
+[data-color-scheme='light'] .screen-placeholder [class*='__card']:not(.elterngeld-calculation__household-card) {
+  position: relative !important;
+  overflow: hidden !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f5ef 100%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  border-radius: 18px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+[data-color-scheme='light'] .screen-placeholder .still-daily-checklist__card::after,
+[data-color-scheme='light'] .screen-placeholder .ui-card::after,
+[data-color-scheme='light'] .screen-placeholder .card::after,
+[data-color-scheme='light'] .screen-placeholder [class*='__card']::after {
+  content: '' !important;
+  position: absolute !important;
+  top: -40% !important;
+  left: -20% !important;
+  width: 140% !important;
+  height: 100% !important;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.25),
+    rgba(255, 255, 255, 0.05) 40%,
+    transparent 60%
+  ) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+[data-color-scheme='light'] .screen-placeholder .still-daily-checklist__card > *,
+[data-color-scheme='light'] .screen-placeholder .ui-card > *,
+[data-color-scheme='light'] .screen-placeholder .card > *,
+[data-color-scheme='light'] .screen-placeholder [class*='__card'] > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+[data-color-scheme='light'] .screen-placeholder .elterngeld-calculation__household-card {
+  background: linear-gradient(135deg, #f4efe6, #e6dcc7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-color-scheme='dark'] .screen-placeholder .still-daily-checklist__card,
+[data-color-scheme='dark'] .screen-placeholder .ui-card,
+[data-color-scheme='dark'] .screen-placeholder .card,
+[data-color-scheme='dark'] .screen-placeholder [class*='__card'] {
+  background: var(--ui-bg-card) !important;
+  border: 1px solid var(--ui-border-subtle) !important;
+  box-shadow: var(--ui-shadow-md) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-color-scheme='dark'] .screen-placeholder .still-daily-checklist__card::after,
+[data-color-scheme='dark'] .screen-placeholder .ui-card::after,
+[data-color-scheme='dark'] .screen-placeholder .card::after,
+[data-color-scheme='dark'] .screen-placeholder [class*='__card']::after {
+  display: none !important;
 }

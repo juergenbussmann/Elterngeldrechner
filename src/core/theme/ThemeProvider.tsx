@@ -110,7 +110,14 @@ const applyThemeToDocument = (theme: ThemeDefinition): void => {
   root.dataset.colorScheme = theme.mode;
   root.style.colorScheme = theme.mode;
 
-  document.body.style.backgroundColor = colors.background;
+  if (theme.mode === 'light') {
+    document.body.style.background =
+      'linear-gradient(135deg, #f3efe7 0%, #e9e4d8 40%, #f8f6f1 100%) fixed';
+    document.body.style.backgroundColor = '';
+  } else {
+    document.body.style.background = '';
+    document.body.style.backgroundColor = colors.background;
+  }
   document.body.style.color = colors.textPrimary;
   document.body.style.fontFamily = typography.fontFamily;
 };

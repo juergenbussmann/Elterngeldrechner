@@ -4,7 +4,6 @@ import { Button } from '../../../shared/ui/Button';
 import { TextInput } from '../../../shared/ui/TextInput';
 import { Card } from '../../../shared/ui/Card';
 import { usePhase } from '../usePhase';
-import { incrementProgressActionCount } from '../../begleitungPlus/upgradeTriggersStore';
 import type { PhaseMode } from '../types';
 import { getChildDateContext } from '../../../shared/lib/childDateContext';
 import './PhaseOnboardingPanel.css';
@@ -54,7 +53,6 @@ export const PhaseOnboardingPanel: React.FC<PhaseOnboardingPanelProps> = ({ onCl
       actions.setMode('postpartum');
       actions.setBirthDate(toIsoDateOnly(birthDate));
     }
-    incrementProgressActionCount();
     onClose();
   };
 

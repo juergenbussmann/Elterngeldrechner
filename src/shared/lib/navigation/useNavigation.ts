@@ -42,10 +42,6 @@ const deriveScreenIdFromPath = (path: string): string => {
     return `detail:${decodeURIComponent(entity)}`;
   }
 
-  if (normalized === '/begleitung-plus') {
-    return 'begleitungPlus';
-  }
-
   return normalized.slice(1) || 'unknown';
 };
 

@@ -73,13 +73,13 @@ export const lightDefault: ThemeDefinition = {
   components: {
     button: {
       primary: {
-        background: 'linear-gradient(135deg, #d8c8a8, #c2b08b)',
-        text: '#2b2b2b',
-        border: 'rgba(0, 0, 0, 0.08)',
-        hoverBackground: 'linear-gradient(135deg, #e0d2b5, #c9b897)',
-        activeBackground: 'linear-gradient(135deg, #c9b897, #b39e7a)',
-        shadow: '0 6px 14px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
-        activeShadow: '0 4px 10px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
+        background: 'linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%)',
+        text: '#3a2f1f',
+        border: 'rgba(255, 255, 255, 0.68)',
+        hoverBackground: 'linear-gradient(180deg, #faf0d4 0%, #ead49a 100%)',
+        activeBackground: 'linear-gradient(180deg, #e4cf9f 0%, #cfba7f 100%)',
+        shadow: '0 6px 14px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.55)',
+        activeShadow: '0 4px 11px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.45)',
       },
       secondary: {
         background: 'linear-gradient(180deg, #ffffff 0%, #f2ebe0 100%)',
@@ -99,9 +99,9 @@ export const lightDefault: ThemeDefinition = {
       },
     },
     card: {
-      background: '#ffffff',
-      border: '#e4e4e7',
-      shadow: baseShadows.sm,
+      background: 'rgba(255, 248, 235, 0.78)',
+      border: 'rgba(255, 255, 255, 0.55)',
+      shadow: '0 10px 28px rgba(0, 0, 0, 0.10)',
     },
     input: {
       background: '#ffffff',
@@ -151,13 +151,13 @@ export const darkDefault: ThemeDefinition = {
   components: {
     button: {
       primary: {
-        background: brandPrimaryDark,
-        text: '#ffffff',
-        border: brandPrimaryDark,
-        hoverBackground: '#c45a5a',
-        activeBackground: '#b34f4f',
-        shadow: darkShadows.sm,
-        activeShadow: darkShadows.md,
+        background: 'linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%)',
+        text: '#3a2f1f',
+        border: 'rgba(255, 255, 255, 0.68)',
+        hoverBackground: 'linear-gradient(180deg, #faf0d4 0%, #ead49a 100%)',
+        activeBackground: 'linear-gradient(180deg, #e4cf9f 0%, #cfba7f 100%)',
+        shadow: '0 6px 14px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.55)',
+        activeShadow: '0 4px 11px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.45)',
       },
       secondary: {
         background: '#334155',

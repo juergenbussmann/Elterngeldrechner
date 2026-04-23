@@ -21,7 +21,7 @@ const WHITELIST = [
   'src/screens/Start.tsx',
   'src/screens/start.css',
   'src/core/router/AppRoutes.tsx',
-  'src/core/begleitungPlus/ui/BegleitungPlusUpsellPanel.css', // Legacy Panel
+  'src/modules/documents/forms/ParentLeaveFormPage.css', // Elternzeit-Flow Goldstandard (Forms, Modals)
 ];
 
 const SCREEN_WRAPPER_PATTERN = /(?:home-screen|phase-screen|topic-screen)/;

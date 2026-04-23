@@ -5,8 +5,6 @@ import { TextInput } from '../../shared/ui/TextInput';
 import { SectionHeader } from '../../shared/ui/SectionHeader';
 import { useI18n } from '../../shared/lib/i18n';
 import { useNavigation } from '../../shared/lib/navigation/useNavigation';
-import { useBegleitungPlus } from '../../core/begleitungPlus';
-import { activatePlusDev, deactivatePlusDev, activatePlusAdmin, deactivatePlusAdmin } from '../../core/begleitungPlus';
 import '../../styles/softpill-buttons-in-cards.css';
 import '../../styles/softpill-cards.css';
 
@@ -15,7 +13,6 @@ const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN ?? '';
 export const DeveloperScreen: React.FC = () => {
   const { t } = useI18n();
   const { goTo, goBack } = useNavigation();
-  const { isPlus } = useBegleitungPlus();
   const [pinInput, setPinInput] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pinError, setPinError] = useState('');
@@ -41,39 +38,6 @@ export const DeveloperScreen: React.FC = () => {
 
   return (
     <>
-      {import.meta.env.DEV && (
-        <Card className="still-daily-checklist__card">
-          <div className="settings-section">
-            <SectionHeader as="h2" title={t('settings.developer.dev.title')} />
-            <div className="settings-section__content">
-              <p className="settings-layout__muted">
-                {t('settings.developer.dev.begleitungPlusStatus')}:{' '}
-                {isPlus ? t('settings.developer.dev.active') : t('settings.developer.dev.inactive')}
-              </p>
-              <div className="next-steps__stack">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  fullWidth
-                  className="next-steps__button btn--softpill"
-                  onClick={activatePlusDev}
-                >
-                  {t('settings.developer.dev.activatePlus')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  fullWidth
-                  className="next-steps__button btn--softpill"
-                  onClick={deactivatePlusDev}
-                >
-                  {t('settings.developer.dev.deactivatePlus')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
       {!import.meta.env.PROD && (
         <Card className="still-daily-checklist__card">
           <div className="settings-section">
@@ -114,32 +78,7 @@ export const DeveloperScreen: React.FC = () => {
                   )}
                 </>
               ) : (
-                <>
-                  <p className="settings-layout__muted">
-                    {t('settings.developer.dev.begleitungPlusStatus')}:{' '}
-                    {isPlus ? t('settings.developer.dev.active') : t('settings.developer.dev.inactive')}
-                  </p>
-                  <div className="next-steps__stack">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      fullWidth
-                      className="next-steps__button btn--softpill"
-                      onClick={activatePlusAdmin}
-                    >
-                      {t('settings.developer.admin.activatePlus')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      fullWidth
-                      className="next-steps__button btn--softpill"
-                      onClick={deactivatePlusAdmin}
-                    >
-                      {t('settings.developer.admin.deactivatePlus')}
-                    </Button>
-                  </div>
-                </>
+                <p className="settings-layout__muted">PIN akzeptiert.</p>
               )}
             </div>
           </div>

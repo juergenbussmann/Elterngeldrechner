@@ -3,7 +3,6 @@ import type { PanelType } from '../core/panels/PanelHost';
 import { ExportPanel } from '../core/export/ui/ExportPanel';
 import { CalendarBulkExportResultPanel } from '../core/calendar/ui/CalendarBulkExportResultPanel';
 import { PhaseOnboardingPanel } from '../core/phase/ui/PhaseOnboardingPanel';
-import { BegleitungPlusUpsellPanel } from '../core/begleitungPlus/ui/BegleitungPlusUpsellPanel';
 
 export type PanelRegistryEntry = {
   id: string;
@@ -31,10 +30,5 @@ export const panelRegistry: PanelRegistryEntry[] = [
     id: 'phase-onboarding',
     type: 'bottom',
     component: PhaseOnboardingPanel,
-  },
-  {
-    id: 'begleitung-plus-upsell',
-    type: 'bottom',
-    component: BegleitungPlusUpsellPanel,
   },
 ];

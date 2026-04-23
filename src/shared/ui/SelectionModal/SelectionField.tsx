@@ -76,6 +76,9 @@ export const SelectionField: React.FC<SelectionFieldProps> = ({
         value={value}
         onSelect={handleSelect}
         onClose={() => setOpen(false)}
+        sheetClassName={
+          variant === 'documents-form' ? 'selection-modal__sheet--parental-leave-gold' : undefined
+        }
       />
     </div>
   );

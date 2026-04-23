@@ -133,19 +133,6 @@ export const screenConfigs: ScreenConfig[] = [
     ],
   },
   {
-    id: 'begleitungPlus',
-    route: '/begleitung-plus',
-    titleKey: 'begleitungPlus.title',
-    actions: [
-      {
-        id: 'goBack',
-        labelKey: 'common.back',
-        icon: 'back',
-        navigationTarget: '/',
-      },
-    ],
-  },
-  {
     id: 'demo',
     route: '/demo',
     titleKey: 'nav.demo',

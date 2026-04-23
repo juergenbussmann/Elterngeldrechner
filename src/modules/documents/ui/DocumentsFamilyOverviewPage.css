@@ -8,6 +8,14 @@
   margin-top: 0;
 }
 
+/* Keine zweite Fläche unter dem transparenten App-Header (nur Hub-Seite) */
+.screen-placeholder.documents-family-screen .section-header,
+.screen-placeholder.documents-family-screen .documents-family__section {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
 .documents-family__entries {
   display: flex;
   flex-direction: column;
@@ -27,19 +35,22 @@
   align-items: flex-start;
   text-align: left;
   padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--pill-border, var(--color-border, #e4e4e7));
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom));
-  box-shadow: var(--pill-shadow), var(--pill-inset);
+  border-radius: var(--ui-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 248, 235, 0.78);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   overflow-wrap: anywhere;
   word-break: break-word;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .documents-family__entry:hover {
-  border-color: var(--pill-border-hover);
-  box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover);
+  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 248, 235, 0.88);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.11);
 }
 
 .documents-family__entry:active {

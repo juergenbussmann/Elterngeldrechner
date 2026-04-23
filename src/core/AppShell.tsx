@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { AppFooter } from './AppFooter';
 import { useNavigation } from '../shared/lib/navigation/useNavigation';
 import { PickerOverlayProvider } from '../shared/lib/pickerOverlay/PickerOverlayProvider';
@@ -20,11 +20,7 @@ import { PhaseLabel } from './header/PhaseLabel';
 import { BackgroundLayers } from './background/BackgroundLayers';
 import { getModuleById } from '../shared/lib/modules';
 import { getHeaderActionHandler } from '../shared/lib/navigation/headerActionRegistry';
-import { registerBegleitungPlusOpener } from './begleitungPlus/openBegleitungPlusUpsell';
 import { PhaseOnboardingGate } from './phase/PhaseOnboardingGate';
-import { ProgressTriggerBanner } from './begleitungPlus/ui/ProgressTriggerBanner';
-import { shouldShowProgressTrigger } from './begleitungPlus/upgradeTriggersStore';
-import { useBegleitungPlus } from './begleitungPlus';
 
 type ModuleHeaderActions = {
   primaryActions?: ScreenAction[];
@@ -36,12 +32,9 @@ const AppShellContent: React.FC = () => {
   const navigationType = useNavigationType();
   const { goTo, goBack, openNotifications, openSettings } = useNavigation();
   const { t } = useI18n();
-  const { isPlus } = useBegleitungPlus();
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [showProgressBanner, setShowProgressBanner] = useState(true);
   const theme = useTheme();
   const headerTokens = theme.components.header;
-  const navigate = useNavigate();
   const { state: panelState, closePanel, openBottomSheet } = usePanels();
   const isHome = location.pathname === '/';
 
@@ -107,10 +100,6 @@ const AppShellContent: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  useEffect(() => {
-    registerBegleitungPlusOpener((path) => navigate(path));
-  }, [navigate]);
 
   // Scroll-to-top on forward navigations so newly opened screens always start at the top.
   // Keep scroll position for POP (browser back/forward) to preserve the user's reading position.
@@ -229,16 +218,6 @@ const AppShellContent: React.FC = () => {
           <OfflineScreen onRetry={handleRetry} />
         ) : (
           <>
-            {!isHome &&
-              !isPlus &&
-              shouldShowProgressTrigger() &&
-              showProgressBanner && (
-                <div className="app-shell__progress-banner">
-                  <ProgressTriggerBanner
-                    onDismiss={() => setShowProgressBanner(false)}
-                  />
-                </div>
-              )}
             <Outlet />
           </>
         )}

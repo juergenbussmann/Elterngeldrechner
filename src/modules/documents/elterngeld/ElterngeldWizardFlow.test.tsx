@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  * Reproduktion des Fehlers: Eltern & Arbeit → Weiter → Crash
  * Isolierter Test von StepPlan (der Step nach "Eltern & Arbeit").
- * Kritischer Flow: Intro → Geburt & Kind → Eltern & Arbeit → Weiter → Monate planen.
+ * Kritischer Flow: Geburt & Kind → Eltern & Arbeit → Weiter → Monate planen.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -10,7 +10,6 @@ import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '../../../shared/lib/i18n';
 import { Button } from '../../../shared/ui/Button';
-import { StepIntro } from './steps/StepIntro';
 import { StepGeburtKind } from './steps/StepGeburtKind';
 import { StepEinkommen } from './steps/StepEinkommen';
 import { StepElternArbeit } from './steps/StepElternArbeit';
@@ -27,16 +26,11 @@ const WIZARD_STEPS = [
 
 /** Minimaler Wizard für Flow-Test ohne Storage/Phase/Navigation. */
 const MinimalWizardFlow: React.FC = () => {
-  const [showIntro, setShowIntro] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<ElterngeldApplication>(() => ({
     ...INITIAL_ELTERNGELD_APPLICATION,
     child: { ...INITIAL_ELTERNGELD_APPLICATION.child, expectedBirthDate: '2025-06-15' },
   }));
-
-  if (showIntro) {
-    return <StepIntro onStart={() => setShowIntro(false)} />;
-  }
 
   const step = WIZARD_STEPS[stepIndex] ?? WIZARD_STEPS[0];
   const isLast = stepIndex >= WIZARD_STEPS.length - 1;
@@ -71,12 +65,11 @@ const baseValues: ElterngeldApplication = {
 };
 
 describe('Elterngeld-Wizard – kritischer Flow', () => {
-  it('Intro → Geburt & Kind → Eltern & Arbeit → Weiter → Monate planen ohne Runtime-Error', () => {
+  it('Geburt & Kind → Eltern & Arbeit → Weiter → Monate planen ohne Runtime-Error', () => {
     expect(() => {
       renderWithI18n(<MinimalWizardFlow />);
     }).not.toThrow();
 
-    fireEvent.click(screen.getByRole('button', { name: /Jetzt planen/i }));
     expect(screen.getByText(/Geburt & Kind/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /Weiter/i }));

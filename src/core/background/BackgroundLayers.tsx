@@ -18,9 +18,12 @@ import { useLocation } from 'react-router-dom';
 export const BackgroundLayers: React.FC = () => {
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const isElterngeldWizard = location.pathname.startsWith('/documents/elterngeld');
+  const isParentalLeaveFlow = location.pathname.startsWith('/documents/parental-leave');
 
   // Auf Home-Seite nicht anzeigen, da dort eigener Hintergrund verwendet wird
-  if (isHome) {
+  // Elterngeld-Wizard / Elternzeit-Flow: eigene Vollflächen-Bühne (startscreen-background-final), keine Shell-Layers darunter
+  if (isHome || isElterngeldWizard || isParentalLeaveFlow) {
     return null;
   }
 

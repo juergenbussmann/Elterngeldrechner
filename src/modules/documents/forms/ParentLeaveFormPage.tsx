@@ -25,8 +25,6 @@ import {
 import { getParentLeaveLetterContent } from './buildParentLeaveDocument';
 import { buildParentLeavePdf } from './buildParentLeavePdf';
 import { addDocument } from '../application/service';
-import { useBegleitungPlus } from '../../../core/begleitungPlus';
-import { ElterngeldFlowAccessBlocked } from '../elterngeld/ElterngeldFlowAccessBlocked';
 import './ParentLeaveFormPage.css';
 import '../../../styles/softpill-buttons-in-cards.css';
 import '../../../styles/softpill-cards.css';
@@ -163,22 +161,6 @@ const FormField: React.FC<{
 };
 
 export const ParentLeaveFormPage: React.FC = () => {
-  const { isPlus, isYearly, planType } = useBegleitungPlus();
-  console.log('ENTRY CHECK', { isPlus, planType, isYearly });
-  if (!isPlus || !isYearly) {
-    console.log('GATING CHECK', { isPlus, planType, isYearly });
-    return (
-      <ElterngeldFlowAccessBlocked
-        variant={isPlus ? 'monthly' : 'free'}
-        screenTitleKey="documents.parentalLeave.accessGate.title"
-        plusUpsellReason="parental_leave_yearly_gate"
-      />
-    );
-  }
-  return <ParentLeaveFormPageBody />;
-};
-
-const ParentLeaveFormPageBody: React.FC = () => {
   const { profile, actions } = usePhase();
   const { goTo } = useNavigation();
   const { t } = useI18n();
@@ -298,7 +280,7 @@ const ParentLeaveFormPageBody: React.FC = () => {
 
   if (showSuccess) {
     return (
-      <div className="screen-placeholder documents-form-screen">
+      <div className="screen-placeholder parental-leave-screen documents-form-screen">
         <section className="next-steps next-steps--plain documents-form__section">
           <SectionHeader as="h1" title="Elternzeit-Antrag" />
           <Card className="still-daily-checklist__card documents-form__card documents-form__success-card">
@@ -329,7 +311,7 @@ const ParentLeaveFormPageBody: React.FC = () => {
   }
 
   return (
-    <div className="screen-placeholder documents-form-screen">
+    <div className="screen-placeholder parental-leave-screen documents-form-screen">
       <section className="next-steps next-steps--plain documents-form__section">
         <SectionHeader as="h1" title="Elternzeit-Antrag" />
         <Card className="still-daily-checklist__card documents-form__card">

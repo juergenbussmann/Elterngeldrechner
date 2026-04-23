@@ -8,30 +8,134 @@
 }
 
 .modal__container--softpill {
-  background: rgba(255, 255, 255, 0.65) !important;
+  background: rgba(255, 248, 235, 0.88) !important;
   border: 1px solid rgba(255, 255, 255, 0.55) !important;
   border-radius: 22px !important;
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 
-/* Elterngeld „Aufteilung prüfen“ / Ergebnis: gleiche warme Surface-Welt wie Wizard (Portal = kein .screen-placeholder) */
+/*
+ * Planvorschläge / „Aufteilung prüfen“ / Übernahme-Bestätigung:
+ * gleiche Vollflächen-Gold-Bühne wie .screen-placeholder.elterngeld-screen (Portal unter body).
+ */
 .modal__overlay--softpill:has(.elterngeld-optimization-overlay-content) {
-  background-color: rgba(120, 96, 76, 0.2) !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  padding: 0 !important;
+  min-height: 100dvh !important;
+  background-color: transparent !important;
+  background-image: url('/assets/startscreen-background-final.png') !important;
+  background-repeat: no-repeat !important;
+  background-position: top left !important;
+  background-size: 100% 100% !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .modal__container--softpill:has(.elterngeld-optimization-overlay-content) {
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid rgba(120, 96, 76, 0.22) !important;
-  border-radius: 22px !important;
-  box-shadow:
-    0 10px 28px rgba(120, 96, 76, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  max-width: none !important;
+  width: 100% !important;
+  min-height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 auto !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  padding: 0.75rem 1rem 1rem !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Modal-Titel: keine Dialog-Kartenfläche */
+.modal__container--softpill:has(.elterngeld-optimization-overlay-content) > div:first-of-type:not(:has(> .elterngeld-optimization-overlay-content)) {
+  flex-shrink: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 0 0.5rem 0 !important;
+  padding: 0 0 0.65rem 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.42) !important;
+  color: #2f2a24 !important;
+  font-weight: 700 !important;
+  font-size: 1.15rem !important;
+}
+
+.modal__container--softpill:has(.elterngeld-optimization-overlay-content) > div:has(> .elterngeld-optimization-overlay-content) {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content {
+  background: transparent !important;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Äußere Strategie-Hülle: kein zweites Karten-Panel über der Gold-Bühne */
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__optimization-block--comparison {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  gap: 1rem !important;
+}
+
+/* Hinweis-/Infoflächen im Overlay: warmes Glas statt grauem Muted-Block */
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content.elterngeld-screen
+  .elterngeld-step__notice.elterngeld-step__notice--tip:not(.elterngeld-plan__model-comparison):not(.elterngeld-plan__status-card) {
+  padding: 0.65rem 0.9rem !important;
+  background: rgba(255, 248, 235, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-step-flow__transition {
+  margin-bottom: 1rem !important;
+  padding: 0.75rem 0.85rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.48) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  background: rgba(255, 248, 235, 0.55) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.48) !important;
+  opacity: 1 !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-optimization-goal__addon {
+  background: rgba(255, 248, 235, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Zurück / Ghost: lesbar auf Gold, gleiche Pillenform */
+.modal__container--softpill .elterngeld-optimization-overlay-content .ui-btn--ghost {
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  padding: 0 18px !important;
+  color: #3a2f1f !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.48) !important;
+  box-shadow: none !important;
 }
 
 /* Inputs/Selects/Textareas im Softpill-Dialog: an restliche UI anpassen */
@@ -62,33 +166,77 @@
  * daher kein .screen-placeholder – overrides-checklists-softpill greift nicht.
  * Hier dieselbe Card-/Button-Surface-Hierarchie wie im Wizard (pill-Tokens).
  */
-.modal__container--softpill .elterngeld-optimization-overlay-content .still-daily-checklist__card,
-.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__optimization-block {
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid var(--pill-border) !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
-  border-radius: var(--pill-radius) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+/*
+ * Äußere Strategie-Hülle (.optimization-block--comparison) bewusst ausgeschlossen:
+ * sonst überschreibt diese Regel die transparente Hülle und kastelt die Varianten wieder ein.
+ */
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .still-daily-checklist__card:not(.elterngeld-calculation__optimization-block--comparison),
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__optimization-block:not(.elterngeld-calculation__optimization-block--comparison) {
+  background: rgba(255, 248, 235, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card {
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid var(--pill-border) !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: rgba(255, 248, 235, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card::after {
+  display: none !important;
+}
+
+/* Nach Entfernen der äußeren Box: etwas Luft zwischen Fließtext und erster Karte / Karten untereinander */
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-step-flow .elterngeld-calculation__suggestion-list {
+  margin-top: 0.5rem !important;
+  margin-bottom: 1rem !important;
+  gap: 0.65rem !important;
+}
+
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .elterngeld-calculation__suggestion-card.elterngeld-calculation__suggestion-card--selected {
+  background: rgba(255, 248, 235, 0.78) !important;
+  border: 1px solid #e2c48d !important;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22) !important;
+  font-weight: 600 !important;
+}
+
+.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-optimization-goal__section {
+  margin-bottom: 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.42);
+}
+
+/* Primär wie „Weiter“ (Wizard) – Karten + Aktionszeilen */
+.modal__container--softpill .elterngeld-optimization-overlay-content .ui-btn--primary,
 .modal__container--softpill .elterngeld-optimization-overlay-content .still-daily-checklist__card .btn,
-.modal__container--softpill .elterngeld-optimization-overlay-content .still-daily-checklist__card button {
-  border-radius: var(--pill-radius) !important;
-  padding: var(--pill-padding-y) var(--pill-padding-x) !important;
+.modal__container--softpill .elterngeld-optimization-overlay-content .still-daily-checklist__card button:not(.ui-btn--secondary):not(.ui-btn--ghost) {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  padding: 0 22px !important;
   font-weight: 650 !important;
   letter-spacing: 0.2px !important;
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid var(--pill-border) !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
+  color: #3a2f1f !important;
+  background: linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.68) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
@@ -99,18 +247,25 @@
 @media (hover: hover) and (pointer: fine) {
   .modal__container--softpill
     .elterngeld-optimization-overlay-content
+    .ui-btn--primary:hover:not(:disabled),
+  .modal__container--softpill
+    .elterngeld-optimization-overlay-content
     .still-daily-checklist__card
     .btn:hover:not(:disabled),
   .modal__container--softpill
     .elterngeld-optimization-overlay-content
     .still-daily-checklist__card
-    button:hover:not(:disabled) {
-    background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover)) !important;
-    border-color: var(--pill-border-hover) !important;
-    box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover) !important;
+    button:not(.ui-btn--secondary):not(.ui-btn--ghost):hover:not(:disabled) {
+    background: linear-gradient(180deg, #f9ebd0 0%, #ecd49a 100%) !important;
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
   }
 }
 
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .ui-btn--primary:active:not(:disabled),
 .modal__container--softpill
   .elterngeld-optimization-overlay-content
   .still-daily-checklist__card
@@ -118,11 +273,16 @@
 .modal__container--softpill
   .elterngeld-optimization-overlay-content
   .still-daily-checklist__card
-  button:active:not(:disabled) {
+  button:not(.ui-btn--secondary):not(.ui-btn--ghost):active:not(:disabled) {
   transform: translateY(1px) !important;
-  box-shadow: var(--pill-shadow-active), var(--pill-inset-active) !important;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
 }
 
+.modal__container--softpill
+  .elterngeld-optimization-overlay-content
+  .ui-btn--primary:disabled,
 .modal__container--softpill
   .elterngeld-optimization-overlay-content
   .still-daily-checklist__card
@@ -130,71 +290,46 @@
 .modal__container--softpill
   .elterngeld-optimization-overlay-content
   .still-daily-checklist__card
-  button:disabled {
+  button:not(.ui-btn--secondary):not(.ui-btn--ghost):disabled {
   opacity: 0.55 !important;
   cursor: not-allowed !important;
-  filter: grayscale(0.06) !important;
   transform: none !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
 }
 
-/* Aktionszeilen außerhalb einer eingebetteten Karte (Zielwahl / Footer-Stapel) */
-.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-optimization-goal__actions .btn,
-.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-optimization-goal__actions button {
-  border-radius: var(--pill-radius) !important;
-  padding: var(--pill-padding-y) var(--pill-padding-x) !important;
+/* Sekundär im gesamten Optimierungs-Overlay (Primär: .ui-btn--primary oben) */
+.modal__container--softpill .elterngeld-optimization-overlay-content .ui-btn--secondary {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  padding: 0 22px !important;
   font-weight: 650 !important;
-  letter-spacing: 0.2px !important;
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid var(--pill-border) !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
+  color: #3a2f1f !important;
+  background: rgba(255, 248, 235, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.58) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
-    background 160ms ease,
-    border-color 160ms ease !important;
+    background 160ms ease !important;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .modal__container--softpill
     .elterngeld-optimization-overlay-content
-    .elterngeld-optimization-goal__actions
-    .btn:hover:not(:disabled),
-  .modal__container--softpill
-    .elterngeld-optimization-overlay-content
-    .elterngeld-optimization-goal__actions
-    button:hover:not(:disabled) {
-    background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover)) !important;
-    border-color: var(--pill-border-hover) !important;
-    box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover) !important;
+    .ui-btn--secondary:hover:not(:disabled) {
+    background: rgba(255, 248, 235, 0.72) !important;
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
   }
 }
 
 .modal__container--softpill
   .elterngeld-optimization-overlay-content
-  .elterngeld-optimization-goal__actions
-  .btn:active:not(:disabled),
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-optimization-goal__actions
-  button:active:not(:disabled) {
+  .ui-btn--secondary:active:not(:disabled) {
   transform: translateY(1px) !important;
-  box-shadow: var(--pill-shadow-active), var(--pill-inset-active) !important;
-}
-
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-optimization-goal__actions
-  .btn:disabled,
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-optimization-goal__actions
-  button:disabled {
-  opacity: 0.55 !important;
-  cursor: not-allowed !important;
-  filter: grayscale(0.06) !important;
-  transform: none !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
 }
 
 /* Zielwahl „Was ist dir wichtiger?“ (ElterngeldSelectButton): Wizard-Surfaces + --ui-selected-*, überschreibt elterngeld-ui.css */
@@ -203,36 +338,38 @@
 }
 
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn {
-  border: 1px solid var(--ui-border) !important;
-  border-radius: var(--ui-radius-card) !important;
-  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2)) !important;
-  box-shadow: var(--ui-inset) !important;
-  color: var(--color-text-primary, #0f172a) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  background: rgba(255, 248, 235, 0.62) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+  color: #2f2a24 !important;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .modal__container--softpill
     .elterngeld-optimization-overlay-content
     .elterngeld-select-btn:hover:not(.elterngeld-select-btn--disabled) {
-    border-color: var(--ui-border-hover) !important;
-    background: linear-gradient(180deg, var(--ui-surface-1-hover), var(--ui-surface-2-hover)) !important;
-    box-shadow: var(--ui-inset-hover) !important;
+    border-color: rgba(255, 255, 255, 0.72) !important;
+    background: rgba(255, 248, 235, 0.78) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
   }
 }
 
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn:focus-visible {
   outline: none !important;
   box-shadow:
-    0 0 0 2px var(--ui-focus),
-    var(--ui-inset) !important;
+    0 0 0 2px rgba(226, 196, 141, 0.65),
+    0 6px 16px rgba(0, 0, 0, 0.08) !important;
 }
 
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn--selected {
-  border: 1px solid var(--ui-selected-border) !important;
-  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2)) !important;
-  box-shadow: var(--ui-selected-shadow), var(--ui-inset) !important;
+  border: 1px solid #e2c48d !important;
+  background: rgba(255, 248, 235, 0.78) !important;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
   font-weight: 700 !important;
-  color: var(--color-text-primary, #0f172a) !important;
+  color: #2f2a24 !important;
 }
 
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn__check {
@@ -240,64 +377,16 @@
 }
 
 .modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-select-btn--disabled {
-  background: linear-gradient(180deg, var(--ui-surface-1), var(--ui-surface-2)) !important;
+  background: rgba(255, 248, 235, 0.4) !important;
+  opacity: 0.72 !important;
 }
 
-/* Variantenkarten im Optimierungs-Overlay: gleiche Hover/Active/Disabled-Regeln wie Checklisten-Card */
-.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card .btn,
-.modal__container--softpill .elterngeld-optimization-overlay-content .elterngeld-calculation__suggestion-card button {
-  border-radius: var(--pill-radius) !important;
-  padding: var(--pill-padding-y) var(--pill-padding-x) !important;
-  font-weight: 650 !important;
-  letter-spacing: 0.2px !important;
-  background: linear-gradient(180deg, var(--pill-bg-top), var(--pill-bg-bottom)) !important;
-  border: 1px solid var(--pill-border) !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    background 160ms ease,
-    border-color 160ms ease !important;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .modal__container--softpill
-    .elterngeld-optimization-overlay-content
-    .elterngeld-calculation__suggestion-card
-    .btn:hover:not(:disabled),
-  .modal__container--softpill
-    .elterngeld-optimization-overlay-content
-    .elterngeld-calculation__suggestion-card
-    button:hover:not(:disabled) {
-    background: linear-gradient(180deg, var(--pill-bg-top-hover), var(--pill-bg-bottom-hover)) !important;
-    border-color: var(--pill-border-hover) !important;
-    box-shadow: var(--pill-shadow-hover), var(--pill-inset-hover) !important;
-  }
-}
-
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-calculation__suggestion-card
-  .btn:active:not(:disabled),
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-calculation__suggestion-card
-  button:active:not(:disabled) {
-  transform: translateY(1px) !important;
-  box-shadow: var(--pill-shadow-active), var(--pill-inset-active) !important;
-}
-
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-calculation__suggestion-card
-  .btn:disabled,
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-calculation__suggestion-card
-  button:disabled {
-  opacity: 0.55 !important;
-  cursor: not-allowed !important;
-  filter: grayscale(0.06) !important;
-  transform: none !important;
-  box-shadow: var(--pill-shadow), var(--pill-inset) !important;
+/* Modal variant=default: kein hartes Theme-Weiß, gleiche Card-Materialsprache wie Wizard */
+.modal__container--default {
+  background: rgba(255, 248, 235, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }

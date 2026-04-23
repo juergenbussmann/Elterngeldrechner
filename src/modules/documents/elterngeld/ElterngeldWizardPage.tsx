@@ -14,7 +14,6 @@ import {
   clearPreparation,
   isPreparationEmpty,
 } from './infra/elterngeldPreparationStorage';
-import { StepIntro } from './steps/StepIntro';
 import { StepGeburtKind } from './steps/StepGeburtKind';
 import { StepEinkommen } from './steps/StepEinkommen';
 import { StepElternArbeit } from './steps/StepElternArbeit';
@@ -28,8 +27,7 @@ import { mergePlanIntoPreparation } from './planToApplicationMerge';
 import { isPartnerBonusPartTimeHoursEligible } from './partnerBonusEligibility';
 import { saveElterngeldWizardPdfBundle } from './saveElterngeldWizardPdfBundle';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
-import { useBegleitungPlus } from '../../../core/begleitungPlus';
-import { ElterngeldFlowAccessBlocked } from './ElterngeldFlowAccessBlocked';
+import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
 import './ElterngeldWizardPage.css';
 import './ui/elterngeld-ui.css';
 import '../../../styles/softpill-buttons-in-cards.css';
@@ -45,20 +43,12 @@ const WIZARD_STEPS = [
   { id: 'documentsPdfBundle', title: 'Antrag vorbereiten' },
 ] as const;
 
-const TOTAL_STEPS = 8; /* Intro + 7 Wizard-Schritte */
+const TOTAL_STEPS = 7;
 
 export const ElterngeldWizardPage: React.FC = () => {
-  const { isPlus, isYearly } = useBegleitungPlus();
-  if (!isPlus || !isYearly) {
-    return <ElterngeldFlowAccessBlocked variant={isPlus ? 'monthly' : 'free'} />;
-  }
-  return <ElterngeldWizardPageBody />;
-};
-
-const ElterngeldWizardPageBody: React.FC = () => {
   const { profile, actions } = usePhase();
   const { showToast } = useNotifications();
-  const [wizardStarted, setWizardStarted] = useState(false);
+  const { goTo } = useNavigation();
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<ElterngeldApplication>(() => {
     const persisted = loadPreparation();
@@ -88,12 +78,12 @@ const ElterngeldWizardPageBody: React.FC = () => {
 
   const step = WIZARD_STEPS[stepIndex] ?? WIZARD_STEPS[0];
   const isLastStep = stepIndex === WIZARD_STEPS.length - 1;
-  const currentStepNumber = stepIndex + 2; /* Intro = 1, Basic = 2, ... */
+  const currentStepNumber = stepIndex + 1;
   const prevStepIdRef = useRef<string>(step.id);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [stepIndex, wizardStarted]);
+  }, [stepIndex]);
 
   useEffect(() => {
     if (prevStepIdRef.current === 'documentsPdfBundle' && step.id !== 'documentsPdfBundle') {
@@ -152,11 +142,11 @@ const ElterngeldWizardPageBody: React.FC = () => {
   const handleBack = useCallback(() => {
     setCalculationError(null);
     if (stepIndex === 0) {
-      setWizardStarted(false);
+      goTo('/');
       return;
     }
     setStepIndex((i) => i - 1);
-  }, [stepIndex]);
+  }, [stepIndex, goTo]);
 
   // Profil → Formular: Wenn Profil sich ändert (z.B. in Einstellungen), Kind-Datumsfelder nachziehen
   useEffect(() => {
@@ -215,16 +205,10 @@ const ElterngeldWizardPageBody: React.FC = () => {
     const childDates = getInitialBirthDateValues(profile, initial.child);
     setValues({ ...initial, child: { ...initial.child, ...childDates } });
     setStepIndex(0);
-    setWizardStarted(false);
     setCalculationError(null);
     setDocumentsBundleSaved(false);
     showToast('Vorbereitung zurückgesetzt', { kind: 'success', durationMs: 3000 });
   }, [profile, showToast]);
-
-  const handleStartWizard = useCallback(() => {
-    setWizardStarted(true);
-    setStepIndex(0);
-  }, []);
 
   const handleSaveAllDocumentPdfs = useCallback(async () => {
     setIsDocumentsBundleSubmitting(true);
@@ -241,16 +225,6 @@ const ElterngeldWizardPageBody: React.FC = () => {
       setIsDocumentsBundleSubmitting(false);
     }
   }, [values, liveResult, showToast]);
-
-  if (!wizardStarted) {
-    return (
-      <div className="screen-placeholder elterngeld-screen elterngeld-screen--intro">
-        <section className="elterngeld-intro-screen" aria-label="Elterngeld Einstieg">
-          <StepIntro onStart={handleStartWizard} onReset={handleReset} />
-        </section>
-      </div>
-    );
-  }
 
   return (
     <div className="screen-placeholder elterngeld-screen">

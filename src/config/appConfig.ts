@@ -16,9 +16,9 @@ export type FooterMenuItem = {
 export const footerMenu: FooterMenuItem[] = [
   { id: 'home', route: '/', labelKey: 'nav.home', icon: 'home' },
   {
-    id: 'elterngeld',
-    route: '/documents/elterngeld',
-    labelKey: 'documents.elterngeld.title',
+    id: 'documents',
+    route: '/documents',
+    labelKey: 'documents.family.title',
     icon: 'documents',
   },
   { id: 'settings', route: '/settings', labelKey: 'nav.settings', icon: 'settings' },

@@ -16,6 +16,8 @@ export interface SelectionModalProps {
   value?: string;
   onSelect: (value: string) => void;
   onClose: () => void;
+  /** Extra class on the sheet panel (e.g. Elternzeit-Flow gold-standard sheet). */
+  sheetClassName?: string;
 }
 
 export const SelectionModal: React.FC<SelectionModalProps> = ({
@@ -25,6 +27,7 @@ export const SelectionModal: React.FC<SelectionModalProps> = ({
   value,
   onSelect,
   onClose,
+  sheetClassName,
 }) => {
   const { t } = useI18n();
   const listRef = useRef<HTMLDivElement>(null);
@@ -66,7 +69,10 @@ export const SelectionModal: React.FC<SelectionModalProps> = ({
       onKeyDown={handleKeyDown}
     >
       <div className="selection-modal__backdrop" onClick={onClose} aria-hidden="true" />
-      <div className="selection-modal__sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={['selection-modal__sheet', sheetClassName].filter(Boolean).join(' ')}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="selection-modal__handle" aria-hidden="true" />
         <header className="selection-modal__header">
           <h2 id="selection-modal-title" className="selection-modal__title">

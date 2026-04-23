@@ -6,7 +6,6 @@ import { AppShell } from '../AppShell';
 import { Start } from '../../screens/Start';
 import { OnboardingDueDateScreen } from '../../screens/OnboardingDueDateScreen';
 import { Beratung } from '../../screens/Beratung';
-import BegleitungPlusScreen from '../../screens/BegleitungPlusScreen';
 import { Demo } from '../../screens/Demo';
 import { Testseite } from '../../pages/Testseite';
 import { SettingsLayout } from '../settings/SettingsLayout';
@@ -33,7 +32,6 @@ export const AppRoutes: React.FC = () => {
           { index: true, element: <Start /> },
           { path: 'onboarding/due-date', element: <OnboardingDueDateScreen /> },
           { path: 'beratung', element: <Beratung /> },
-          { path: 'begleitung-plus', element: <BegleitungPlusScreen /> },
           { path: 'demo', element: <Demo /> },
           { path: 'testseite', element: <Testseite /> },
           {

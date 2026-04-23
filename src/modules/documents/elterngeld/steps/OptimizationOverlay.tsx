@@ -233,37 +233,9 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
     );
   }
 
-  const bezugMonths = countBezugMonths(result);
-  const bonusMonths = result.parents.reduce(
-    (sum, p) => sum + p.monthlyResults.filter((r) => r.mode === 'partnerBonus').length,
-    0
-  );
-
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Aufteilung prüfen" variant="softpill" scrollableContent hideFooter>
       <div className="elterngeld-screen elterngeld-optimization-overlay-content">
-        <Card className="elterngeld-plan__summary-card still-daily-checklist__card" role="article">
-          <h3 className="elterngeld-step__title">Aktueller Plan</h3>
-          <p className="elterngeld-step__hint">
-            Dein aktueller Plan mit geschätztem Betrag und Dauer. Du vergleichst Varianten – dein Plan bleibt unverändert, bis du ihn übernimmst.
-          </p>
-          <div className="elterngeld-plan__summary-rows">
-            <div className="elterngeld-plan__summary-row">
-              <span className="elterngeld-plan__summary-label">Gesamtbetrag</span>
-              <span className="elterngeld-plan__summary-value">{formatCurrency(result.householdTotal)}</span>
-            </div>
-            <div className="elterngeld-plan__summary-row">
-              <span className="elterngeld-plan__summary-label">Dauer</span>
-              <span className="elterngeld-plan__summary-value">{bezugMonths} Monate</span>
-            </div>
-            {!hidePartnerschaftsbonusUi && bonusMonths > 0 && (
-              <div className="elterngeld-plan__summary-row">
-                <span className="elterngeld-plan__summary-label">Bonusmonate</span>
-                <span className="elterngeld-plan__summary-value">{bonusMonths} Bonusmonate</span>
-              </div>
-            )}
-          </div>
-        </Card>
         <div className="elterngeld-optimization-goal__section">
           <p className="elterngeld-optimization-goal__intro">
             Worauf sollen die Planvorschläge achten?

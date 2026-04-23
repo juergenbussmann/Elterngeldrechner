@@ -496,6 +496,222 @@ a[href^='tel:'] {
   color: var(--text);
 }
 
+/* Elterngeld-Wizard: volle Breite für gemeinsame Bühnen-Hintergrundfläche (kein „Kasten“ durch Main-Padding) */
+.app-shell__main:has(.screen-placeholder.elterngeld-screen) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Dokumente & Einstellungen: gleiche volle Bühnenbreite wie Elterngeld (Hintergrund nur auf Screen-Root) */
+.app-shell__main:has(.screen-placeholder.documents-family-screen),
+.app-shell__main:has(.screen-placeholder.documents-screen),
+.app-shell__main:has(.screen-placeholder.parental-leave-screen),
+.app-shell__main:has(.screen-placeholder.settings-screen) {
+  padding-left: 0;
+  padding-right: 0;
+  /* Footer-Reserve liegt im Screen-Root (dort sitzt der Gold-Hintergrund) – verhindert durchscheinenden Body-Streifen */
+  padding-bottom: 0;
+}
+
+/* Anträge & Vorbereitung + Meine Dokumente: kein Top-Streifen in main, Gold-Bühne bis unter den festen Header */
+.app-shell__main:has(.screen-placeholder.documents-family-screen),
+.app-shell__main:has(.screen-placeholder.documents-screen),
+.app-shell__main:has(.screen-placeholder.parental-leave-screen) {
+  padding-top: 0;
+}
+
+/* App-Header auf Dokumenten-Hub & -liste: keine eigene Fläche (Gold der Screen-Root-Bühne scheint durch) */
+.app-shell:has(.screen-placeholder.documents-family-screen) .app-shell__header,
+.app-shell:has(.screen-placeholder.documents-screen) .app-shell__header,
+.app-shell:has(.screen-placeholder.parental-leave-screen) .app-shell__header {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/*
+ * Anträge & Vorbereitung, Meine Dokumente, Elternzeit-Flow, Einstellungen:
+ * Startscreen-Hintergrund ausschließlich auf dem jeweiligen Screen-Root (kein zweites Layer innen).
+ * Shared fixed background asset for gold-standard screens. Do not crop, rebuild or restyle.
+ */
+.screen-placeholder.documents-family-screen,
+.screen-placeholder.documents-screen,
+.screen-placeholder.parental-leave-screen,
+.screen-placeholder.settings-screen {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: none;
+  padding: 0.75rem 1rem calc(140px + env(safe-area-inset-bottom, 0px));
+  background-color: transparent;
+  background-image: url('/assets/startscreen-background-final.png');
+  background-repeat: no-repeat;
+  background-position: top left;
+  background-size: 100% 100%;
+}
+
+/* Gold-Bühne in den Bereich unter dem transparenten Header ziehen (kein alter Shell-Streifen oben).
+   Ohne Progress-Banner: voller Zug nach oben. Mit Banner: kein Negativ-Margin (sonst Überdeckung). */
+.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.documents-family-screen,
+.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.documents-screen,
+.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.parental-leave-screen {
+  margin-top: calc(-1 * (56px + env(safe-area-inset-top, 0px)));
+  padding-top: calc(0.75rem + 56px + env(safe-area-inset-top, 0px));
+}
+
+/* Innere Layout-Wrapper: keine zweite Fläche zwischen Inhalt und Navigation */
+.screen-placeholder.documents-screen .documents__content-section,
+.screen-placeholder.documents-screen .documents__list,
+.screen-placeholder.documents-screen .next-steps__stack,
+.screen-placeholder.settings-screen .settings-layout,
+.screen-placeholder.settings-screen .settings-layout__content,
+.screen-placeholder.settings-screen .settings-layout__sidebar,
+.screen-placeholder.settings-screen .settings__module-stack,
+.screen-placeholder.settings-screen .next-steps__stack {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+.screen-placeholder.documents-family-screen > .next-steps.next-steps--plain,
+.screen-placeholder.documents-screen > .next-steps.next-steps--plain,
+.screen-placeholder.parental-leave-screen > .next-steps.next-steps--plain,
+.screen-placeholder.settings-screen > .next-steps.next-steps--plain {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+.screen-placeholder.documents-family-screen > .next-steps,
+.screen-placeholder.documents-screen > .next-steps,
+.screen-placeholder.parental-leave-screen > .next-steps,
+.screen-placeholder.settings-screen > .next-steps {
+  margin-top: 0;
+}
+
+/* Checklisten-Karten auf diesen Screens: Wizard-Card-Sprache (überschreibt generisches Softpill-Gradient) */
+[data-color-scheme='light'] .screen-placeholder.documents-screen .still-daily-checklist__card,
+[data-color-scheme='light'] .screen-placeholder.parental-leave-screen .still-daily-checklist__card,
+[data-color-scheme='light'] .screen-placeholder.settings-screen .still-daily-checklist__card {
+  background: rgba(255, 248, 235, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+[data-color-scheme='light'] .screen-placeholder.documents-screen .still-daily-checklist__card::after,
+[data-color-scheme='light'] .screen-placeholder.parental-leave-screen .still-daily-checklist__card::after,
+[data-color-scheme='light'] .screen-placeholder.settings-screen .still-daily-checklist__card::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Einstellungen: weitere Karten-/Panel-Selektoren (Modul-Outlet), falls nicht still-daily-checklist__card */
+[data-color-scheme='light'] .screen-placeholder.settings-screen .settings-section .ui-card,
+[data-color-scheme='light'] .screen-placeholder.settings-screen .settings-section .card {
+  background: rgba(255, 248, 235, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.screen-placeholder.settings-screen .settings-section__result {
+  background: rgba(255, 248, 235, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-color-scheme='dark'] .screen-placeholder.documents-screen .still-daily-checklist__card,
+[data-color-scheme='dark'] .screen-placeholder.parental-leave-screen .still-daily-checklist__card,
+[data-color-scheme='dark'] .screen-placeholder.settings-screen .still-daily-checklist__card {
+  background: rgba(42, 42, 49, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35) !important;
+  border-radius: var(--ui-radius-lg) !important;
+}
+
+[data-color-scheme='dark'] .screen-placeholder.documents-screen .still-daily-checklist__card::after,
+[data-color-scheme='dark'] .screen-placeholder.parental-leave-screen .still-daily-checklist__card::after,
+[data-color-scheme='dark'] .screen-placeholder.settings-screen .still-daily-checklist__card::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* CTA wie Wizard/Startscreen: alle Softpill-/Pill-Buttons auf Dokumente, Einstellungen, Anträge-Hub */
+.screen-placeholder.documents-family-screen .documents-family__footer .ui-btn,
+.screen-placeholder.documents-screen .documents__section .documents__actions .ui-btn,
+.screen-placeholder.documents-screen .documents__add-choice-buttons .ui-btn,
+.screen-placeholder.settings-screen .ui-btn.ui-btn--pill:not(.ui-btn--ghost),
+.screen-placeholder.settings-screen a.next-steps__button.btn--softpill {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  color: #3a2f1f !important;
+  background: linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.68) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .screen-placeholder.documents-family-screen .documents-family__footer .ui-btn:hover:not(:disabled),
+  .screen-placeholder.documents-screen .documents__section .documents__actions .ui-btn:hover:not(:disabled),
+  .screen-placeholder.documents-screen .documents__add-choice-buttons .ui-btn:hover:not(:disabled),
+  .screen-placeholder.settings-screen .ui-btn.ui-btn--pill:not(.ui-btn--ghost):hover:not(:disabled),
+  .screen-placeholder.settings-screen a.next-steps__button.btn--softpill:hover {
+    background: linear-gradient(180deg, #f9ebd0 0%, #ecd49a 100%) !important;
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  }
+}
+
+[data-color-scheme='dark'] .screen-placeholder.documents-family-screen .documents-family__footer .ui-btn,
+[data-color-scheme='dark'] .screen-placeholder.documents-screen .documents__section .documents__actions .ui-btn,
+[data-color-scheme='dark'] .screen-placeholder.documents-screen .documents__add-choice-buttons .ui-btn,
+[data-color-scheme='dark'] .screen-placeholder.settings-screen .ui-btn.ui-btn--pill:not(.ui-btn--ghost),
+[data-color-scheme='dark'] .screen-placeholder.settings-screen a.next-steps__button.btn--softpill {
+  color: #f5efe6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: linear-gradient(180deg, #4a4338 0%, #2f2a24 100%) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+.screen-placeholder.settings-screen a.next-steps__button.btn--softpill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  padding: 0 18px !important;
+  text-decoration: none !important;
+  font-weight: 600 !important;
+}
+
+/* Dokumente: Upload-Dialog liegt im Portal – Klasse am Modal-Inhalt */
+.documents__modal-content .ui-btn--primary {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  color: #3a2f1f !important;
+  background: linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.68) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
 .app-shell__progress-banner {
   margin-bottom: 1rem;
 }
@@ -545,44 +761,6 @@ body.debug-layout .app-shell__footer {
   box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.05);
   padding: 0 16px calc(10px + env(safe-area-inset-bottom, 0px)) 16px;
   overflow: visible;
-}
-
-/* Elterngeld-Startscreen: schwebende Pill-Bar, Glas, untergeordnet zum Hero */
-.app-shell:has(.elterngeld-screen--intro) .app-shell__footer {
-  left: 18px;
-  right: 18px;
-  width: auto;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.55) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.55) !important;
-  background: rgba(255, 252, 248, 0.78) !important;
-  box-shadow:
-    0 8px 32px rgba(90, 72, 48, 0.1),
-    0 2px 12px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px) saturate(1.15);
-  -webkit-backdrop-filter: blur(16px) saturate(1.15);
-  padding: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px)) 10px;
-  min-height: 0;
-}
-
-.app-shell:has(.elterngeld-screen--intro) .app-shell__footer-nav {
-  max-width: 100%;
-}
-
-.app-shell:has(.elterngeld-screen--intro) .app-shell__footer .app-shell__footer-nav-item.ui-btn--pill {
-  border-radius: 12px;
-  min-height: 42px;
-}
-
-[data-color-scheme='dark'] .app-shell:has(.elterngeld-screen--intro) .app-shell__footer {
-  background: rgba(32, 30, 28, 0.82) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* FOOTER-INHOUD – gecentreerde navigatie */
@@ -659,6 +837,222 @@ body.debug-layout .app-shell__footer {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.home-screen.screen-placeholder.home-start {
+  gap: 0;
+  position: relative;
+}
+
+.screen-placeholder.home-start {
+  margin: -0.75rem -1rem 0;
+  width: calc(100% + 2rem);
+  max-width: none;
+  box-sizing: border-box;
+}
+
+/* Start „/“ */
+/* Startscreen background is fixed asset. Do not crop, rebuild, overlay, or restyle. Only responsive scaling is allowed. */
+.start-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  align-items: stretch;
+  height: 100dvh;
+  padding: clamp(2.25rem, 10dvh, 4.75rem) var(--ui-pad-card) calc(var(--ui-pad-card) * 1.85);
+  border-radius: 0 0 calc(var(--ui-radius-lg) * 2) calc(var(--ui-radius-lg) * 2);
+  box-shadow: var(--ui-shadow-hero), var(--shadow-soft);
+  overflow: hidden;
+
+  background-image: url('/assets/startscreen-background-final.png');
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% 100%;
+}
+
+.start-hero__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 auto;
+  gap: 0.875rem;
+}
+
+.start-hero__title {
+  margin: 0;
+  font-size: clamp(1.625rem, 5.5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  color: #2f2a24;
+}
+
+.start-hero__subline {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  font-weight: 500;
+  max-width: 20rem;
+  color: rgba(47, 42, 36, 0.7);
+}
+
+.start-hero .start-hero__cta.ui-btn--primary {
+  position: relative;
+  overflow: hidden;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  height: 48px;
+  min-height: 48px;
+  margin-top: 0.125rem;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  background: linear-gradient(180deg, #f8e7c5 0%, #e8c98f 100%) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  font-weight: 600 !important;
+  font-size: 0.9375rem !important;
+  letter-spacing: 0.01em;
+  color: #3a2f1f !important;
+}
+
+.start-hero .start-hero__cta.ui-btn--primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), transparent);
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-color-scheme='light'] .start-hero .start-hero__cta.ui-btn--primary:hover {
+    background: linear-gradient(180deg, #fbeed2 0%, #ecd19a 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.75) !important;
+    box-shadow:
+      0 7px 18px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+    filter: none !important;
+    transform: none !important;
+  }
+}
+
+.start-hero .start-hero__cta.ui-btn--primary:active {
+  transform: none;
+  filter: none !important;
+  background: linear-gradient(180deg, #e8d2a8 0%, #d4b27e 100%) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+}
+
+.start-hero__benefits {
+  margin: calc(var(--ui-pad-card) * 1.12) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  align-self: center;
+  width: 100%;
+  max-width: 15.5rem;
+  text-align: left;
+}
+
+.start-hero__benefits li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding-left: 0;
+  font-size: var(--ui-font-sm);
+  line-height: 1.48;
+  font-weight: 500;
+  color: rgba(47, 42, 36, 0.75);
+}
+
+.start-hero__benefit-icon {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 220, 150, 0.4);
+  color: #c89c4a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: var(--ui-font-weight-cta);
+  line-height: 1;
+}
+
+[data-color-scheme='dark'] .start-hero {
+  background-image: url('/assets/startscreen-background-final.png');
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% 100%;
+  box-shadow: var(--ui-shadow-hero), var(--ui-shadow-md);
+}
+
+[data-color-scheme='dark'] .start-hero__title {
+  color: #2f2a24;
+}
+
+[data-color-scheme='dark'] .start-hero__subline {
+  color: rgba(47, 42, 36, 0.7);
+}
+
+[data-color-scheme='dark'] .start-hero__benefits li {
+  color: rgba(47, 42, 36, 0.75);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-color-scheme='dark'] .start-hero .start-hero__cta.ui-btn--primary:hover {
+    background: linear-gradient(180deg, #fbeed2 0%, #ecd19a 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.75) !important;
+    box-shadow:
+      0 7px 18px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+    filter: none !important;
+    transform: none !important;
+  }
+}
+
+[data-color-scheme='dark'] .start-hero .start-hero__cta.ui-btn--primary {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  background: linear-gradient(180deg, #f8e7c5 0%, #e8c98f 100%) !important;
+  background-image: none !important;
+  color: #3a2f1f !important;
+}
+
+[data-color-scheme='dark'] .start-hero .start-hero__cta.ui-btn--primary:active {
+  transform: none;
+  filter: none !important;
+  background: linear-gradient(180deg, #e8d2a8 0%, #d4b27e 100%) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
 }
 
 /* Phase-Screens (Schwangerschaft / Geburt / Stillzeit):
@@ -1731,4 +2125,119 @@ body.debug-layout .app-shell__footer {
   border-radius: 999px;
   background: var(--color-border);
   margin: 10px 0 0;
+}
+
+/* Phase-Onboarding-Sheet (Geburtstermin / Wochen-Begleitung): Soft-Surfaces + CTA – nur wenn .phase-onboarding-panel im Sheet */
+.panel-surface--bottom:has(.phase-onboarding-panel) {
+  background: rgba(255, 250, 242, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-bottom: none;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.14);
+  border-radius: var(--ui-radius-lg) var(--ui-radius-lg) 0 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .panel-surface__body {
+  background: transparent;
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .panel-surface__header {
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .bottom-sheet__handle-bar {
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .panel-close-button {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 248, 235, 0.42);
+  color: #3a2f1f;
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .panel-close-button:hover {
+  background: rgba(255, 248, 235, 0.72);
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel {
+  background: rgba(255, 248, 235, 0.74) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: none !important;
+  border-radius: var(--ui-radius-lg) !important;
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel input.ui-control {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel .ui-btn--primary.btn--softpill {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  color: #3a2f1f !important;
+  background: linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.68) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+.panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel .ui-btn--secondary.btn--softpill {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  color: #3a2f1f !important;
+  background: rgba(255, 248, 235, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.58) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+[data-color-scheme='dark'] .panel-surface--bottom:has(.phase-onboarding-panel) {
+  background: rgba(42, 42, 49, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: none;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+}
+
+[data-color-scheme='dark'] .panel-surface--bottom:has(.phase-onboarding-panel) .bottom-sheet__handle-bar {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+[data-color-scheme='dark'] .panel-surface--bottom:has(.phase-onboarding-panel) .panel-close-button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5efe6;
+}
+
+[data-color-scheme='dark'] .panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel {
+  background: rgba(55, 55, 62, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-color-scheme='dark'] .panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel input.ui-control {
+  background: rgba(30, 30, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+}
+
+[data-color-scheme='dark'] .panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel .ui-btn--primary.btn--softpill {
+  color: #f5efe6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: linear-gradient(180deg, #4a4338 0%, #2f2a24 100%) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-color-scheme='dark'] .panel-surface--bottom:has(.phase-onboarding-panel) .phase-onboarding-panel .ui-btn--secondary.btn--softpill {
+  color: #f5efe6 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
 }

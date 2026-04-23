@@ -1,5 +1,23 @@
 /* Seitenhintergrund: global .screen-placeholder in ui-tokens.css */
 
+/* Elterngeld screens use fixed shared background asset. Do not modify scaling, layering or replace image. */
+.screen-placeholder.elterngeld-screen {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: none;
+  padding: 0.75rem 1rem 0;
+  background-image: url('/assets/startscreen-background-final.png');
+  background-size: 100% 100%;
+  background-position: top left;
+  background-repeat: no-repeat;
+}
+
+.screen-placeholder.elterngeld-screen > .next-steps.next-steps--plain {
+  background: transparent;
+  box-shadow: none;
+}
+
 /* Bessere Lesbarkeit: Sekundärtext */
 .elterngeld-screen,
 .screen-placeholder.elterngeld-screen {
@@ -14,8 +32,8 @@
   font-size: inherit;
   font-family: inherit;
   color: inherit;
-  background: var(--ui-bg-card, #fff);
-  border: 1px solid var(--ui-border-subtle, rgba(15, 23, 42, 0.09));
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--ui-radius-control, 12px);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   min-height: 2.5rem;
@@ -47,12 +65,193 @@
   gap: 1.5rem;
 }
 
+[data-color-scheme='light'] .screen-placeholder.elterngeld-screen .ui-card,
+[data-color-scheme='light'] .screen-placeholder.elterngeld-screen .card,
+[data-color-scheme='light']
+  .screen-placeholder.elterngeld-screen
+  [class*='__card']:not(.elterngeld-calculation__household-card),
+[data-color-scheme='light'] .screen-placeholder.elterngeld-screen .elterngeld-calculation__household-card {
+  background: rgba(255, 248, 235, 0.78) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1) !important;
+  border-radius: var(--ui-radius-lg) !important;
+}
+
+[data-color-scheme='light'] .screen-placeholder.elterngeld-screen .ui-card::after,
+[data-color-scheme='light'] .screen-placeholder.elterngeld-screen .card::after,
+[data-color-scheme='light']
+  .screen-placeholder.elterngeld-screen
+  [class*='__card']:not(.elterngeld-calculation__household-card)::after,
+[data-color-scheme='light'] .screen-placeholder.elterngeld-screen .elterngeld-calculation__household-card::after {
+  display: none !important;
+}
+
+[data-color-scheme='dark'] .screen-placeholder.elterngeld-screen .ui-card,
+[data-color-scheme='dark'] .screen-placeholder.elterngeld-screen .card,
+[data-color-scheme='dark']
+  .screen-placeholder.elterngeld-screen
+  [class*='__card']:not(.elterngeld-calculation__household-card),
+[data-color-scheme='dark'] .screen-placeholder.elterngeld-screen .elterngeld-calculation__household-card {
+  background: rgba(42, 42, 49, 0.92) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35) !important;
+  border-radius: var(--ui-radius-lg) !important;
+}
+
+[data-color-scheme='dark'] .screen-placeholder.elterngeld-screen .ui-card::after,
+[data-color-scheme='dark'] .screen-placeholder.elterngeld-screen .card::after,
+[data-color-scheme='dark']
+  .screen-placeholder.elterngeld-screen
+  [class*='__card']:not(.elterngeld-calculation__household-card)::after,
+[data-color-scheme='dark'] .screen-placeholder.elterngeld-screen .elterngeld-calculation__household-card::after {
+  display: none !important;
+}
+
+.screen-placeholder.elterngeld-screen .ui-control {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.screen-placeholder.elterngeld-screen .elterngeld-actions,
+.screen-placeholder.elterngeld-screen .elterngeld-actions--tertiary {
+  background: transparent;
+  box-shadow: none;
+}
+
+.screen-placeholder.elterngeld-screen .ui-btn--primary,
+.screen-placeholder.elterngeld-screen .btn--softpill.ui-btn--primary {
+  background: linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.68) !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+  color: #3a2f1f !important;
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+}
+
+.screen-placeholder.elterngeld-screen .ui-btn--secondary,
+.screen-placeholder.elterngeld-screen .btn--softpill.ui-btn--secondary {
+  background: linear-gradient(180deg, #fffefc 0%, #faf6eb 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+  color: #4a4035 !important;
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .screen-placeholder.elterngeld-screen .ui-btn--primary:hover,
+  .screen-placeholder.elterngeld-screen .btn--softpill.ui-btn--primary:hover {
+    filter: brightness(1.03) !important;
+    box-shadow:
+      0 7px 16px rgba(0, 0, 0, 0.13),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  }
+
+  .screen-placeholder.elterngeld-screen .ui-btn--secondary:hover,
+  .screen-placeholder.elterngeld-screen .btn--softpill.ui-btn--secondary:hover {
+    filter: brightness(1.02) !important;
+    box-shadow:
+      0 5px 12px rgba(0, 0, 0, 0.09),
+      inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+  }
+}
+
 /* Gestapelte Dokumenten-Cards: gleiche vertikale Logik wie .checklists__rubric (1.75rem) */
 .elterngeld-documents-data-stack {
   scroll-margin-top: 1rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+}
+
+/*
+ * Datenübersicht + Ausfüllhilfe-Vorschau (PDF-Schritt): Zeilen umbrechen, kein Überlauf aus der Card.
+ * Nur unter diesem Stack — Plan-/Zusammenfassungs-Schritte bleiben bei den globalen .elterngeld-plan__summary-*-Regeln.
+ */
+.elterngeld-documents-data-stack > * {
+  min-width: 0;
+}
+
+.elterngeld-documents-data-stack .elterngeld-plan__summary-rows {
+  min-width: 0;
+}
+
+.elterngeld-documents-data-stack .elterngeld-plan__summary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  align-items: start;
+  column-gap: 0.75rem;
+  row-gap: 0.2rem;
+  font-size: 0.95rem;
+}
+
+.elterngeld-documents-data-stack .elterngeld-plan__summary-label,
+.elterngeld-documents-data-stack .elterngeld-plan__summary-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 480px) {
+  .elterngeld-documents-data-stack .elterngeld-plan__summary-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.elterngeld-documents-data-stack .elterngeld-documents__output-head {
+  min-width: 0;
+}
+
+.elterngeld-documents-data-stack .elterngeld-documents__output-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  flex: 1 1 auto;
+}
+
+.elterngeld-documents-data-stack .elterngeld-documents__status {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.elterngeld-documents-data-stack .elterngeld-documents__output-desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.elterngeld-documents-data-stack .elterngeld-step__doc-list,
+.elterngeld-documents-data-stack .elterngeld-step__doc-list li,
+.elterngeld-documents-data-stack .elterngeld-documents__deadlines,
+.elterngeld-documents-data-stack .elterngeld-documents__deadlines p,
+.elterngeld-documents-data-stack .elterngeld-documents__state-note,
+.elterngeld-documents-data-stack .elterngeld-step__section-title--nested {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.elterngeld-documents-data-stack .elterngeld-summary__forms-hint,
+.elterngeld-documents-data-stack .elterngeld-summary__forms-hint p,
+.elterngeld-documents-data-stack .elterngeld-step__hint {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.elterngeld-documents-data-stack .elterngeld-plan__summary-value .elterngeld-step__hint {
+  display: block;
 }
 
 /* Mobile UX: Buttons mind. 48px Höhe */
@@ -71,324 +270,6 @@
   letter-spacing: -0.02em;
   margin-bottom: 0.35rem;
   color: var(--color-text-primary, #0f172a);
-}
-
-/* ===== Intro-Startscreen: Hero-Landing (kein Wizard-Formular-Look) ===== */
-.elterngeld-screen--intro {
-  gap: 0;
-}
-
-/* Full-Bleed bis an Main-Padding (0.75rem oben, 1rem seitlich) */
-.screen-placeholder.elterngeld-screen--intro {
-  margin: -0.75rem -1rem 0;
-  width: calc(100% + 2rem);
-  max-width: none;
-  box-sizing: border-box;
-}
-
-.elterngeld-intro-screen {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  max-width: none;
-}
-
-.elterngeld-intro {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-bottom: 0.5rem;
-}
-
-/* Hero: volle obere Bühnenhälfte, Champagner-Premium, keine Standard-Card */
-.start-hero {
-  position: relative;
-  min-height: clamp(320px, 52vh, 480px);
-  padding: 28px 24px 32px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: stretch;
-  border-radius: 0 0 32px 32px;
-  box-shadow:
-    0 20px 48px rgba(90, 72, 48, 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-  isolation: isolate;
-
-  background:
-    radial-gradient(ellipse 130% 90% at 100% -15%, rgba(255, 252, 245, 0.95) 0%, transparent 52%),
-    radial-gradient(ellipse 100% 70% at -5% 55%, rgba(255, 255, 255, 0.55) 0%, transparent 48%),
-    radial-gradient(ellipse 80% 50% at 70% 100%, rgba(248, 236, 210, 0.65) 0%, transparent 55%),
-    linear-gradient(135deg, #f6f1e7 0%, #ead9b8 45%, #f8f4ec 100%);
-}
-
-/* weiche Lichtbögen / zweite Reflexionsschicht */
-.start-hero::before {
-  content: '';
-  position: absolute;
-  inset: -20% -30% 30% -20%;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(
-    ellipse 70% 45% at 50% 0%,
-    rgba(255, 255, 255, 0.42) 0%,
-    rgba(255, 255, 255, 0.08) 42%,
-    transparent 70%
-  );
-  opacity: 0.9;
-}
-
-/* Gloss-Sweep */
-.start-hero::after {
-  content: '';
-  position: absolute;
-  top: -38%;
-  left: -18%;
-  width: 145%;
-  height: 115%;
-  pointer-events: none;
-  z-index: 0;
-  background: linear-gradient(
-    118deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.12) 32%,
-    rgba(255, 255, 255, 0) 58%
-  );
-}
-
-/* subtile Körnung (sehr leicht), kein Flex-Item */
-.start-hero__grain {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  border-radius: inherit;
-  opacity: 0.038;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
-}
-
-.start-hero__content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 14px;
-  max-width: 22rem;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.start-hero__eyebrow {
-  margin: 0;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(43, 38, 31, 0.48);
-  line-height: 1.2;
-}
-
-.start-hero__title {
-  margin: 0;
-  font-size: clamp(1.625rem, 5.5vw, 2rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.12;
-  color: #3d342b;
-}
-
-.start-hero__subline {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.45;
-  font-weight: 500;
-  color: rgba(61, 52, 43, 0.78);
-  max-width: 19rem;
-}
-
-/* CTA: großzügig, pill, gold-champagner-Glas mit Materialtiefe */
-.start-hero .start-hero__cta.ui-btn--primary {
-  align-self: stretch;
-  max-width: 100%;
-  height: 54px;
-  min-height: 54px;
-  margin-top: 4px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.45) !important;
-  background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.55) 0%,
-      rgba(255, 248, 230, 0.38) 35%,
-      rgba(234, 217, 184, 0.42) 100%
-    ),
-    rgba(255, 255, 255, 0.15) !important;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -1px 0 rgba(180, 150, 110, 0.12),
-    0 10px 28px rgba(90, 72, 48, 0.18),
-    0 4px 10px rgba(0, 0, 0, 0.06) !important;
-  font-weight: 600 !important;
-  font-size: 1.02rem !important;
-  color: #3d342b !important;
-  letter-spacing: 0.01em;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .start-hero .start-hero__cta.ui-btn--primary:hover {
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.68) 0%,
-        rgba(255, 250, 235, 0.5) 40%,
-        rgba(240, 220, 188, 0.5) 100%
-      ),
-      rgba(255, 255, 255, 0.2) !important;
-    box-shadow:
-      inset 0 2px 0 rgba(255, 255, 255, 0.75),
-      inset 0 -1px 0 rgba(180, 150, 110, 0.1),
-      0 12px 32px rgba(90, 72, 48, 0.2),
-      0 4px 12px rgba(0, 0, 0, 0.07) !important;
-  }
-}
-
-.start-hero .start-hero__cta.ui-btn--primary:active {
-  transform: translateY(1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 2px 4px rgba(120, 95, 60, 0.08),
-    0 6px 16px rgba(90, 72, 48, 0.14) !important;
-}
-
-/* Benefits: kompakt, hero-nah, kein Card-Charakter */
-.start-hero__benefits {
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.38rem;
-  align-self: center;
-  width: 100%;
-  max-width: 15.5rem;
-  text-align: left;
-}
-
-.start-hero__benefits li {
-  position: relative;
-  padding-left: 1.2rem;
-  font-size: 0.8125rem;
-  line-height: 1.32;
-  font-weight: 500;
-  color: rgba(61, 52, 43, 0.68);
-}
-
-.start-hero__benefits li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #a08055;
-  opacity: 0.95;
-}
-
-[data-color-scheme='dark'] .start-hero {
-  background:
-    radial-gradient(ellipse 120% 80% at 100% -10%, rgba(80, 70, 58, 0.5) 0%, transparent 50%),
-    radial-gradient(ellipse 90% 60% at 0% 50%, rgba(255, 255, 255, 0.06) 0%, transparent 45%),
-    linear-gradient(135deg, #2a2620 0%, #1c1915 50%, #252018 100%);
-  box-shadow:
-    0 20px 48px rgba(0, 0, 0, 0.5),
-    0 4px 16px rgba(0, 0, 0, 0.35);
-}
-
-[data-color-scheme='dark'] .start-hero::before {
-  opacity: 0.35;
-  background: radial-gradient(
-    ellipse 70% 45% at 50% 0%,
-    rgba(255, 255, 255, 0.14) 0%,
-    transparent 70%
-  );
-}
-
-[data-color-scheme='dark'] .start-hero::after {
-  background: linear-gradient(
-    118deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.03) 35%,
-    rgba(255, 255, 255, 0) 58%
-  );
-}
-
-[data-color-scheme='dark'] .start-hero__grain {
-  opacity: 0.06;
-  mix-blend-mode: soft-light;
-}
-
-[data-color-scheme='dark'] .start-hero__eyebrow {
-  color: rgba(245, 240, 232, 0.4);
-}
-
-[data-color-scheme='dark'] .start-hero__title {
-  color: #f5f0e8;
-}
-
-[data-color-scheme='dark'] .start-hero__subline {
-  color: rgba(245, 240, 232, 0.75);
-}
-
-[data-color-scheme='dark'] .start-hero__benefits li {
-  color: rgba(232, 226, 216, 0.65);
-}
-
-[data-color-scheme='dark'] .start-hero__benefits li::before {
-  color: #c4a574;
-}
-
-[data-color-scheme='dark'] .start-hero .start-hero__cta.ui-btn--primary {
-  color: #f8f4ec !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.14) 0%,
-      rgba(255, 255, 255, 0.06) 100%
-    ),
-    rgba(40, 36, 30, 0.45) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
-    0 10px 28px rgba(0, 0, 0, 0.35),
-    0 4px 10px rgba(0, 0, 0, 0.25) !important;
-}
-
-.elterngeld-intro__reset-link {
-  align-self: center;
-  margin: -8px 0 0 0;
-  padding: 0.35rem 0.5rem;
-  font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text-secondary, #64748b);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.elterngeld-intro__reset-link:hover {
-  color: var(--color-text-primary, #0f172a);
-}
-
-.elterngeld-intro__reset-link:focus-visible {
-  outline: 2px solid rgba(138, 115, 85, 0.45);
-  outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* ===== Wizard Progress ===== */
@@ -677,10 +558,12 @@
 .elterngeld-optimization-suggestion {
   margin-top: 0.75rem;
   padding: 1.1rem 1.15rem;
-  background: var(--ui-bg-muted, rgba(0, 0, 0, 0.04));
-  border: none;
-  border-left: 3px solid var(--color-primary, #2563eb);
-  border-radius: var(--ui-radius-md, 14px);
+  background: rgba(255, 248, 235, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .elterngeld-optimization-suggestion__title {
@@ -2096,10 +1979,11 @@
 
 /* Haushaltskarte als Aktueller Plan – stärkere Gewichtung */
 .elterngeld-calculation__household-card--active {
-  border-width: 2px !important;
-  border-color: var(--color-primary, #2563eb) !important;
-  background: var(--ui-bg-card, #fff) !important;
-  box-shadow: var(--ui-shadow-md), 0 0 0 1px rgba(37, 99, 235, 0.12) !important;
+  border: 1px solid #e2c48d !important;
+  background: rgba(255, 248, 235, 0.82) !important;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22) !important;
 }
 
 .elterngeld-calculation__household-card--active .elterngeld-step__title {
@@ -2107,8 +1991,8 @@
 }
 
 .elterngeld-calculation__optimization-block--no-better {
-  border-color: rgba(120, 96, 76, 0.2);
-  background: rgba(120, 96, 76, 0.04);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 248, 235, 0.45);
 }
 
 /* Optimierungsvergleich: Kennzahlen 2-Spalten */
@@ -2127,8 +2011,10 @@
 
 .elterngeld-calculation__optimization-compare-col {
   padding: 0.75rem;
-  background: rgba(120, 96, 76, 0.06);
-  border-radius: 8px;
+  background: rgba(255, 248, 235, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .elterngeld-calculation__optimization-compare-col-title {
@@ -2233,8 +2119,8 @@
 }
 
 .elterngeld-calculation__optimization-block--comparison {
-  border-color: rgba(120, 96, 76, 0.2);
-  background: rgba(120, 96, 76, 0.03);
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 248, 235, 0.55);
 }
 
 .elterngeld-calculation__optimization-block--adopted .btn--softpill {
@@ -2249,6 +2135,7 @@
   gap: 1rem;
   width: 100%;
   box-sizing: border-box;
+  background: transparent;
 }
 
 .elterngeld-optimization-overlay__goal-section {
@@ -2260,8 +2147,10 @@
 .elterngeld-optimization-overlay__unavailable {
   margin: 0.5rem 0 1rem 0;
   padding: 0.75rem;
-  background: rgba(120, 96, 76, 0.08);
-  border-radius: 8px;
+  background: rgba(255, 248, 235, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   font-size: 0.95rem;
   color: var(--color-text-secondary, #333);
 }
@@ -2345,12 +2234,10 @@
   align-items: flex-start;
   gap: 0.25rem;
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7f5ef 100%);
-  box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: var(--ui-radius-lg);
+  background: rgba(255, 248, 235, 0.82);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   text-align: left;
   min-width: 0;
@@ -2368,20 +2255,7 @@
 }
 
 .elterngeld-calculation__suggestion-card::after {
-  content: '';
-  position: absolute;
-  top: -35%;
-  left: -15%;
-  width: 130%;
-  height: 90%;
-  background: linear-gradient(
-    120deg,
-    rgba(255, 255, 255, 0.22),
-    rgba(255, 255, 255, 0.04) 45%,
-    transparent 65%
-  );
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 .elterngeld-calculation__suggestion-card > * {
@@ -2401,9 +2275,9 @@
 }
 
 .elterngeld-calculation__suggestion-card:hover {
-  border-color: rgba(160, 130, 90, 0.35);
-  background: linear-gradient(180deg, #ffffff 0%, #f2ebe3 100%);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.09);
+  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 248, 235, 0.9);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.11);
 }
 
 .elterngeld-calculation__suggestion-card:focus-visible {
@@ -2412,18 +2286,11 @@
 }
 
 .elterngeld-calculation__suggestion-card--selected {
-  border: 2px solid rgba(180, 160, 120, 0.6);
-  box-shadow: 0 0 0 3px rgba(200, 180, 140, 0.2);
-  background: linear-gradient(180deg, #fffefb, #f0e8dc);
-  font-weight: 600;
-}
-
-.modal__container--softpill
-  .elterngeld-optimization-overlay-content
-  .elterngeld-calculation__suggestion-card.elterngeld-calculation__suggestion-card--selected {
-  border: 2px solid rgba(180, 160, 120, 0.6) !important;
-  box-shadow: 0 0 0 3px rgba(200, 180, 140, 0.22) !important;
-  background: linear-gradient(180deg, #fffefb, #f0e8dc) !important;
+  border: 1px solid #e2c48d;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  background: rgba(255, 248, 235, 0.82);
   font-weight: 600;
 }
 
@@ -2448,8 +2315,10 @@
 .elterngeld-calculation__gleichstand-hint {
   margin: 0 0 0.5rem 0;
   padding: 0.5rem 0.75rem;
-  background: rgba(120, 96, 76, 0.08);
-  border-radius: 8px;
+  background: rgba(255, 248, 235, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   font-size: 0.9rem;
   color: var(--color-text-secondary, #444);
   line-height: 1.4;

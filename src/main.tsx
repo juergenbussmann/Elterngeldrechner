@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import { AppRoot } from './core';
 import { initIntegrations } from './core/integrations/integrationHost';
 import { initJobs, stopJobs } from './core/jobs/jobHost';
-import { syncEntitlementsFromStore } from './core/billing';
 
 let bootstrapped = false;
 
@@ -14,7 +13,6 @@ const bootstrap = (): void => {
 
   initIntegrations();
   initJobs();
-  syncEntitlementsFromStore();
   bootstrapped = true;
 };
 

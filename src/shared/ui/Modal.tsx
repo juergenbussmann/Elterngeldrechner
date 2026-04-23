@@ -82,7 +82,9 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         style={{ ...containerStyle, pointerEvents: 'auto' }}
         className={
-          isSoftpill ? 'modal__container still-daily-checklist__card modal__container--softpill' : undefined
+          isSoftpill
+            ? 'modal__container still-daily-checklist__card modal__container--softpill'
+            : 'modal__container modal__container--default'
         }
       >
         {title ? (

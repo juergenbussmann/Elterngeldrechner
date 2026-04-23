@@ -2,5 +2,8 @@ node_modules
 dist/
 dev-dist/
 
+# Android SDK-Pfad (maschinenspezifisch)
+android/local.properties
+
 # Lokales Archiv (Altlasten, keine aktive App)
 /archive/

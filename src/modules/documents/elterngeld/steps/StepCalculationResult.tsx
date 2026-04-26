@@ -1681,7 +1681,7 @@ function MonthlyBreakdownRow({ r }: { r: MonthlyResult }) {
         </div>
         <div className="elterngeld-calculation__breakdown-row">
           <dt>Verwendete Ersatzrate</dt>
-          <dd>{b.replacementRatePercent} %</dd>
+          <dd>{b.replacementRatePercent} %</dd>
         </div>
         {b.theoreticalBaseClamp != null && b.maxPlus != null && (
           <>

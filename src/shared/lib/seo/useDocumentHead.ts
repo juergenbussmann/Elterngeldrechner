@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const DEFAULT_TITLE = 'Stillberatung – Wissen rund ums Stillen';
+const DEFAULT_TITLE = 'Elterngeldrechner';
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 155;
 

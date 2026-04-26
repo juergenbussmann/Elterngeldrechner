@@ -21,11 +21,11 @@ plugins {
 }
 
 def twaManifest = [
-    applicationId: 'de.stillberatung.jt',
-    hostName: 'www.stillberatung-jt.de', // The domain being opened in the TWA.
+    applicationId: 'de.elterngeldrechner.app',
+    hostName: 'example.invalid', // Veraltet — siehe twa-android/DEPRECATED.txt
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
-    name: 'Stillberatung', // The application name.
-    launcherName: 'Stillberatung', // The name shown on the Android Launcher.
+    name: 'Elterngeldrechner', // The application name.
+    launcherName: 'Elterngeldrechner', // The name shown on the Android Launcher.
     themeColor: '#D48C8C', // The color used for the status bar.
     themeColorDark: '#000000', // The color used for the dark status bar.
     navigationColor: '#000000', // The color used for the navigation bar.
@@ -52,9 +52,9 @@ def twaManifest = [
 
 android {
     compileSdkVersion 36
-    namespace "de.stillberatung.jt"
+    namespace "de.elterngeldrechner.app"
     defaultConfig {
-        applicationId "de.stillberatung.jt"
+        applicationId "de.elterngeldrechner.app"
         minSdkVersion 21
         targetSdkVersion 35
         versionCode 4
@@ -76,12 +76,12 @@ android {
             // The URL the Web Manifest for the Progressive Web App that the TWA points to. This
             // is used by Chrome OS and Meta Quest to open the Web version of the PWA instead of
             // the TWA, as it will probably give a better user experience for non-mobile devices.
-            resValue "string", "webManifestUrl", 'https://2026-02-27-stillberatung-final.netlify.app/manifest.webmanifest'
+            resValue "string", "webManifestUrl", 'https://example.invalid/manifest.webmanifest'
         
 
         
             // This is used by Meta Quest.
-            resValue "string", "fullScopeUrl", 'https://www.stillberatung-jt.de/'
+            resValue "string", "fullScopeUrl", 'https://example.invalid/'
         
 
         

@@ -4,7 +4,7 @@ export function Start() {
   return (
     <main className="start">
       <header className="start__header">
-        <img className="start__logo" src="/brand/Logo-ohne-Schrift.png" alt="Stillberatung" />
+        <img className="start__logo" src="/brand/Logo-ohne-Schrift.png" alt="Elterngeldrechner" />
       </header>
 
       <section className="start__hero" aria-label="Babybild">

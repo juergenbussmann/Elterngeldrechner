@@ -1,7 +1,5 @@
-# Keystore-Informationen
+# Keystore-Informationen (nur falls historischer TWA-Build)
 
-Der Keystore `android.keystore` wurde für den Build erstellt.
+Dieser Ordner ist **veraltet** (siehe `DEPRECATED.txt`). Für den Capacitor-Build unter `android/` gelten andere Signing-Einstellungen.
 
-**Aktuelles Passwort:** `Stillberatung2026` (keystore + key)
-
-**Wichtig:** Bewahre Keystore und Passwörter sicher auf – für Play-Store-Updates muss derselbe Keystore verwendet werden. Ohne ihn sind keine Updates möglich.
+Falls du einen alten TWA-Keystore weiterverwendest: Passwörter und Pfade **nicht** im Repository dokumentieren — lokal sicher aufbewahren.

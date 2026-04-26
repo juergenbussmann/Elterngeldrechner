@@ -1,6 +1,7 @@
-export const APP_NAME = 'Stillberatung';
-export const APP_SHORT_NAME = 'Stillberatung';
-export const APP_DESCRIPTION = 'Stillberatung – Fachlich fundierte Informationen zu Schwangerschaft, Geburt und Stillen.';
+export const APP_NAME = 'Elterngeldrechner';
+export const APP_SHORT_NAME = 'Elterngeldrechner';
+export const APP_DESCRIPTION =
+  'Elterngeldrechner – Elterngeld und Elternzeit planen, verstehen und vorbereiten.';
 export const THEME_COLOR = '#111827';
 export const BACKGROUND_COLOR = '#000000';
 

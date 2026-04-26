@@ -50,7 +50,7 @@ export function createIcsForAppointment(args: CreateIcsForAppointmentArgs): {
     alarmMinutesBefore = 60,
   } = args;
 
-  const uid = `${id}@stillberatung.app`;
+  const uid = `${id}@elterngeldrechner.app`;
   const dtstamp = toIcsUtc(new Date().toISOString());
   const dtstart = toIcsUtc(startAt);
   const dtend = endAt ? toIcsUtc(endAt) : null;
@@ -79,7 +79,7 @@ export function createIcsForAppointment(args: CreateIcsForAppointmentArgs): {
     .filter(Boolean)
     .join(crlf);
 
-  const icsText = `BEGIN:VCALENDAR${crlf}VERSION:2.0${crlf}PRODID:-//Stillberatung//DE${crlf}CALSCALE:GREGORIAN${crlf}${eventPart}${crlf}END:VCALENDAR`;
+  const icsText = `BEGIN:VCALENDAR${crlf}VERSION:2.0${crlf}PRODID:-//Elterngeldrechner//DE${crlf}CALSCALE:GREGORIAN${crlf}${eventPart}${crlf}END:VCALENDAR`;
 
   const safeTitle = title.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_ ]/g, '').slice(0, 50) || 'termin';
   const filename = `${safeTitle}.ics`;
@@ -124,7 +124,7 @@ export function createIcsForAppointments(
       return start.toISOString();
     })();
 
-    const uid = `${id || title}@stillberatung.app`;
+    const uid = `${id || title}@elterngeldrechner.app`;
     if (id) {
       uidsByAppointmentId[id] = uid;
     }
@@ -156,7 +156,7 @@ export function createIcsForAppointments(
     );
   }
 
-  const icsText = `BEGIN:VCALENDAR${crlf}VERSION:2.0${crlf}PRODID:-//Stillberatung//DE${crlf}CALSCALE:GREGORIAN${crlf}${eventParts.join(crlf)}${crlf}END:VCALENDAR`;
+  const icsText = `BEGIN:VCALENDAR${crlf}VERSION:2.0${crlf}PRODID:-//Elterngeldrechner//DE${crlf}CALSCALE:GREGORIAN${crlf}${eventParts.join(crlf)}${crlf}END:VCALENDAR`;
 
   const filename = options?.filename ?? 'termine.ics';
   return { icsText, filename, uidsByAppointmentId };

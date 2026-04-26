@@ -545,7 +545,7 @@ export function buildDecisionContext(
 
     const strategyType = mapStrategyType(s.strategyType);
     const label = STRATEGY_LABELS[strategyType] ?? s.title;
-    let scenarioLabel = SCENARIO_SHORT_LABELS[s.goal] ?? SCENARIO_SHORT_LABELS[strategyType] ?? null;
+    const scenarioLabel = SCENARIO_SHORT_LABELS[s.goal] ?? SCENARIO_SHORT_LABELS[strategyType] ?? null;
     const userPriorityGoal = opts?.userPriorityGoal;
     const matchesUserPriority = Boolean(
       userPriorityGoal && (s.goal === userPriorityGoal || strategyType === userPriorityGoal)

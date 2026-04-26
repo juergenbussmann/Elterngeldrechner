@@ -132,7 +132,7 @@ export function calculateMonthlyElterngeld(input: MonthlyCalculationInput): Mont
     const theoreticalBase = input.incomeBeforeNet * replacementRate;
     theoreticalBaseClamp = clamp(theoreticalBase, MIN_BASIS, MAX_BASIS);
     maxPlus = theoreticalBaseClamp / 2;
-    let plusAmount = Math.min(baseFromLoss / 2, maxPlus);
+    const plusAmount = Math.min(baseFromLoss / 2, maxPlus);
     const beforeClamp = plusAmount;
     baseAmount = Math.max(MIN_PLUS, plusAmount);
     baseAmount = Math.min(MAX_PLUS, baseAmount);

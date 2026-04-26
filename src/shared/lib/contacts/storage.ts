@@ -7,17 +7,17 @@ const STORAGE_KEY = 'stillberatung.contacts.v1';
 export const JACQUELINE_CONTACT_ID = 'system.jacqueline-tinz';
 
 // Display + dial number conventions
-const JACQUELINE_PHONE_DISPLAY = '0160 1749534';
-const JACQUELINE_PHONE_DIAL = '01601749534';
+const JACQUELINE_PHONE_DISPLAY = '';
+const JACQUELINE_PHONE_DIAL = '';
 
 const canonicalJacquelineContact = (): Contact => {
   const now = new Date().toISOString();
   return {
     id: JACQUELINE_CONTACT_ID,
-    name: 'Jacqueline Tinz',
+    name: 'Jürgen Bußmann',
     phone: JACQUELINE_PHONE_DISPLAY,
-    email: 'kontakt@stillberatung-jt.de',
-    relation: 'Stillberaterin',
+    email: 'juergen@j-bussmann.de',
+    relation: 'App-Ansprechpartner',
     notes: '',
     createdAt: now,
     updatedAt: now,

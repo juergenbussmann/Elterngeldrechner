@@ -413,7 +413,7 @@ export function validateParentLeaveForm(values: ParentLeaveFormValues): Record<s
       }
       break;
 
-    case 'leave_with_part_time':
+    case 'leave_with_part_time': {
       if (!values.startDate) errors.startDate = 'Beginn der Elternzeit ist erforderlich.';
       if (!values.endDate) errors.endDate = 'Ende der Elternzeit ist erforderlich.';
       if (values.startDate && values.endDate && isBefore(values.endDate, values.startDate)) {
@@ -425,6 +425,7 @@ export function validateParentLeaveForm(values: ParentLeaveFormValues): Record<s
         errors.workDistribution = 'Bitte die Arbeitsstunden je Wochentag eintragen.';
       }
       break;
+    }
 
     case 'change_extend_end_early':
       if (!values.changeType) errors.changeType = 'Bitte wähle die Art der Änderung.';

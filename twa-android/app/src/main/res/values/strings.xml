@@ -34,7 +34,7 @@
         \"relation\": [\"delegate_permission/common.handle_all_urls\"],
         \"target\": {
             \"namespace\": \"web\",
-            \"site\": \"https://69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app\"
+            \"site\": \"https://example.invalid\"
         }
     }]
     

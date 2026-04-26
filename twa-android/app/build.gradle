@@ -20,9 +20,10 @@ plugins {
     id 'com.android.application'
 }
 
+// TWA-Pfad veraltet — produktive APK nur aus android/ (Capacitor). Host nur Platzhalter, kein Remote-PWA-Load.
 def twaManifest = [
     applicationId: 'de.elterngeldrechner.app',
-    hostName: '69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app', // Live domain
+    hostName: 'example.invalid',
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
     name: 'Elterngeldrechner', // The application name.
     launcherName: 'Elterngeldrechner', // The name shown on the Android Launcher.
@@ -80,16 +81,9 @@ android {
 
         
 
-        
-            // The URL the Web Manifest for the Progressive Web App that the TWA points to. This
-            // is used by Chrome OS and Meta Quest to open the Web version of the PWA instead of
-            // the TWA, as it will probably give a better user experience for non-mobile devices.
-            resValue "string", "webManifestUrl", 'https://69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app/manifest.webmanifest'
-        
-
-        
-            // This is used by Meta Quest.
-            resValue "string", "fullScopeUrl", 'https://69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app/'
+            // Manifest-/Scope-URL aus hostName (TWA nicht mehr für Produktion nutzen).
+            resValue "string", "webManifestUrl", 'https://' + twaManifest.hostName + '/manifest.webmanifest'
+            resValue "string", "fullScopeUrl", 'https://' + twaManifest.hostName + '/'
         
 
         

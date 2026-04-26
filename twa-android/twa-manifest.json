@@ -1,6 +1,6 @@
 {
   "packageId": "de.elterngeldrechner.app",
-  "host": "69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app",
+  "host": "example.invalid",
   "name": "Elterngeldrechner",
   "launcherName": "Elterngeldrechner",
   "display": "standalone",
@@ -13,8 +13,8 @@
   "backgroundColor": "#000000",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app/brand/icon-512.png",
-  "maskableIconUrl": "https://69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app/brand/icon-512.png",
+  "iconUrl": "https://raw.githubusercontent.com/juergenbussmann/elterngeldrechner/main/public/icons/icon-512.png",
+  "maskableIconUrl": "https://raw.githubusercontent.com/juergenbussmann/elterngeldrechner/main/public/icons/maskable-icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./android.keystore",
@@ -24,7 +24,7 @@
   "appVersionCode": 4,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app/manifest.webmanifest",
+  "webManifestUrl": "https://example.invalid/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
   "alphaDependencies": {
@@ -33,7 +33,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://69aa82990e601e0008500b18--2026-02-27-stillberatung-final.netlify.app/",
+  "fullScopeUrl": "https://example.invalid/",
   "minSdkVersion": 21,
   "orientation": "portrait",
   "fingerprints": [],

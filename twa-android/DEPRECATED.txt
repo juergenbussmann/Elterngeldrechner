@@ -1,0 +1,7 @@
+VERALTET — nicht mehr bauen oder installieren.
+
+Die Android-App wird ausschließlich über Capacitor im Ordner android/ gebaut:
+  npm run build:apk
+  npm run install:android
+
+Dieser TWA-Ordner (Trusted Web Activity) ist nur noch Archiv. Die lokale Web-App liegt in dist/ und wird per cap sync nach android/app/src/main/assets/public kopiert.

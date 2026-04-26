@@ -21,9 +21,9 @@ export function Start() {
   const { goTo } = useNavigation();
 
   useDocumentHead({
-    title: 'Stillberatung – Wissen rund ums Stillen',
+    title: 'Elterngeldrechner',
     description:
-      'Fachlich fundierte Informationen rund ums Stillen: Stillstart, Stillprobleme, Milchmenge und Abstillen.',
+      'Elterngeld und Elternzeit planen: Monatsübersicht, Antrag vorbereiten und wichtige Fristen im Blick.',
     canonicalUrl: buildCanonicalUrl('/'),
   });
 

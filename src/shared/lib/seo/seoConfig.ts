@@ -61,7 +61,7 @@ export function getKnowledgeSeo(
 }
 
 /** Production base URL for canonical and OG. Always use for SEO consistency. */
-export const SEO_BASE_URL = 'https://www.stillberatung-jt.de';
+export const SEO_BASE_URL = 'https://juergenbussmann.github.io/Elterngeldrechner';
 
 /**
  * Builds canonical URL. Always uses production base URL for SEO consistency.

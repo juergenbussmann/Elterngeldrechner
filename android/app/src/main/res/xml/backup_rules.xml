@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WebView-/Cache-Daten nicht sichern: sonst kann nach APK-Update weiterhin alter Web-Stand geladen werden. -->
+<full-backup-content>
+    <exclude domain="file" path="cache" />
+    <exclude domain="file" path="app_webview" />
+</full-backup-content>

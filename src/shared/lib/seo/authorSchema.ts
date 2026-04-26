@@ -3,17 +3,17 @@
  * Kein Review-Markup, keine Sternebewertungen.
  */
 
-const AUTHOR_URL = 'https://www.stillberatung-jt.de';
+import { SEO_BASE_URL } from './seoConfig';
 
-/** Person schema für fachliche Autorenschaft */
+/** Person schema für Autorenschaft (App-Anbieter). */
 export function buildPersonJsonLd(): object {
   return {
     '@context': 'https://schema.org',
     '@type': 'Person',
-    name: 'Jacqueline Tinz',
-    jobTitle: 'Stillberaterin',
-    url: AUTHOR_URL,
-    sameAs: [AUTHOR_URL],
+    name: 'Jürgen Bußmann',
+    jobTitle: 'Entwickler',
+    url: SEO_BASE_URL,
+    sameAs: [SEO_BASE_URL],
   };
 }
 
@@ -29,7 +29,7 @@ export function buildWebPageWithAuthorJsonLd(
     url: pageUrl,
     author: {
       '@type': 'Person',
-      name: 'Jacqueline Tinz',
+      name: 'Jürgen Bußmann',
     },
   };
 }

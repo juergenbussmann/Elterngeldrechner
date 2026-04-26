@@ -50,7 +50,7 @@ export const StepEinkommenPartner: React.FC<Props> = ({ values, onChange }) => {
         />
       </label>
       <p className="elterngeld-step__hint elterngeld-step__hint--section">
-        Das Elterngeld beträgt ungefähr 65 % des Nettoeinkommens.
+        Das Elterngeld beträgt ungefähr 65 % des Nettoeinkommens.
       </p>
     </Card>
   );

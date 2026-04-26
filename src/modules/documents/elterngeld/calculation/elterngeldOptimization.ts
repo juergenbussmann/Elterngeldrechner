@@ -888,7 +888,7 @@ function createMotherOnlyPlan(plan: ElterngeldCalculationPlan): ElterngeldCalcul
   for (const m of fatherMonths) {
     const idxB = pB.months.findIndex((x) => x.month === m.month);
     if (idxB >= 0) pB.months[idxB] = { ...pB.months[idxB], mode: 'none' };
-    let idxA = pA.months.findIndex((x) => x.month === m.month);
+    const idxA = pA.months.findIndex((x) => x.month === m.month);
     if (idxA < 0) {
       pA.months.push({
         month: m.month,
@@ -1514,7 +1514,7 @@ function addPartnerBonusOverlapCandidates(
       const src = fromParent.months.find((x) => x.month === month);
       if (!src) continue;
       const target = copy.parents[toParent];
-      let idx = target.months.findIndex((x) => x.month === month);
+      const idx = target.months.findIndex((x) => x.month === month);
       if (idx < 0) {
         target.months.push({
           month,
@@ -1575,7 +1575,7 @@ function addShiftCandidatesInDirection(
     const idxSource = pSource.months.findIndex((x) => x.month === month);
     if (idxSource < 0) continue;
     pSource.months[idxSource] = { ...pSource.months[idxSource], mode: 'none' };
-    let idxTarget = pTarget.months.findIndex((x) => x.month === month);
+    const idxTarget = pTarget.months.findIndex((x) => x.month === month);
     if (idxTarget < 0) {
       pTarget.months.push({ month, mode, incomeDuringNet: income, hoursPerWeek: hours });
       pTarget.months.sort((a, b) => a.month - b.month);
@@ -1603,7 +1603,7 @@ function addShiftCandidatesInDirection(
       pSource.months[idx1] = { ...pSource.months[idx1], mode: 'none' };
       pSource.months[idx2] = { ...pSource.months[idx2], mode: 'none' };
       for (const m of [ma, mb]) {
-        let idxTarget = pTarget.months.findIndex((x) => x.month === m.month);
+        const idxTarget = pTarget.months.findIndex((x) => x.month === m.month);
         if (idxTarget < 0) {
           pTarget.months.push({ month: m.month, mode: m.mode, incomeDuringNet: m.income, hoursPerWeek: m.hours });
         } else {
@@ -1674,7 +1674,7 @@ function addShiftCandidatesInDirectionForFrontLoad(
     const idxSource = pSource.months.findIndex((x) => x.month === month);
     if (idxSource < 0) continue;
     pSource.months[idxSource] = { ...pSource.months[idxSource], mode: 'none' };
-    let idxTarget = pTarget.months.findIndex((x) => x.month === month);
+    const idxTarget = pTarget.months.findIndex((x) => x.month === month);
     if (idxTarget < 0) {
       pTarget.months.push({ month, mode, incomeDuringNet: income, hoursPerWeek: hours });
       pTarget.months.sort((a, b) => a.month - b.month);
@@ -1698,7 +1698,7 @@ function addShiftCandidatesInDirectionForFrontLoad(
       pSource.months[idx1] = { ...pSource.months[idx1], mode: 'none' };
       pSource.months[idx2] = { ...pSource.months[idx2], mode: 'none' };
       for (const m of [ma, mb]) {
-        let idxTarget = pTarget.months.findIndex((x) => x.month === m.month);
+        const idxTarget = pTarget.months.findIndex((x) => x.month === m.month);
         if (idxTarget < 0) {
           pTarget.months.push({ month: m.month, mode: m.mode, incomeDuringNet: m.income, hoursPerWeek: m.hours });
         } else {

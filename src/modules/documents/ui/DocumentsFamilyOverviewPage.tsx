@@ -1,6 +1,7 @@
 import React from 'react';
 import { SectionHeader } from '../../../shared/ui/SectionHeader';
 import { Button } from '../../../shared/ui/Button';
+import { useI18n } from '../../../shared/lib/i18n';
 import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
 import './DocumentsFamilyOverviewPage.css';
 import '../../../styles/softpill-buttons-in-cards.css';
@@ -22,12 +23,13 @@ const ENTRY_OPTIONS = [
 ] as const;
 
 export const DocumentsFamilyOverviewPage: React.FC = () => {
+  const { t } = useI18n();
   const { goTo } = useNavigation();
 
   return (
     <div className="screen-placeholder documents-family-screen">
       <section className="next-steps next-steps--plain documents-family__section">
-        <SectionHeader as="h1" title="Anträge & Vorbereitung" />
+        <SectionHeader as="h1" title={t('documents.family.sectionHeading')} />
         <div className="documents-family__entries">
           {ENTRY_OPTIONS.map((opt) => (
             <button

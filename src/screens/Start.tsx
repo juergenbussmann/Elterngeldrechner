@@ -14,6 +14,9 @@ const START_BENEFITS = [
   'Antrag vorbereiten',
 ] as const;
 
+/** Gleiche Route wie in DocumentsFamilyOverviewPage (Elternzeit / ParentLeaveFormPage). */
+const PARENTAL_LEAVE_DOCUMENTS_ROUTE = '/documents/parental-leave';
+
 export function Start() {
   const { goTo } = useNavigation();
 
@@ -53,6 +56,25 @@ export function Start() {
               </li>
             ))}
           </ul>
+
+          <div className="start-hero__elternzeit" aria-labelledby="home-start-elternzeit-title">
+            <h2 id="home-start-elternzeit-title" className="start-hero__section-title">
+              Elternzeit
+            </h2>
+            <p className="start-hero__subline">
+              Bereite hier deinen Antrag auf Elternzeit vor und erstelle die wichtigsten Angaben für deinen
+              Arbeitgeber.
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              className="start-hero__cta"
+              onClick={() => goTo(PARENTAL_LEAVE_DOCUMENTS_ROUTE)}
+            >
+              Elternzeit beantragen
+            </Button>
+          </div>
         </div>
       </section>
     </div>

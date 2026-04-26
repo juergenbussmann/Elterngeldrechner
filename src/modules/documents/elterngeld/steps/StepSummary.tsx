@@ -89,6 +89,10 @@ type Props = {
   /** Erster Schritt der Dokumentenstrecke (Datenübersicht). */
   onProceedToDocuments?: () => void;
   liveResult?: CalculationResult | null;
+  /** Wenn gesetzt (und keine Validierungsfehler): ersetzt den Hinweis + „Planvorschläge ansehen“ (z. B. Paywall). */
+  optimizationPaywall?: React.ReactNode;
+  /** Blendet „Planvorschläge ansehen“ aus (z. B. wenn Paywall bereits auf der Zusammenfassung sitzt). */
+  hidePlanvorschlaegeButton?: boolean;
 };
 
 export const StepSummary: React.FC<Props> = ({
@@ -97,6 +101,8 @@ export const StepSummary: React.FC<Props> = ({
   onOpenOptimization,
   onProceedToDocuments,
   liveResult,
+  optimizationPaywall,
+  hidePlanvorschlaegeButton = false,
 }) => {
   const result = liveResult ?? null;
 
@@ -181,13 +187,15 @@ export const StepSummary: React.FC<Props> = ({
         </div>
       )}
 
-      {result && result.validation.errors.length === 0 && (
+      {result && result.validation.errors.length === 0 && optimizationPaywall ? (
+        <div className="elterngeld-summary__optimization-paywall">{optimizationPaywall}</div>
+      ) : result && result.validation.errors.length === 0 ? (
         <div className="elterngeld-summary__optimization-hint elterngeld-step__notice elterngeld-step__notice--tip">
           <p className="elterngeld-summary__hint-text">
             Dein Plan funktioniert. Optional kannst du Planvorschläge ansehen.
           </p>
         </div>
-      )}
+      ) : null}
 
       {displayHint && displayHint.type === 'bonus' && (
         <div className={`elterngeld-plan__main-hint elterngeld-plan__bonus-preview elterngeld-step__notice elterngeld-step__notice--tip ${displayHint.isBasisOnly ? 'elterngeld-plan__bonus-preview--basis-warning' : ''}`}>
@@ -215,7 +223,10 @@ export const StepSummary: React.FC<Props> = ({
       )}
 
       <div className="elterngeld-summary__actions elterngeld-summary__actions--secondary next-steps__stack">
-        {result && result.validation.errors.length === 0 && onOpenOptimization && (
+        {result &&
+          result.validation.errors.length === 0 &&
+          onOpenOptimization &&
+          !hidePlanvorschlaegeButton && (
           <Button
             type="button"
             variant="secondary"

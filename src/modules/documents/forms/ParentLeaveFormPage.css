@@ -258,10 +258,131 @@
   font-size: 0.85rem;
 }
 
+.documents-form__quick-select--tight {
+  margin-top: 0.35rem;
+}
+
+.documents-form__quick-select-btn--active {
+  border-color: rgba(234, 179, 72, 0.55) !important;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.08),
+    0 0 0 2px rgba(234, 179, 72, 0.32) !important;
+}
+
+.documents-form__part-time-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.documents-form__part-time-distribution {
+  gap: 0.5rem;
+}
+
+.documents-form__part-time-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.request-type-option--compact {
+  padding: 10px 12px;
+  min-height: 0;
+}
+
+.request-type-option--compact .request-type-option__title {
+  font-size: 0.9rem;
+}
+
+.documents-form__part-time-preview {
+  margin-top: 0.25rem;
+}
+
+.documents-form__part-time-preview-line {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.documents-form__part-time-preview-line--emph {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.documents-form__part-time-days {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.documents-form__part-time-day-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 32%) 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.documents-form__part-time-day-label {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.documents-form__part-time-day-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.documents-form__part-time-sum {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.documents-form__hint--soft {
+  margin-top: 0.25rem;
+  font-style: italic;
+  opacity: 0.92;
+}
+
 .documents-form__submit-error {
   margin: 0;
   font-size: 0.85rem;
   color: var(--color-error, #dc2626);
+}
+
+.documents-form__validation-banner {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  padding: 12px 14px;
+  border-radius: var(--ui-radius-lg, 14px);
+  color: #5c4030;
+  background: rgba(255, 248, 235, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.documents-form__validation-banner__title {
+  margin: 0 0 0.35rem 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.documents-form__validation-banner__detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #64748b);
 }
 
 /* Warnboxen: warm, keine harte Gelbfläche */

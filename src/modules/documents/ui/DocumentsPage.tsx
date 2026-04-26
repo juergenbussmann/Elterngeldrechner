@@ -201,7 +201,16 @@ export const DocumentsPage: React.FC = () => {
       <p className="documents__inline-info ui-text-muted ui-text-sm">
         {t('documents.intro')}
         <br />
-        {t('documents.privacy')}
+        {t('documents.privacy')}{' '}
+        <a
+          href="https://juergenbussmann.github.io/Elterngeldrechner/elterngeld-datenschutz.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ui-text-muted ui-text-sm"
+          style={{ textDecoration: 'underline' }}
+        >
+          {t('documents.privacyLink')}
+        </a>
       </p>
 
       <section className="documents__content-section">

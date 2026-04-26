@@ -6,7 +6,11 @@
 
 import type { ParentLeaveRequestType, ParentLeaveChangeType } from './parentalLeaveHelpers';
 import { formatLeaveDuration } from './parentalLeaveHelpers';
-import type { ParentLeaveFormValues } from './formsConfig';
+import {
+  parseParentLeaveHours,
+  sumPartTimeDayHours,
+  type ParentLeaveFormValues,
+} from './formsConfig';
 
 export interface GeneratedDocument {
   title: string;
@@ -36,6 +40,57 @@ export interface ParentLeaveLetterContent {
 
 function safeText(value?: string | null): string {
   return value?.trim() ?? '';
+}
+
+const PART_TIME_DAY_KEYS_FOR_LETTER = [
+  'workDistributionMonday',
+  'workDistributionTuesday',
+  'workDistributionWednesday',
+  'workDistributionThursday',
+  'workDistributionFriday',
+] as const;
+
+const PART_TIME_DAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'] as const;
+
+function formatHourAmountForLetter(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return '0';
+  const rounded = Math.round(n * 100) / 100;
+  if (Number.isInteger(rounded)) return String(Math.round(rounded));
+  return String(rounded).replace('.', ',');
+}
+
+/** Fließtext für den Schreiben-Teil „Teilzeit“ (Bullet-Zeilen, kein neues Datenmodell). */
+function getPartTimeDistributionLetterText(values: ParentLeaveFormValues): string {
+  const legacy = safeText(values.workDistribution);
+  const mode = values.workDistributionMode || 'even';
+  const hasDayHours = sumPartTimeDayHours(values) > 0;
+
+  if (legacy && !hasDayHours && mode !== 'individual') {
+    return legacy;
+  }
+  if (mode === 'individual') {
+    const parts = PART_TIME_DAY_KEYS_FOR_LETTER.map((key, i) => {
+      const h = parseParentLeaveHours(String(values[key] ?? ''));
+      return `${PART_TIME_DAY_LABELS[i]} ${formatHourAmountForLetter(h)} Stunden`;
+    });
+    return `Die Arbeitszeit soll wie folgt verteilt werden: ${parts.join(', ')}.`;
+  }
+  return 'Die Arbeitszeit soll gleichmäßig auf Montag bis Freitag verteilt werden.';
+}
+
+function getPartTimeRequestLetterLines(values: ParentLeaveFormValues): string[] {
+  const wh = safeText(values.weeklyHours);
+  const lines: string[] = [];
+  if (wh) {
+    const n = parseParentLeaveHours(wh);
+    lines.push(
+      `- Die gewünschte Arbeitszeit beträgt ${formatHourAmountForLetter(n)} Stunden pro Woche.`
+    );
+  } else {
+    lines.push('- Gewünschte Wochenstunden: –');
+  }
+  lines.push(`- ${getPartTimeDistributionLetterText(values)}`);
+  return lines;
 }
 
 function formatAddress(values: ParentLeaveFormValues): string {
@@ -127,8 +182,7 @@ function buildPartTimeLeave(values: ParentLeaveFormValues): string[] {
   if (duration) lines.push(`Die Dauer der Elternzeit beträgt ${duration}.`);
   lines.push('');
   lines.push('Zusätzlich beantrage ich Teilzeit während der Elternzeit:');
-  lines.push(`- Gewünschte Wochenstunden: ${safeText(values.weeklyHours) || '-'}`);
-  lines.push(`- Gewünschte Verteilung der Arbeitszeit: ${safeText(values.workDistribution) || '-'}`);
+  lines.push(...getPartTimeRequestLetterLines(values));
   const schedule = safeText(values.optionalDesiredSchedule);
   if (schedule) lines.push(`- Gewünschter Zeitplan: ${schedule}`);
   lines.push('');
@@ -342,8 +396,7 @@ function getLetterContentPartTime(values: ParentLeaveFormValues): { subject: str
   );
   if (duration) paragraphs.push(`Die Dauer der Elternzeit beträgt ${duration}.`);
   paragraphs.push('Zusätzlich beantrage ich Teilzeit während der Elternzeit:');
-  paragraphs.push(`- Gewünschte Wochenstunden: ${safeText(values.weeklyHours) || '-'}`);
-  paragraphs.push(`- Gewünschte Verteilung der Arbeitszeit: ${safeText(values.workDistribution) || '-'}`);
+  paragraphs.push(...getPartTimeRequestLetterLines(values));
   const schedule = safeText(values.optionalDesiredSchedule);
   if (schedule) paragraphs.push(`- Gewünschter Zeitplan: ${schedule}`);
   paragraphs.push('Ich bitte um Prüfung und schriftliche Bestätigung.');

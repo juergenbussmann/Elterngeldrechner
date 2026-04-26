@@ -22,12 +22,19 @@ import { StepSummary } from './steps/StepSummary';
 import { StepDocumentsDataOverview } from './steps/StepDocumentsDataOverview';
 import { StepDocumentsPdfBundle } from './steps/StepDocumentsPdfBundle';
 import { OptimizationOverlay } from './steps/OptimizationOverlay';
-import { buildOptimizationResult, parseOptimizationAdoptedBaselineMap } from './calculation/elterngeldOptimization';
+import { OptimizationSuggestionsPaywall } from './steps/OptimizationSuggestionsPaywall';
+import {
+  buildOptimizationResult,
+  parseOptimizationAdoptedBaselineMap,
+  UNSUPPORTED_GOALS,
+} from './calculation/elterngeldOptimization';
+import type { OptimizationResultSet } from './calculation/elterngeldOptimization';
 import { mergePlanIntoPreparation } from './planToApplicationMerge';
 import { isPartnerBonusPartTimeHoursEligible } from './partnerBonusEligibility';
 import { saveElterngeldWizardPdfBundle } from './saveElterngeldWizardPdfBundle';
 import { ElterngeldLiveCard } from './ui/ElterngeldLiveCard';
 import { useNavigation } from '../../../shared/lib/navigation/useNavigation';
+import { unlockBegleitungPlus, useBegleitungPlus } from '../../../core/settings/begleitungPlus';
 import './ElterngeldWizardPage.css';
 import './ui/elterngeld-ui.css';
 import '../../../styles/softpill-buttons-in-cards.css';
@@ -44,6 +51,18 @@ const WIZARD_STEPS = [
 ] as const;
 
 const TOTAL_STEPS = 7;
+
+const PLAN_STEP_INDEX = WIZARD_STEPS.findIndex((s) => s.id === 'plan');
+const ELTERN_ARBEIT_STEP_INDEX = WIZARD_STEPS.findIndex((s) => s.id === 'elternArbeit');
+
+function formatSummaryCurrency(amount: number): string {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 export const ElterngeldWizardPage: React.FC = () => {
   const { profile, actions } = usePhase();
@@ -68,6 +87,7 @@ export const ElterngeldWizardPage: React.FC = () => {
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [scrollToId, setScrollToId] = useState<string | null>(null);
   const [showOptimizationOverlay, setShowOptimizationOverlay] = useState(false);
+  const plusActive = useBegleitungPlus();
 
   const closeOptimizationOverlay = useCallback(() => {
     setShowOptimizationOverlay(false);
@@ -132,6 +152,76 @@ export const ElterngeldWizardPage: React.FC = () => {
       return { hasAnySuggestions: false, partnerBonusSuggestion: null };
     }
   }, [planForOptimization, liveResult, partnerBonusHoursEligible, values.benefitPlan.optimizationAdoptedBaselineGoals]);
+
+  /** Erstes Ziel mit verbesserten Vorschlägen – gleiche Reihenfolge wie optimizationSummary (nur Anzeige, gleiche buildOptimizationResult-Kette). */
+  const optimizationPaywallMetrics = useMemo(() => {
+    if (plusActive) return null;
+    if (!liveResult || liveResult.validation.errors.length > 0) return null;
+    const baseline = parseOptimizationAdoptedBaselineMap(values.benefitPlan.optimizationAdoptedBaselineGoals);
+    const goals = ['maxMoney', 'longerDuration', 'frontLoad', 'partnerBonus'] as const;
+    for (const goal of goals) {
+      if (goal === 'partnerBonus' && !partnerBonusHoursEligible) continue;
+      if (UNSUPPORTED_GOALS.includes(goal)) continue;
+      const outcome = buildOptimizationResult(planForOptimization, liveResult, goal, {
+        adoptedBaselineGoals: baseline,
+      });
+      if ('status' in outcome && outcome.status === 'unsupported') continue;
+      const ors = outcome as OptimizationResultSet;
+      const improved = ors.suggestions.filter((s) => s.status === 'improved');
+      if (improved.length === 0) continue;
+      const currentY = ors.currentResult.householdTotal;
+      const bestZ = Math.max(...improved.map((s) => s.optimizedTotal));
+      const deltaEuro = Math.round(bestZ - currentY);
+      return { currentY, bestZ, deltaEuro, improvedCount: improved.length };
+    }
+    return null;
+  }, [
+    plusActive,
+    liveResult,
+    planForOptimization,
+    partnerBonusHoursEligible,
+    values.benefitPlan.optimizationAdoptedBaselineGoals,
+  ]);
+
+  /** Schritt 4 (Monate planen – currentStepNumber === 4): Paywall sofort sichtbar, ohne „Optimierung“-Klick. */
+  const planStepOptimizationPaywall = useMemo(() => {
+    if (!optimizationPaywallMetrics) return null;
+    return (
+      <OptimizationSuggestionsPaywall
+        formatCurrency={formatSummaryCurrency}
+        headlineDeltaEuro={
+          optimizationPaywallMetrics.deltaEuro > 0 ? optimizationPaywallMetrics.deltaEuro : null
+        }
+        currentTotal={optimizationPaywallMetrics.currentY}
+        bestOptimizedTotal={optimizationPaywallMetrics.bestZ}
+        improvedVariantCount={optimizationPaywallMetrics.improvedCount}
+        onUnlock={unlockBegleitungPlus}
+        onBackToGoalSelection={() =>
+          setStepIndex(ELTERN_ARBEIT_STEP_INDEX >= 0 ? ELTERN_ARBEIT_STEP_INDEX : 0)
+        }
+        backButtonLabel="Zurück zu Eltern & Arbeit"
+      />
+    );
+  }, [optimizationPaywallMetrics]);
+
+  /** Zusammenfassung: gleiche Paywall-Daten, falls Nutzer Schritt 4 übersprungen hat (kein Doppel-Overlay dank suppressStrategyPaywall). */
+  const summaryStepOptimizationPaywall = useMemo(() => {
+    if (!optimizationPaywallMetrics) return null;
+    return (
+      <OptimizationSuggestionsPaywall
+        formatCurrency={formatSummaryCurrency}
+        headlineDeltaEuro={
+          optimizationPaywallMetrics.deltaEuro > 0 ? optimizationPaywallMetrics.deltaEuro : null
+        }
+        currentTotal={optimizationPaywallMetrics.currentY}
+        bestOptimizedTotal={optimizationPaywallMetrics.bestZ}
+        improvedVariantCount={optimizationPaywallMetrics.improvedCount}
+        onUnlock={unlockBegleitungPlus}
+        onBackToGoalSelection={() => setStepIndex(PLAN_STEP_INDEX >= 0 ? PLAN_STEP_INDEX : 0)}
+        backButtonLabel="Zurück zur Planung"
+      />
+    );
+  }, [optimizationPaywallMetrics]);
 
   const handleNext = useCallback(() => {
     setCalculationError(null);
@@ -258,7 +348,10 @@ export const ElterngeldWizardPage: React.FC = () => {
         {step.id === 'elternArbeit' && (
           <StepElternArbeit values={values} onChange={setValues} />
         )}
-        {step.id === 'plan' && (
+        {step.id === 'plan' && planStepOptimizationPaywall && (
+          <div className="elterngeld-plan__optimization-paywall">{planStepOptimizationPaywall}</div>
+        )}
+        {step.id === 'plan' && !planStepOptimizationPaywall && (
           <StepPlan
             values={values}
             onChange={setValues}
@@ -281,10 +374,12 @@ export const ElterngeldWizardPage: React.FC = () => {
         {step.id === 'summary' && (
           <StepSummary
             values={values}
-            onBackToPlan={() => setStepIndex(WIZARD_STEPS.findIndex((s) => s.id === 'plan'))}
+            onBackToPlan={() => setStepIndex(PLAN_STEP_INDEX >= 0 ? PLAN_STEP_INDEX : 0)}
             onOpenOptimization={() => setShowOptimizationOverlay(true)}
             onProceedToDocuments={handleNext}
             liveResult={liveResult}
+            optimizationPaywall={summaryStepOptimizationPaywall ?? undefined}
+            hidePlanvorschlaegeButton={Boolean(summaryStepOptimizationPaywall)}
           />
         )}
         {step.id === 'documentsDataOverview' && (
@@ -353,6 +448,7 @@ export const ElterngeldWizardPage: React.FC = () => {
               plan={planForOptimization}
               result={liveResult}
               hasAnySuggestions={optimizationSummary.hasAnySuggestions ?? false}
+              suppressStrategyPaywall={optimizationSummary.hasAnySuggestions ?? false}
               partnerBonusHoursEligible={partnerBonusHoursEligible}
               application={values}
               onApplicationChange={setValues}

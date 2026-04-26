@@ -12,8 +12,15 @@ import { getOptimizationOverlayGoalOptions } from './OptimizationGoalDialog';
 import { StepOptimizationBlock } from './StepCalculationResult';
 import { ElternArbeitPartTimeEditor } from './PartTimeWeeklyHoursField';
 import type { ElterngeldCalculationPlan, CalculationResult } from '../calculation';
-import type { OptimizationGoal } from '../calculation/elterngeldOptimization';
+import {
+  buildOptimizationResult,
+  parseOptimizationAdoptedBaselineMap,
+  UNSUPPORTED_GOALS,
+} from '../calculation/elterngeldOptimization';
+import type { OptimizationGoal, OptimizationResultSet } from '../calculation/elterngeldOptimization';
 import type { ElterngeldApplication, OptimizationAdoptableGoal } from '../types/elterngeldTypes';
+import { unlockBegleitungPlus, useBegleitungPlus } from '../../../../core/settings/begleitungPlus';
+import { OptimizationSuggestionsPaywall } from './OptimizationSuggestionsPaywall';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -53,6 +60,11 @@ type OptimizationOverlayProps = {
   plan: ElterngeldCalculationPlan;
   result: CalculationResult;
   hasAnySuggestions: boolean;
+  /**
+   * Wizard: wenn die Paywall bereits auf der Zusammenfassung sitzt, keine zweite Paywall
+   * im Strategie-Modal (Varianten nach Freischaltung wie bisher).
+   */
+  suppressStrategyPaywall?: boolean;
   onAdoptOptimization: (
     plan: ElterngeldCalculationPlan,
     adoptedGoal?: OptimizationAdoptableGoal,
@@ -81,6 +93,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
   onClose,
   plan,
   result,
+  suppressStrategyPaywall = false,
   onAdoptOptimization,
   onNavigateToMonthEditing,
   onNavigateToLeistungSettings,
@@ -98,6 +111,7 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
   const [selectedGoal, setSelectedGoal] = useState<OptimizationGoal>('maxMoney');
   const [partTimeHoursModalOpen, setPartTimeHoursModalOpen] = useState(false);
   const [partTimeEditGeneration, setPartTimeEditGeneration] = useState(0);
+  const plusUnlocked = useBegleitungPlus();
 
   const entryGoalOptions = useMemo(
     () =>
@@ -129,6 +143,43 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
     }
   }, [isOpen]);
 
+  const optimizationResultSetForPaywall = useMemo((): OptimizationResultSet | null => {
+    if (result.validation.errors.length > 0 || UNSUPPORTED_GOALS.includes(selectedGoal)) return null;
+    const outcome = buildOptimizationResult(plan, result, selectedGoal, {
+      adoptedBaselineGoals: parseOptimizationAdoptedBaselineMap(
+        application?.benefitPlan.optimizationAdoptedBaselineGoals
+      ),
+    });
+    if ('status' in outcome && outcome.status === 'unsupported') return null;
+    return outcome as OptimizationResultSet;
+  }, [
+    plan,
+    result,
+    selectedGoal,
+    result.validation.errors.length,
+    application?.benefitPlan.optimizationAdoptedBaselineGoals,
+  ]);
+
+  const improvedForPaywall = useMemo(
+    () => optimizationResultSetForPaywall?.suggestions.filter((s) => s.status === 'improved') ?? [],
+    [optimizationResultSetForPaywall]
+  );
+
+  const showOptimizationPaywall =
+    !suppressStrategyPaywall && view === 'strategy' && !plusUnlocked && improvedForPaywall.length > 0;
+
+  const paywallMetrics = useMemo(() => {
+    if (!optimizationResultSetForPaywall || improvedForPaywall.length === 0) return null;
+    const currentY = optimizationResultSetForPaywall.currentResult.householdTotal;
+    const bestZ = Math.max(...improvedForPaywall.map((s) => s.optimizedTotal));
+    const deltaEuro = Math.round(bestZ - currentY);
+    return { currentY, bestZ, deltaEuro };
+  }, [optimizationResultSetForPaywall, improvedForPaywall]);
+
+  const handleUnlockOptimization = useCallback(() => {
+    unlockBegleitungPlus();
+  }, []);
+
   if (!isOpen) return null;
 
   const handleClose = () => {
@@ -141,43 +192,55 @@ export const OptimizationOverlay: React.FC<OptimizationOverlayProps> = ({
       <>
         <Modal isOpen={isOpen} onClose={handleClose} title="Aufteilung prüfen" variant="softpill" scrollableContent hideFooter>
           <div className="elterngeld-screen elterngeld-optimization-overlay-content">
-            <StepOptimizationBlock
-              plan={plan}
-              result={result}
-              originalPlanForOptimization={originalPlanForOptimization}
-              originalResultForOptimization={originalResultForOptimization}
-              lastAdoptedPlan={lastAdoptedPlan}
-              lastAdoptedResult={lastAdoptedResult}
-              formatCurrency={formatCurrency}
-              formatCurrencySigned={formatCurrencySigned}
-              countBezugMonths={countBezugMonths}
-              hasPartnerBonus={hasPartnerBonus}
-              onAdoptOptimization={(p, adoptGoalFromStep, adoptedResult) => {
-                const adoptGoal: OptimizationAdoptableGoal | undefined =
-                  adoptGoalFromStep ??
-                  (selectedGoal === 'maxMoney' ||
-                  selectedGoal === 'longerDuration' ||
-                  selectedGoal === 'frontLoad' ||
-                  selectedGoal === 'partnerBonus'
-                    ? selectedGoal
-                    : undefined);
-                onAdoptOptimization(p, adoptGoal, adoptedResult);
-                handleClose();
-              }}
-              onBackToOptimization={handleClose}
-              onNavigateToMonthEditing={onNavigateToMonthEditing}
-              onNavigateToLeistungSettings={onNavigateToLeistungSettings}
-              skipToStrategyStep
-              hideDiscardButton
-              hideBackButton
-              onBackToGoalSelection={() => setView('entry')}
-              optimizationGoal={selectedGoal}
-              partnerBonusHoursEligible={partnerBonusHoursEligible}
-              onNavigateToPartTimeSettings={openPartTimeHoursEditor}
-              partTimeEditGeneration={partTimeEditGeneration}
-              elterngeldApplicationForAdoption={application ?? null}
-              hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
-            />
+            {showOptimizationPaywall && paywallMetrics ? (
+              <OptimizationSuggestionsPaywall
+                formatCurrency={formatCurrency}
+                headlineDeltaEuro={paywallMetrics.deltaEuro > 0 ? paywallMetrics.deltaEuro : null}
+                currentTotal={paywallMetrics.currentY}
+                bestOptimizedTotal={paywallMetrics.bestZ}
+                improvedVariantCount={improvedForPaywall.length}
+                onUnlock={handleUnlockOptimization}
+                onBackToGoalSelection={() => setView('entry')}
+              />
+            ) : (
+              <StepOptimizationBlock
+                plan={plan}
+                result={result}
+                originalPlanForOptimization={originalPlanForOptimization}
+                originalResultForOptimization={originalResultForOptimization}
+                lastAdoptedPlan={lastAdoptedPlan}
+                lastAdoptedResult={lastAdoptedResult}
+                formatCurrency={formatCurrency}
+                formatCurrencySigned={formatCurrencySigned}
+                countBezugMonths={countBezugMonths}
+                hasPartnerBonus={hasPartnerBonus}
+                onAdoptOptimization={(p, adoptGoalFromStep, adoptedResult) => {
+                  const adoptGoal: OptimizationAdoptableGoal | undefined =
+                    adoptGoalFromStep ??
+                    (selectedGoal === 'maxMoney' ||
+                    selectedGoal === 'longerDuration' ||
+                    selectedGoal === 'frontLoad' ||
+                    selectedGoal === 'partnerBonus'
+                      ? selectedGoal
+                      : undefined);
+                  onAdoptOptimization(p, adoptGoal, adoptedResult);
+                  handleClose();
+                }}
+                onBackToOptimization={handleClose}
+                onNavigateToMonthEditing={onNavigateToMonthEditing}
+                onNavigateToLeistungSettings={onNavigateToLeistungSettings}
+                skipToStrategyStep
+                hideDiscardButton
+                hideBackButton
+                onBackToGoalSelection={() => setView('entry')}
+                optimizationGoal={selectedGoal}
+                partnerBonusHoursEligible={partnerBonusHoursEligible}
+                onNavigateToPartTimeSettings={openPartTimeHoursEditor}
+                partTimeEditGeneration={partTimeEditGeneration}
+                elterngeldApplicationForAdoption={application ?? null}
+                hidePartnerschaftsbonusUi={hidePartnerschaftsbonusUi}
+              />
+            )}
           </div>
         </Modal>
         {canEditPartTimeInOverlay && application && onApplicationChange && (

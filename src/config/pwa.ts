@@ -16,14 +16,28 @@ export const pwaManifest = {
   orientation: 'portrait',
   icons: [
     {
-      src: '/brand/icon-192.png',
+      src: '/icons/icon-192.png',
       sizes: '192x192',
-      type: 'image/png'
+      type: 'image/png',
+      purpose: 'any'
     },
     {
-      src: '/brand/icon-512.png',
+      src: '/icons/icon-512.png',
       sizes: '512x512',
-      type: 'image/png'
+      type: 'image/png',
+      purpose: 'any'
+    },
+    {
+      src: '/icons/maskable-icon-192.png',
+      sizes: '192x192',
+      type: 'image/png',
+      purpose: 'maskable'
+    },
+    {
+      src: '/icons/maskable-icon-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'maskable'
     }
   ]
 } as const;

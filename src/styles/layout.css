@@ -513,23 +513,41 @@ a[href^='tel:'] {
   padding-bottom: 0;
 }
 
-/* Anträge & Vorbereitung + Meine Dokumente: kein Top-Streifen in main, Gold-Bühne bis unter den festen Header */
+/* Anträge & Vorbereitung, Dokumente, Elternzeit, Einstellungen: kein Top-Streifen in main, Gold-Bühne bis unter den festen Header */
 .app-shell__main:has(.screen-placeholder.documents-family-screen),
 .app-shell__main:has(.screen-placeholder.documents-screen),
-.app-shell__main:has(.screen-placeholder.parental-leave-screen) {
+.app-shell__main:has(.screen-placeholder.parental-leave-screen),
+.app-shell__main:has(.screen-placeholder.settings-screen) {
   padding-top: 0;
 }
 
-/* App-Header auf Dokumenten-Hub & -liste: keine eigene Fläche (Gold der Screen-Root-Bühne scheint durch) */
-.app-shell:has(.screen-placeholder.documents-family-screen) .app-shell__header,
-.app-shell:has(.screen-placeholder.documents-screen) .app-shell__header,
-.app-shell:has(.screen-placeholder.parental-leave-screen) .app-shell__header {
-  background: transparent !important;
-  background-color: transparent !important;
-  border-bottom-color: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+/*
+ * Dokumenten- & Einstellungs-Flow: fester, heller Glass-Header (kein Theme-Braun/Beige-Gradient,
+ * kein Voll-Transparent — sonst verschwindet die Leiste optisch oder Kontrast bricht).
+ * Überschreibt AppShell-Inline-Styles per !important.
+ */
+[data-color-scheme='light'] .app-shell:has(.screen-placeholder.documents-family-screen) .app-shell__header,
+[data-color-scheme='light'] .app-shell:has(.screen-placeholder.documents-screen) .app-shell__header,
+[data-color-scheme='light'] .app-shell:has(.screen-placeholder.parental-leave-screen) .app-shell__header,
+[data-color-scheme='light'] .app-shell:has(.screen-placeholder.settings-screen) .app-shell__header {
+  background: rgba(255, 248, 235, 0.78) !important;
+  background-color: rgba(255, 248, 235, 0.78) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+[data-color-scheme='dark'] .app-shell:has(.screen-placeholder.documents-family-screen) .app-shell__header,
+[data-color-scheme='dark'] .app-shell:has(.screen-placeholder.documents-screen) .app-shell__header,
+[data-color-scheme='dark'] .app-shell:has(.screen-placeholder.parental-leave-screen) .app-shell__header,
+[data-color-scheme='dark'] .app-shell:has(.screen-placeholder.settings-screen) .app-shell__header {
+  background: rgba(30, 41, 59, 0.88) !important;
+  background-color: rgba(30, 41, 59, 0.88) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 /*
@@ -553,13 +571,39 @@ a[href^='tel:'] {
   background-size: 100% 100%;
 }
 
+/* Dokumenten-Hub: kein Negativ-Margin — ein klarer Start unter dem fixen Header (kein Ziehen/Überlappen). */
+.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.documents-family-screen {
+  padding-top: calc(0.75rem + 56px + env(safe-area-inset-top, 0px));
+}
+
 /* Gold-Bühne in den Bereich unter dem transparenten Header ziehen (kein alter Shell-Streifen oben).
    Ohne Progress-Banner: voller Zug nach oben. Mit Banner: kein Negativ-Margin (sonst Überdeckung). */
-.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.documents-family-screen,
 .app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.documents-screen,
-.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.parental-leave-screen {
+.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.parental-leave-screen,
+.app-shell:not(:has(.app-shell__progress-banner)) .screen-placeholder.settings-screen {
   margin-top: calc(-1 * (56px + env(safe-area-inset-top, 0px)));
   padding-top: calc(0.75rem + 56px + env(safe-area-inset-top, 0px));
+}
+
+/* Dokumente-/Elternzeit-Hub & Einstellungen: große Seitenüberschrift unter dem kompakten Shell-Titel */
+.screen-placeholder.documents-family-screen .section-header__title,
+.screen-placeholder.documents-screen .section-header__title,
+.screen-placeholder.parental-leave-screen .section-header__title,
+.screen-placeholder.settings-screen .section-header__title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.screen-placeholder.documents-family-screen .section-header {
+  margin-top: 0.75rem;
+}
+
+.screen-placeholder.documents-family-screen .section-header__title {
+  line-height: 1.3;
 }
 
 /* Innere Layout-Wrapper: keine zweite Fläche zwischen Inhalt und Navigation */
@@ -860,11 +904,13 @@ body.debug-layout .app-shell__footer {
   flex: 1 1 auto;
   justify-content: flex-start;
   align-items: stretch;
-  height: 100dvh;
+  min-height: 100dvh;
   padding: clamp(2.25rem, 10dvh, 4.75rem) var(--ui-pad-card) calc(var(--ui-pad-card) * 1.85);
   border-radius: 0 0 calc(var(--ui-radius-lg) * 2) calc(var(--ui-radius-lg) * 2);
   box-shadow: var(--ui-shadow-hero), var(--shadow-soft);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 
   background-image: url('/assets/startscreen-background-final.png');
   background-repeat: no-repeat;
@@ -1001,6 +1047,28 @@ body.debug-layout .app-shell__footer {
   line-height: 1;
 }
 
+.start-hero__elternzeit {
+  margin-top: clamp(1.25rem, 4dvh, 2rem);
+  padding-top: clamp(1rem, 3.5dvh, 1.75rem);
+  border-top: 1px solid rgba(47, 42, 36, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.start-hero__section-title {
+  margin: 0;
+  font-size: clamp(1.125rem, 4.2vw, 1.375rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #2f2a24;
+}
+
 [data-color-scheme='dark'] .start-hero {
   background-image: url('/assets/startscreen-background-final.png');
   background-repeat: no-repeat;
@@ -1010,6 +1078,10 @@ body.debug-layout .app-shell__footer {
 }
 
 [data-color-scheme='dark'] .start-hero__title {
+  color: #2f2a24;
+}
+
+[data-color-scheme='dark'] .start-hero__section-title {
   color: #2f2a24;
 }
 
@@ -1755,6 +1827,65 @@ body.debug-layout .app-shell__footer {
 .settings__empty-hint {
   margin-top: 0.5rem;
   font-size: 0.9rem;
+}
+
+.settings__begleitung-plus {
+  margin-top: 0.5rem;
+}
+
+.settings__begleitung-plus-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-text-primary, #1f2937);
+}
+
+.settings__begleitung-plus-status {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary, #666);
+}
+
+.settings__begleitung-plus-hint {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: rgba(58, 47, 31, 0.62);
+}
+
+.settings__begleitung-secret-divider {
+  height: 1px;
+  width: 100%;
+  margin: 0.25rem 0 0.65rem 0;
+  background: rgba(255, 255, 255, 0.35);
+  border: none;
+  box-sizing: border-box;
+  cursor: default;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.begleitung-plus-unlock-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 -0.25rem;
+  padding: 0.85rem 0.75rem 0.75rem;
+  background: rgba(255, 248, 235, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+  border-radius: var(--ui-radius-lg);
+}
+
+.begleitung-plus-unlock-dialog__error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #555);
+}
+
+.begleitung-plus-unlock-dialog__actions {
+  margin-top: 0.25rem;
 }
 
 /* SETTINGS LAYOUT */

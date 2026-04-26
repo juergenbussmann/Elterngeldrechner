@@ -20,6 +20,7 @@ export interface FormFieldConfig {
   required?: boolean;
   options?: FormFieldOption[];
   hint?: string;
+  placeholder?: string;
   /** Felder nur anzeigen, wenn Bedingung erfüllt */
   showWhen?: (values: ParentLeaveFormValues) => boolean;
   /** Statisches min/max für Date-Inputs */
@@ -49,6 +50,13 @@ export interface ParentLeaveFormValues {
   createdAtDate: string;
   weeklyHours: string;
   workDistribution: string;
+  /** UI: gleichmäßig vs. individuell (PDF-Text daraus; leer = wie „even“ behandeln). */
+  workDistributionMode: 'even' | 'individual' | '';
+  workDistributionMonday: string;
+  workDistributionTuesday: string;
+  workDistributionWednesday: string;
+  workDistributionThursday: string;
+  workDistributionFriday: string;
   optionalDesiredSchedule: string;
   optionalRemoteNote: string;
   previousStartDate: string;
@@ -81,6 +89,12 @@ export const INITIAL_FORM_VALUES: ParentLeaveFormValues = {
   createdAtDate: '',
   weeklyHours: '',
   workDistribution: '',
+  workDistributionMode: 'even',
+  workDistributionMonday: '',
+  workDistributionTuesday: '',
+  workDistributionWednesday: '',
+  workDistributionThursday: '',
+  workDistributionFriday: '',
   optionalDesiredSchedule: '',
   optionalRemoteNote: '',
   previousStartDate: '',
@@ -231,28 +245,14 @@ const BASE_FIELDS: FormFieldConfig[] = [
   },
 ];
 
-/** Zusatzfelder für leave_with_part_time */
+/** Zusatzfelder für leave_with_part_time (Wochenstunden/Verteilung: eigener Block in ParentLeaveFormPage) */
 const PART_TIME_FIELDS: FormFieldConfig[] = [
-  {
-    id: 'weeklyHours',
-    type: 'text',
-    label: 'Wochenstunden',
-    required: true,
-    showWhen: (v) => v.requestType === 'leave_with_part_time',
-    hint: 'Bei Teilzeit während der Elternzeit sind Wochenstunden und gewünschte Verteilung wichtig.',
-  },
-  {
-    id: 'workDistribution',
-    type: 'textarea',
-    label: 'Verteilung der Arbeitszeit',
-    required: true,
-    showWhen: (v) => v.requestType === 'leave_with_part_time',
-  },
   {
     id: 'optionalDesiredSchedule',
     type: 'textarea',
     label: 'Gewünschter Zeitplan (optional)',
     showWhen: (v) => v.requestType === 'leave_with_part_time',
+    placeholder: 'z. B. Mo–Do vormittags, Fr frei',
   },
 ];
 
@@ -345,6 +345,15 @@ export const PARENTAL_LEAVE_FIELDS: FormFieldConfig[] = [
   ...LATE_PERIOD_FIELDS,
 ];
 
+/** Anzeige-/Fokus-Label (u. a. für Pflichtfeld-Hinweis beim PDF-Versuch). */
+export function getParentLeaveFieldLabel(fieldId: string): string {
+  const f = PARENTAL_LEAVE_FIELDS.find((x) => x.id === fieldId);
+  if (f) return f.label;
+  if (fieldId === 'weeklyHours') return 'Wochenstunden';
+  if (fieldId === 'workDistribution') return 'Verteilung der Arbeitszeit';
+  return fieldId;
+}
+
 /**
  * Gibt die sichtbaren Felder für die aktuellen Formularwerte zurück.
  */
@@ -353,6 +362,27 @@ export function getVisibleFields(values: ParentLeaveFormValues): FormFieldConfig
     if (!field.showWhen) return true;
     return field.showWhen(values);
   });
+}
+
+const PART_TIME_DAY_KEYS = [
+  'workDistributionMonday',
+  'workDistributionTuesday',
+  'workDistributionWednesday',
+  'workDistributionThursday',
+  'workDistributionFriday',
+] as const;
+
+/** Dezimalstunden aus Eingabetext (Komma/Punkt). */
+export function parseParentLeaveHours(raw: string): number {
+  const t = raw.replace(',', '.').trim();
+  if (!t) return 0;
+  const n = Number.parseFloat(t);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/** Summe der Wochentags-Stunden (nur Anzeige/Validierung). */
+export function sumPartTimeDayHours(values: ParentLeaveFormValues): number {
+  return PART_TIME_DAY_KEYS.reduce((acc, k) => acc + parseParentLeaveHours(String(values[k] ?? '')), 0);
 }
 
 /**
@@ -390,8 +420,10 @@ export function validateParentLeaveForm(values: ParentLeaveFormValues): Record<s
         errors.endDate = 'Das Enddatum darf nicht vor dem Startdatum liegen.';
       }
       if (!values.weeklyHours?.trim()) errors.weeklyHours = 'Wochenstunden sind erforderlich.';
-      if (!values.workDistribution?.trim())
-        errors.workDistribution = 'Verteilung der Arbeitszeit ist erforderlich.';
+      const mode = values.workDistributionMode || 'even';
+      if (mode === 'individual' && sumPartTimeDayHours(values) <= 0) {
+        errors.workDistribution = 'Bitte die Arbeitsstunden je Wochentag eintragen.';
+      }
       break;
 
     case 'change_extend_end_early':

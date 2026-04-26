@@ -14,6 +14,9 @@ import {
   getVisibleFields,
   validateParentLeaveForm,
   REQUEST_TYPE_OPTIONS_UI,
+  parseParentLeaveHours,
+  sumPartTimeDayHours,
+  getParentLeaveFieldLabel,
   type ParentLeaveFormValues,
   type FormFieldConfig,
 } from './formsConfig';
@@ -28,6 +31,35 @@ import { addDocument } from '../application/service';
 import './ParentLeaveFormPage.css';
 import '../../../styles/softpill-buttons-in-cards.css';
 import '../../../styles/softpill-cards.css';
+
+function parentLeaveFieldRootId(fieldId: string): string {
+  return `parent-leave-field-${fieldId}`;
+}
+
+function focusParentLeaveField(fieldId: string): void {
+  const root = document.getElementById(parentLeaveFieldRootId(fieldId));
+  if (!root) return;
+  const focusable = root.querySelector<HTMLElement>(
+    'input:not([type="hidden"]), textarea, button.selection-field__trigger, button.request-type-option, select'
+  );
+  const el = focusable ?? root;
+  el.focus();
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function buildParentLeaveFocusFieldOrder(
+  values: ParentLeaveFormValues,
+  visibleFields: FormFieldConfig[]
+): string[] {
+  const out: string[] = ['requestType'];
+  for (const f of visibleFields) {
+    if (f.id === 'optionalDesiredSchedule' && values.requestType === 'leave_with_part_time') {
+      out.push('weeklyHours', 'workDistribution');
+    }
+    out.push(f.id);
+  }
+  return out;
+}
 
 const QuickSelectYears: React.FC<{
   startDate: string;
@@ -68,6 +100,163 @@ const QuickSelectYears: React.FC<{
   );
 };
 
+const WEEKLY_HOUR_CHIPS = [15, 20, 25, 30] as const;
+
+function formatHourAmountForUi(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return '0';
+  const rounded = Math.round(n * 100) / 100;
+  if (Number.isInteger(rounded)) return String(Math.round(rounded));
+  return String(rounded).replace('.', ',');
+}
+
+const PART_TIME_DAY_ROWS: { id: keyof ParentLeaveFormValues; label: string }[] = [
+  { id: 'workDistributionMonday', label: 'Montag' },
+  { id: 'workDistributionTuesday', label: 'Dienstag' },
+  { id: 'workDistributionWednesday', label: 'Mittwoch' },
+  { id: 'workDistributionThursday', label: 'Donnerstag' },
+  { id: 'workDistributionFriday', label: 'Freitag' },
+];
+
+const PartTimeScheduleFields: React.FC<{
+  values: ParentLeaveFormValues;
+  onChange: (id: string, value: string) => void;
+  errors: Record<string, string>;
+}> = ({ values, onChange, errors }) => {
+  const mode = values.workDistributionMode || 'even';
+  const weeklyNum = parseParentLeaveHours(values.weeklyHours);
+  const perDayEven =
+    weeklyNum > 0 ? Math.round((weeklyNum / 5) * 100) / 100 : null;
+  const perDayDisplay =
+    perDayEven != null
+      ? Number.isInteger(perDayEven)
+        ? String(perDayEven)
+        : String(perDayEven).replace('.', ',')
+      : null;
+  const sumDays = sumPartTimeDayHours(values);
+  const weeklyTargetLabel =
+    weeklyNum > 0 ? formatHourAmountForUi(weeklyNum) : '–';
+  const sumMismatch =
+    mode === 'individual' &&
+    weeklyNum > 0 &&
+    sumDays > 0 &&
+    Math.abs(sumDays - weeklyNum) > 0.051;
+
+  return (
+    <div className="documents-form__part-time-block">
+      <div className="documents-form__field-wrapper" id={parentLeaveFieldRootId('weeklyHours')}>
+        <div className="documents-form__field">
+          <span className="documents-form__label">
+            Wochenstunden <span className="documents-form__required"> *</span>
+          </span>
+          <span className="documents-form__hint">
+            Wie viele Stunden pro Woche möchtest du während der Elternzeit arbeiten?
+          </span>
+          {errors.weeklyHours && <span className="documents-form__error">{errors.weeklyHours}</span>}
+        </div>
+        <TextInput
+          type="number"
+          inputMode="decimal"
+          min={0}
+          max={60}
+          step={1}
+          value={values.weeklyHours}
+          onChange={(e) => onChange('weeklyHours', e.target.value)}
+          placeholder="z. B. 20"
+          aria-invalid={!!errors.weeklyHours}
+        />
+        <div className="documents-form__quick-select documents-form__quick-select--tight">
+          <div className="documents-form__quick-select-buttons">
+            {WEEKLY_HOUR_CHIPS.map((h) => {
+              const active = weeklyNum > 0 && Math.abs(weeklyNum - h) < 0.001;
+              return (
+                <button
+                  key={h}
+                  type="button"
+                  className={`btn btn--softpill btn--secondary documents-form__quick-select-btn${active ? ' documents-form__quick-select-btn--active' : ''}`}
+                  onClick={() => onChange('weeklyHours', String(h))}
+                >
+                  {h}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="documents-form__field-wrapper documents-form__part-time-distribution"
+        id={parentLeaveFieldRootId('workDistribution')}
+      >
+        <span className="documents-form__label">Verteilung der Arbeitszeit</span>
+        {errors.workDistribution && (
+          <span className="documents-form__error">{errors.workDistribution}</span>
+        )}
+        <div className="documents-form__part-time-mode" role="radiogroup" aria-label="Verteilung der Arbeitszeit">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mode === 'even'}
+            className={`request-type-option request-type-option--compact${mode === 'even' ? ' request-type-option--selected' : ''}`}
+            onClick={() => onChange('workDistributionMode', 'even')}
+          >
+            <span className="request-type-option__title">Gleichmäßig verteilt</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mode === 'individual'}
+            className={`request-type-option request-type-option--compact${mode === 'individual' ? ' request-type-option--selected' : ''}`}
+            onClick={() => onChange('workDistributionMode', 'individual')}
+          >
+            <span className="request-type-option__title">Individuell festlegen</span>
+          </button>
+        </div>
+
+        {mode === 'even' && (
+          <div className="documents-form__part-time-preview">
+            <p className="documents-form__part-time-preview-line">Montag bis Freitag gleichmäßig verteilt</p>
+            {perDayDisplay != null && (
+              <p className="documents-form__part-time-preview-line documents-form__part-time-preview-line--emph">
+                Bei {formatHourAmountForUi(weeklyNum)} Stunden: ca. {perDayDisplay} Stunden pro Tag
+              </p>
+            )}
+          </div>
+        )}
+
+        {mode === 'individual' && (
+          <div className="documents-form__part-time-days">
+            {PART_TIME_DAY_ROWS.map((row) => (
+              <div key={row.id} className="documents-form__part-time-day-row">
+                <span className="documents-form__part-time-day-label">{row.label}</span>
+                <TextInput
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={24}
+                  step={0.5}
+                  className="documents-form__part-time-day-input"
+                  value={String(values[row.id] ?? '')}
+                  onChange={(e) => onChange(row.id, e.target.value)}
+                  placeholder="0"
+                  aria-label={`${row.label} Stunden`}
+                />
+              </div>
+            ))}
+            <p className="documents-form__part-time-sum">
+              Gesamt: {formatHourAmountForUi(sumDays)} von {weeklyTargetLabel} Wochenstunden
+            </p>
+            {sumMismatch && (
+              <p className="documents-form__hint documents-form__hint--soft">
+                Die Summe sollte zu deinen Wochenstunden passen.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const FormField: React.FC<{
   field: FormFieldConfig;
   value: string;
@@ -76,7 +265,9 @@ const FormField: React.FC<{
   min?: string;
   max?: string;
   disabled?: boolean;
-}> = ({ field, value, onChange, error, min, max, disabled }) => {
+  /** Erstes sichtbares Feld: Fokus/Scroll nach Antragsart-Wahl (nur UI). */
+  focusRef?: React.MutableRefObject<HTMLElement | null>;
+}> = ({ field, value, onChange, error, min, max, disabled, focusRef }) => {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       onChange(field.id, e.target.value);
@@ -98,7 +289,7 @@ const FormField: React.FC<{
   if (field.type === 'select') {
     const options = (field.options ?? []).map((o) => ({ value: o.value, label: o.label }));
     return (
-      <div className="documents-form__field-wrapper">
+      <div className="documents-form__field-wrapper" id={parentLeaveFieldRootId(field.id)}>
         <SelectionField
           label={field.label}
           placeholder="– Bitte wählen –"
@@ -109,6 +300,13 @@ const FormField: React.FC<{
           error={error}
           hint={field.hint}
           variant="documents-form"
+          triggerRef={
+            focusRef
+              ? (el) => {
+                  focusRef.current = el;
+                }
+              : undefined
+          }
         />
       </div>
     );
@@ -116,13 +314,21 @@ const FormField: React.FC<{
 
   if (field.type === 'textarea') {
     return (
-      <div className="documents-form__field-wrapper">
+      <div className="documents-form__field-wrapper" id={parentLeaveFieldRootId(field.id)}>
         {labelBlock}
         <textarea
+          ref={
+            focusRef
+              ? (el) => {
+                  focusRef.current = el;
+                }
+              : undefined
+          }
           className="ui-control documents-form__textarea"
           value={value}
           onChange={handleChange}
           rows={3}
+          placeholder={field.placeholder ?? ''}
           aria-invalid={!!error}
         />
       </div>
@@ -131,9 +337,19 @@ const FormField: React.FC<{
 
   if (field.type === 'date') {
     return (
-      <div className={`documents-form__field-wrapper${disabled ? ' documents-form__field-wrapper--disabled' : ''}`}>
+      <div
+        className={`documents-form__field-wrapper${disabled ? ' documents-form__field-wrapper--disabled' : ''}`}
+        id={parentLeaveFieldRootId(field.id)}
+      >
         {labelBlock}
         <TextInput
+          ref={
+            focusRef
+              ? (el) => {
+                  focusRef.current = el;
+                }
+              : undefined
+          }
           type="date"
           value={value}
           onChange={handleChange}
@@ -148,12 +364,20 @@ const FormField: React.FC<{
   }
 
   return (
-    <div className="documents-form__field-wrapper">
+    <div className="documents-form__field-wrapper" id={parentLeaveFieldRootId(field.id)}>
       {labelBlock}
       <TextInput
+        ref={
+          focusRef
+            ? (el) => {
+                focusRef.current = el;
+              }
+            : undefined
+        }
         type={field.type === 'number' ? 'number' : 'text'}
         value={value}
         onChange={handleChange}
+        placeholder={field.placeholder}
         aria-invalid={!!error}
       />
     </div>
@@ -176,8 +400,24 @@ export const ParentLeaveFormPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  /** Hinweis bei PDF-Klick mit unvollständiger Validierung (kein alert). */
+  const [validationBanner, setValidationBanner] = useState<{ missingLabels: string[] } | null>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
+
+  /** Erstes sichtbares Feld nach Wahl der Antragsart (DOM nach Commit fokussieren). */
+  const firstVisibleFieldRef = useRef<HTMLElement | null>(null);
+
+  const focusFirstVisibleFieldAfterPaint = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = firstVisibleFieldRef.current;
+        if (!el) return;
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  }, []);
 
   // Profil → Formular: Wenn Profil sich ändert (z.B. in Einstellungen), Datumsfelder nachziehen
   useEffect(() => {
@@ -219,8 +459,24 @@ export const ParentLeaveFormPage: React.FC = () => {
   const deadlineInfo = useMemo(() => getParentalLeaveDeadlineInfo(values), [values]);
 
   const handleFieldChange = useCallback((id: string, value: string) => {
+    setValidationBanner(null);
     setValues((prev) => {
-      let next = { ...prev, [id]: value };
+      let next: ParentLeaveFormValues = { ...prev, [id]: value };
+      if (id === 'requestType') {
+        if (value === 'leave_with_part_time' && prev.requestType !== 'leave_with_part_time') {
+          next = {
+            ...next,
+            workDistributionMode: 'even',
+            weeklyHours: '',
+            workDistribution: '',
+            workDistributionMonday: '',
+            workDistributionTuesday: '',
+            workDistributionWednesday: '',
+            workDistributionThursday: '',
+            workDistributionFriday: '',
+          };
+        }
+      }
       if (id === 'birthDate') {
         const applied = applyBirthDateChange(value, prev.expectedBirthDate);
         next = { ...next, birthDate: applied.birthDate, expectedBirthDate: applied.expectedBirthDate };
@@ -233,6 +489,7 @@ export const ParentLeaveFormPage: React.FC = () => {
     setErrors((prev) => {
       const next = { ...prev };
       delete next[id];
+      if (id.startsWith('workDistribution')) delete next.workDistribution;
       if (id === 'birthDate') delete next.expectedBirthDate;
       if (id === 'expectedBirthDate') delete next.birthDate;
       return next;
@@ -243,9 +500,28 @@ export const ParentLeaveFormPage: React.FC = () => {
     const validationErrors = validateParentLeaveForm(values);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      const order = buildParentLeaveFocusFieldOrder(values, visibleFields);
+      const orderedErrIds = [
+        ...order.filter((fid) => validationErrors[fid]),
+        ...Object.keys(validationErrors).filter((k) => k !== 'submit' && !order.includes(k)),
+      ];
+      const missingLabels = [...new Set(orderedErrIds.map((fid) => getParentLeaveFieldLabel(fid)))];
+      setValidationBanner({ missingLabels });
+      const firstId =
+        order.find((fid) => validationErrors[fid]) ??
+        Object.keys(validationErrors).find((k) => k !== 'submit') ??
+        null;
+      if (firstId) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            focusParentLeaveField(firstId);
+          });
+        });
+      }
       return;
     }
 
+    setValidationBanner(null);
     setIsSubmitting(true);
     setErrors({});
 
@@ -276,7 +552,7 @@ export const ParentLeaveFormPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [values, showToast]);
+  }, [values, showToast, visibleFields]);
 
   if (showSuccess) {
     return (
@@ -316,7 +592,12 @@ export const ParentLeaveFormPage: React.FC = () => {
         <SectionHeader as="h1" title="Elternzeit-Antrag" />
         <Card className="still-daily-checklist__card documents-form__card">
           <div className="documents-form__fields">
-            <div className="request-type-group" role="radiogroup" aria-label="Art des Antrags">
+            <div
+              className="request-type-group"
+              id={parentLeaveFieldRootId('requestType')}
+              role="radiogroup"
+              aria-label="Art des Antrags"
+            >
               <span className="documents-form__label" style={{ marginBottom: '0.5rem' }}>
                 Art des Antrags <span className="documents-form__required">*</span>
               </span>
@@ -333,7 +614,10 @@ export const ParentLeaveFormPage: React.FC = () => {
                     aria-checked={isSelected}
                     aria-invalid={!!errors.requestType}
                     className={`request-type-option${isSelected ? ' request-type-option--selected' : ''}`}
-                    onClick={() => handleFieldChange('requestType', option.value)}
+                    onClick={() => {
+                      handleFieldChange('requestType', option.value);
+                      focusFirstVisibleFieldAfterPaint();
+                    }}
                   >
                     <span className="request-type-option__title">{option.label}</span>
                     <span className="request-type-option__description">{option.description}</span>
@@ -347,7 +631,7 @@ export const ParentLeaveFormPage: React.FC = () => {
               )}
             </div>
 
-            {visibleFields.map((field) => {
+            {visibleFields.map((field, index) => {
               const minVal = field.getMin?.(values) ?? field.min;
               const maxVal = field.getMax?.(values) ?? field.max;
               const isBirthDateField = field.id === 'birthDate';
@@ -357,6 +641,14 @@ export const ParentLeaveFormPage: React.FC = () => {
                 (isExpectedField && isExpectedBirthDateDisabled(values.birthDate, values.expectedBirthDate));
               return (
                 <React.Fragment key={field.id}>
+                  {field.id === 'optionalDesiredSchedule' &&
+                    values.requestType === 'leave_with_part_time' && (
+                      <PartTimeScheduleFields
+                        values={values}
+                        onChange={handleFieldChange}
+                        errors={errors}
+                      />
+                    )}
                   <FormField
                     field={field}
                     value={values[field.id as keyof ParentLeaveFormValues] ?? ''}
@@ -365,6 +657,7 @@ export const ParentLeaveFormPage: React.FC = () => {
                     min={minVal}
                     max={maxVal}
                     disabled={disabled}
+                    focusRef={index === 0 ? firstVisibleFieldRef : undefined}
                   />
                   {field.id === 'startDate' &&
                     (values.requestType === 'basic_leave' ||
@@ -440,6 +733,19 @@ export const ParentLeaveFormPage: React.FC = () => {
 
           {errors.submit && (
             <p className="documents-form__submit-error">{errors.submit}</p>
+          )}
+
+          {validationBanner && (
+            <div className="documents-form__validation-banner" role="alert" aria-live="polite">
+              <p className="documents-form__validation-banner__title">
+                Bitte fülle zuerst alle Pflichtfelder aus.
+              </p>
+              {validationBanner.missingLabels.length > 0 && (
+                <p className="documents-form__validation-banner__detail">
+                  Es fehlen noch: {validationBanner.missingLabels.join(', ')}
+                </p>
+              )}
+            </div>
           )}
 
           <Button

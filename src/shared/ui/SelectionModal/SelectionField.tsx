@@ -16,6 +16,8 @@ export interface SelectionFieldProps {
   className?: string;
   /** Match documents-form styling */
   variant?: 'default' | 'documents-form';
+  /** Optional ref auf den sichtbaren Trigger-Button (Fokus/Scroll nach dynamischer Einblendung). */
+  triggerRef?: React.Ref<HTMLButtonElement>;
 }
 
 export const SelectionField: React.FC<SelectionFieldProps> = ({
@@ -29,6 +31,7 @@ export const SelectionField: React.FC<SelectionFieldProps> = ({
   hint,
   className = '',
   variant = 'default',
+  triggerRef,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -56,6 +59,7 @@ export const SelectionField: React.FC<SelectionFieldProps> = ({
         {error && <span className="selection-field__error">{error}</span>}
       </div>
       <button
+        ref={triggerRef}
         type="button"
         className={`selection-field__trigger${!value ? ' selection-field__trigger--placeholder' : ''}`}
         onClick={() => setOpen(true)}

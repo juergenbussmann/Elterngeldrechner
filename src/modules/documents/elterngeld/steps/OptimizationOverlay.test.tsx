@@ -12,6 +12,7 @@ import { applicationToCalculationPlan } from '../applicationToCalculationPlan';
 import { calculatePlan } from '../calculation';
 import type { ElterngeldApplication } from '../types/elterngeldTypes';
 import { INITIAL_ELTERNGELD_APPLICATION, EMPTY_ELTERNGELD_PARENT } from '../types/elterngeldTypes';
+import { writeBegleitungPlusUnlocked } from '../../../../core/settings/begleitungPlus';
 
 const renderWithI18n = (ui: React.ReactElement) =>
   render(<I18nProvider>{ui}</I18nProvider>);
@@ -108,6 +109,10 @@ function suggestionMetaSnapshot(): string {
 }
 
 describe('OptimizationOverlay', () => {
+  beforeEach(() => {
+    writeBegleitungPlusUnlocked(true);
+  });
+
   it('zeigt Baseline-Kommunikation wie Calculation wenn originalPlanForOptimization übergeben', () => {
     const values = createValues();
     const plan = applicationToCalculationPlan(values);
@@ -245,5 +250,41 @@ describe('OptimizationOverlay', () => {
         />
       )
     ).not.toThrow();
+  });
+
+  it('zeigt Paywall vor Varianten, wenn Optimierung noch nicht freigeschaltet ist', () => {
+    writeBegleitungPlusUnlocked(false);
+    const values = createValuesBothParentsPlusStaggered();
+    const plan = applicationToCalculationPlan(values);
+    const result = calculatePlan(plan);
+    if (result.validation.errors.length > 0) {
+      return;
+    }
+
+    renderWithI18n(
+      <OptimizationOverlay
+        isOpen={true}
+        onClose={() => {}}
+        plan={plan}
+        result={result}
+        hasAnySuggestions={true}
+        onAdoptOptimization={() => {}}
+        originalPlanForOptimization={plan}
+        originalResultForOptimization={result}
+        application={values}
+        onApplicationChange={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Varianten vergleichen/i }));
+
+    expect(screen.getByRole('button', { name: /Optimierung freischalten/i })).toBeTruthy();
+    expect(screen.getByText(/Aktueller Plan:/i)).toBeTruthy();
+    expect(screen.getByText(/Optimiert möglich:/i)).toBeTruthy();
+    expect(screen.getByText(/38 € \/ Jahr/i)).toBeTruthy();
+    expect(screen.getByText(/bessere Varianten verfügbar/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Optimierung freischalten/i }));
+    expect(screen.getAllByRole('button', { name: /Teilzeitstunden anpassen/i }).length).toBeGreaterThan(0);
   });
 });

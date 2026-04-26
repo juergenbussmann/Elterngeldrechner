@@ -2138,6 +2138,122 @@
   background: transparent;
 }
 
+.elterngeld-optimization-paywall-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.elterngeld-optimization-paywall {
+  background: rgba(255, 248, 235, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+  border-radius: var(--ui-radius-lg);
+  padding: 1rem 1.1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.elterngeld-optimization-paywall__headline {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #3a2f1f;
+}
+
+.elterngeld-optimization-paywall__compare {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  color: #4a3d2c;
+}
+
+.elterngeld-optimization-paywall__compare-line {
+  margin: 0;
+}
+
+.elterngeld-optimization-paywall__compare-label {
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+.elterngeld-optimization-paywall__compare-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.elterngeld-optimization-paywall__list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #4a3d2c;
+}
+
+.elterngeld-optimization-paywall__price-block {
+  margin-top: 0.15rem;
+}
+
+.elterngeld-optimization-paywall__price-main {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #3a2f1f;
+}
+
+.elterngeld-optimization-paywall__price-sub {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.8rem;
+  color: rgba(58, 47, 31, 0.72);
+}
+
+.elterngeld-optimization-paywall__cta {
+  margin-top: 0.25rem;
+  width: 100%;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6e4bb 0%, #e6c78a 100%);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  color: #3a2f1f;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.elterngeld-optimization-paywall__cta:active {
+  transform: translateY(1px);
+}
+
+.elterngeld-optimization-paywall__back {
+  margin: 0;
+  align-self: flex-start;
+  padding: 0.35rem 0.25rem;
+  border: none;
+  background: transparent;
+  color: rgba(58, 47, 31, 0.78);
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.elterngeld-optimization-paywall__locked-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: rgba(58, 47, 31, 0.62);
+}
+
 .elterngeld-optimization-overlay__goal-section {
   margin-bottom: 1rem;
   padding-bottom: 1rem;
@@ -2855,6 +2971,18 @@
 
 .elterngeld-summary__intro-hint {
   margin: 0 0 1rem;
+}
+
+.elterngeld-summary__optimization-paywall {
+  margin: 0 0 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.elterngeld-plan__optimization-paywall {
+  margin: 0 0 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .elterngeld-summary__actions {

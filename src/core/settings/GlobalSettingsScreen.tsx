@@ -5,6 +5,7 @@ import { useI18n } from '../../shared/lib/i18n';
 import { useNavigation } from '../../shared/lib/navigation/useNavigation';
 import { getModuleSettings } from '../modules/moduleHost';
 import { assertGlobalSettingsSectionsAbsent } from '../quality/qualityGate';
+import { BegleitungPlusSettingsSection } from './BegleitungPlusSettingsSection';
 import '../../styles/softpill-buttons-in-cards.css';
 import '../../styles/softpill-cards.css';
 
@@ -33,6 +34,7 @@ export const GlobalSettingsScreen: React.FC = () => {
               {module.displayName}
             </Button>
           ))}
+          <BegleitungPlusSettingsSection />
           <Button
             type="button"
             variant="secondary"
@@ -43,7 +45,7 @@ export const GlobalSettingsScreen: React.FC = () => {
             Geburtstermin
           </Button>
           <a
-            href="https://juergenbussmann.github.io/index.html/"
+            href="https://juergenbussmann.github.io/Elterngeldrechner/elterngeld-datenschutz.html"
             target="_blank"
             rel="noopener noreferrer"
             className="next-steps__button btn--softpill"
